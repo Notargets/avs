@@ -84,8 +84,8 @@ func drawGraph(xrange, yrange float32, width, height int) {
 	gl.LoadIdentity()
 	gl.Ortho(-xmargin, 1+xmargin, -ymargin, 1+ymargin, 0, 2)
 
+	drawAxes(0,0,0,0)
 	gl.Color3f(1, 1, 1)
-
 	gl.Begin(gl.LINE_STRIP)
 	size := 100
 	for i := 0; i<size; i++ {
@@ -97,5 +97,24 @@ func drawGraph(xrange, yrange float32, width, height int) {
 	}
 	gl.End()
 	shift += 1
+}
+
+func drawAxes(xmin, xmax, ymin, ymax float32) {
+	// Y axis
+	gl.Color3f(0, 1, 0)
+	gl.Begin(gl.LINE_STRIP)
+	gl.Vertex2f(-.03, 0)
+	gl.Vertex2f(0, 0)
+	gl.Vertex2f(0, 1)
+	gl.Vertex2f(-0.03, 1)
+	gl.End()
+	// X axis
+	gl.Color3f(1, 0, 0)
+	gl.Begin(gl.LINE_STRIP)
+	gl.Vertex2f(0, -.03)
+	gl.Vertex2f(0, 0)
+	gl.Vertex2f(1, 0)
+	gl.Vertex2f(1, -.03)
+	gl.End()
 }
 
