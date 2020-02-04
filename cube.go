@@ -96,7 +96,9 @@ func drawGraph(xrange, yrange float32, width, height int) {
 		yc := yr.GetProjection(float32(math.Sin(float64(frac*2*math.Pi))))
 	//	gl.Vertex2f(xc, yc)
 		//drawGlyph(xc, yc, CircleGlyph)
-		drawGlyph(xc, yc, XGlyph)
+		//drawGlyph(xc, yc, XGlyph)
+		//drawGlyph(xc, yc, CrossGlyph)
+		drawGlyph(xc, yc, StarGlyph)
 	}
 	//gl.End()
 	inc += size
@@ -139,6 +141,11 @@ func drawGlyph(xc, yc float32, gt GlyphType) {
 		DrawCircle(xc, yc, 0.010, 6)
 	case XGlyph:
 		DrawXGlyph(xc, yc)
+	case CrossGlyph:
+		DrawCrossGlyph(xc, yc)
+	case StarGlyph:
+		DrawXGlyph(xc, yc)
+		DrawCrossGlyph(xc, yc)
 	}
 }
 
@@ -153,6 +160,20 @@ func DrawXGlyph(cx, cy float32) {
 	gl.Begin(gl.LINE_STRIP)
 	gl.Vertex2f(cx-hWidth, cy+hWidth)
 	gl.Vertex2f(cx+hWidth, cy-hWidth)
+	gl.End()
+}
+
+func DrawCrossGlyph(cx, cy float32) {
+	var (
+		hWidth = float32(0.01)
+	)
+	gl.Begin(gl.LINE_STRIP)
+	gl.Vertex2f(cx, cy-hWidth)
+	gl.Vertex2f(cx, cy+hWidth)
+	gl.End()
+	gl.Begin(gl.LINE_STRIP)
+	gl.Vertex2f(cx-hWidth, cy)
+	gl.Vertex2f(cx+hWidth, cy)
 	gl.End()
 }
 
