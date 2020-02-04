@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	_ "image/png"
 	"log"
 	"math"
@@ -11,14 +12,14 @@ import (
 	"github.com/go-gl/glfw/v3.3/glfw"
 )
 
-
 const (
-	width, height = 1600, 1200
+	width, height = 1200, 800
 )
 
 var (
 	shift = 0
-	inc = 0
+	inc   = 0
+	gt    = GlyphType(0)
 )
 
 func init() {
@@ -46,8 +47,8 @@ func run() {
 	}
 
 	for !window.ShouldClose() {
-	    time.Sleep(1*time.Millisecond)
-		drawGraph(0,1,width, height)
+		time.Sleep(1 * time.Millisecond)
+		drawGraph(0, 1, width, height)
 		window.SwapBuffers()
 		glfw.PollEvents()
 	}
@@ -66,18 +67,25 @@ func NewRange(xMin, xMax float32, pMin, pMax float32) *Range {
 }
 
 func (rg *Range) GetProjection(x float32) (p float32) {
-    p = (rg.pMax-rg.pMin)*(x - rg.xMin) / (rg.xMax-rg.xMin) + rg.pMin
-    p = float32(math.Max(float64(p), float64(rg.pMin)))
+	p = (rg.pMax-rg.pMin)*(x-rg.xMin)/(rg.xMax-rg.xMin) + rg.pMin
+	p = float32(math.Max(float64(p), float64(rg.pMin)))
 	p = float32(math.Min(float64(p), float64(rg.pMax)))
 	return p
 }
 
 func drawGraph(xrange, yrange float32, width, height int) {
-    var (
-    	xmargin = 0.1
-    	ymargin = 0.1
+	var (
+		xmargin = 0.1
+		ymargin = 0.1
 	)
-    xr := NewRange(0, 2*math.Pi, 0, 1)
+	if inc%height == 0 {
+		shift += 1
+		if shift%10 == 0 {
+			gt = GlyphType(shift / 10 % 4)
+			fmt.Printf("10x reached, shift = %d, gt = %d\n", shift, gt)
+		}
+	}
+	xr := NewRange(0, 2*math.Pi, 0, 1)
 	yr := NewRange(-1, 1, 0, 1)
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
@@ -85,26 +93,24 @@ func drawGraph(xrange, yrange float32, width, height int) {
 	gl.LoadIdentity()
 	gl.Ortho(-xmargin, 1+xmargin, -ymargin, 1+ymargin, 0, 2)
 
-	drawAxes(0,0,0,0)
+	drawAxes(0, 0, 0, 0)
 	gl.Color3f(1, 1, 1)
 	//gl.Begin(gl.LINE_STRIP)
-	size := 20
-	for i := 0; i<size; i++ {
-		frac := float32(i)/float32(size-1)
-		xc := xr.GetProjection(frac*2*math.Pi)
-		frac = float32(shift + i)/float32(size-1)
-		yc := yr.GetProjection(float32(math.Sin(float64(frac*2*math.Pi))))
-	//	gl.Vertex2f(xc, yc)
+	size := 100
+	for i := 0; i < size; i++ {
+		frac := float32(i) / float32(size-1)
+		xc := xr.GetProjection(frac * 2 * math.Pi)
+		frac = float32(shift+i) / float32(size-1)
+		yc := yr.GetProjection(float32(math.Sin(float64(frac * 2 * math.Pi))))
+		//	gl.Vertex2f(xc, yc)
 		//drawGlyph(xc, yc, CircleGlyph)
 		//drawGlyph(xc, yc, XGlyph)
 		//drawGlyph(xc, yc, CrossGlyph)
-		drawGlyph(xc, yc, StarGlyph)
+		//drawGlyph(xc, yc, StarGlyph)
+		drawGlyph(xc, yc, gt)
 	}
 	//gl.End()
 	inc += size
-	if inc % 200 == 0 {
-		shift += 1
-	}
 }
 
 func drawAxes(xmin, xmax, ymin, ymax float32) {
@@ -185,18 +191,18 @@ func DrawCircle(cx, cy, r float32, numSegments int) {
 	var x, y float32
 	x = r
 	for ii := 0; ii < numSegments; ii++ {
-		gl.Vertex2f(x + cx, y + cy) //output vertex
-//calculate the tangential vector
-//remember, the radial vector is (x, y)
-//to get the tangential vector we flip those coordinates and negate one of them
+		gl.Vertex2f(x+cx, y+cy) //output vertex
+		//calculate the tangential vector
+		//remember, the radial vector is (x, y)
+		//to get the tangential vector we flip those coordinates and negate one of them
 		tx := float64(-y)
 		ty := float64(x)
-//add the tangential vector
+		//add the tangential vector
 		x += float32(tx * tangentialFactor)
 		y += float32(ty * tangentialFactor)
-//correct using the radial factor
-		x = float32(float64(x)* radialFactor)
-		y = float32(float64(y)* radialFactor)
+		//correct using the radial factor
+		x = float32(float64(x) * radialFactor)
+		y = float32(float64(y) * radialFactor)
 	}
 	gl.End()
 }
