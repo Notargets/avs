@@ -18,6 +18,7 @@ const (
 
 var (
 	shift = 0
+	inc = 0
 )
 
 func init() {
@@ -86,17 +87,21 @@ func drawGraph(xrange, yrange float32, width, height int) {
 
 	drawAxes(0,0,0,0)
 	gl.Color3f(1, 1, 1)
-	gl.Begin(gl.LINE_STRIP)
-	size := 100
+	//gl.Begin(gl.LINE_STRIP)
+	size := 20
 	for i := 0; i<size; i++ {
 		frac := float32(i)/float32(size-1)
 		xc := xr.GetProjection(frac*2*math.Pi)
 		frac = float32(shift + i)/float32(size-1)
 		yc := yr.GetProjection(float32(math.Sin(float64(frac*2*math.Pi))))
-		gl.Vertex2f(xc, yc)
+	//	gl.Vertex2f(xc, yc)
+		drawGlyph(xc, yc, CircleGlyph)
 	}
-	gl.End()
-	shift += 1
+	//gl.End()
+	inc += size
+	if inc % 200 == 0 {
+		shift += 1
+	}
 }
 
 func drawAxes(xmin, xmax, ymin, ymax float32) {
@@ -118,3 +123,42 @@ func drawAxes(xmin, xmax, ymin, ymax float32) {
 	gl.End()
 }
 
+type GlyphType uint8
+
+const (
+	CircleGlyph GlyphType = iota
+	XGlyph
+	CrossGlyph
+	StarGlyph
+)
+
+func drawGlyph(xc, yc float32, gt GlyphType) {
+	switch gt {
+	case CircleGlyph:
+		DrawCircle(xc, yc, 0.010, 6)
+	}
+}
+
+func DrawCircle(cx, cy, r float32, numSegments int) {
+	theta := 2 * math.Pi / float64(numSegments)
+	tangentialFactor := math.Tan(theta) //calculate the tangential factor
+	radialFactor := math.Cos(theta)     //calculate the radial factor
+	gl.Begin(gl.LINE_LOOP)
+	var x, y float32
+	x = r
+	for ii := 0; ii < numSegments; ii++ {
+		gl.Vertex2f(x + cx, y + cy) //output vertex
+//calculate the tangential vector
+//remember, the radial vector is (x, y)
+//to get the tangential vector we flip those coordinates and negate one of them
+		tx := float64(-y)
+		ty := float64(x)
+//add the tangential vector
+		x += float32(tx * tangentialFactor)
+		y += float32(ty * tangentialFactor)
+//correct using the radial factor
+		x = float32(float64(x)* radialFactor)
+		y = float32(float64(y)* radialFactor)
+	}
+	gl.End()
+}
