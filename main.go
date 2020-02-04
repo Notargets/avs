@@ -1,1 +1,8 @@
-package avs
+package main
+
+import "fmt"
+
+func main() {
+    fmt.Println("Hello")
+    run()
+}
