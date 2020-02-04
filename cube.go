@@ -1,30 +1,24 @@
-// Copyright 2014 The go-gl Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
-
-// Renders a textured spinning cube using GLFW 3 and OpenGL 2.1.
-package main // import "github.com/go-gl/example/gl21-cube"
+package main
 
 import (
-	"go/build"
-	"image"
-	"image/draw"
 	_ "image/png"
 	"log"
-	"os"
+	"math"
 	"runtime"
+	"time"
 
 	"github.com/go-gl/gl/v2.1/gl"
 	"github.com/go-gl/glfw/v3.3/glfw"
 )
 
-var (
-	texture   uint32
-	rotationX float32
-	rotationY float32
+
+const (
+	width, height = 1600, 1200
 )
 
-const width, height = 800, 600
+var (
+	shift = 0
+)
 
 func init() {
 	// GLFW event handling must run on the main OS thread
@@ -37,7 +31,7 @@ func run() {
 	}
 	defer glfw.Terminate()
 
-	glfw.WindowHint(glfw.Resizable, glfw.False)
+	glfw.WindowHint(glfw.Resizable, glfw.True)
 	glfw.WindowHint(glfw.ContextVersionMajor, 2)
 	glfw.WindowHint(glfw.ContextVersionMinor, 1)
 	window, err := glfw.CreateWindow(width, height, "Cube", nil, nil)
@@ -50,182 +44,58 @@ func run() {
 		panic(err)
 	}
 
-	texture = newTexture("square.png")
-	defer gl.DeleteTextures(1, &texture)
-
-	setupScene()
 	for !window.ShouldClose() {
-		drawScene()
+	    time.Sleep(1*time.Millisecond)
+		drawGraph(0,1,width, height)
 		window.SwapBuffers()
 		glfw.PollEvents()
 	}
 }
 
-func newTexture(file string) uint32 {
-	imgFile, err := os.Open(file)
-	if err != nil {
-		log.Fatalf("texture %q not found on disk: %v\n", file, err)
-	}
-	img, _, err := image.Decode(imgFile)
-	if err != nil {
-		panic(err)
-	}
-
-	rgba := image.NewRGBA(img.Bounds())
-	if rgba.Stride != rgba.Rect.Size().X*4 {
-		panic("unsupported stride")
-	}
-	draw.Draw(rgba, rgba.Bounds(), img, image.Point{0, 0}, draw.Src)
-
-	var texture uint32
-	gl.Enable(gl.TEXTURE_2D)
-	gl.GenTextures(1, &texture)
-	gl.BindTexture(gl.TEXTURE_2D, texture)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-	gl.TexImage2D(
-		gl.TEXTURE_2D,
-		0,
-		gl.RGBA,
-		int32(rgba.Rect.Size().X),
-		int32(rgba.Rect.Size().Y),
-		0,
-		gl.RGBA,
-		gl.UNSIGNED_BYTE,
-		gl.Ptr(rgba.Pix))
-
-	return texture
+type Range struct {
+	xMin, xMax float32
+	pMin, pMax float32
 }
 
-func setupScene() {
-	gl.Enable(gl.DEPTH_TEST)
-	gl.Enable(gl.LIGHTING)
+func NewRange(xMin, xMax float32, pMin, pMax float32) *Range {
+	return &Range{
+		xMin, xMax,
+		pMin, pMax,
+	}
+}
 
-	gl.ClearColor(0.5, 0.5, 0.5, 0.0)
-	gl.ClearDepth(1)
-	gl.DepthFunc(gl.LEQUAL)
+func (rg *Range) GetProjection(x float32) (p float32) {
+    p = (rg.pMax-rg.pMin)*(x - rg.xMin) / (rg.xMax-rg.xMin) + rg.pMin
+    p = float32(math.Max(float64(p), float64(rg.pMin)))
+	p = float32(math.Min(float64(p), float64(rg.pMax)))
+	return p
+}
 
-	ambient := []float32{0.5, 0.5, 0.5, 1}
-	diffuse := []float32{1, 1, 1, 1}
-	lightPosition := []float32{-5, 5, 10, 0}
-	gl.Lightfv(gl.LIGHT0, gl.AMBIENT, &ambient[0])
-	gl.Lightfv(gl.LIGHT0, gl.DIFFUSE, &diffuse[0])
-	gl.Lightfv(gl.LIGHT0, gl.POSITION, &lightPosition[0])
-	gl.Enable(gl.LIGHT0)
+func drawGraph(xrange, yrange float32, width, height int) {
+    var (
+    	xmargin = 0.1
+    	ymargin = 0.1
+	)
+    xr := NewRange(0, 2*math.Pi, 0, 1)
+	yr := NewRange(-1, 1, 0, 1)
+	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
 	gl.MatrixMode(gl.PROJECTION)
 	gl.LoadIdentity()
-	f := ((float64(width) / height) - 1) / 2
-	gl.Frustum(-1-f, 1+f, -1, 1, 1.0, 10.0)
-	gl.MatrixMode(gl.MODELVIEW)
-	gl.LoadIdentity()
-}
+	gl.Ortho(-xmargin, 1+xmargin, -ymargin, 1+ymargin, 0, 2)
 
-func destroyScene() {
-}
+	gl.Color3f(1, 1, 1)
 
-func drawScene() {
-	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
-
-	gl.MatrixMode(gl.MODELVIEW)
-	gl.LoadIdentity()
-	gl.Translatef(0, 0, -3.0)
-	gl.Rotatef(rotationX, 1, 0, 0)
-	gl.Rotatef(rotationY, 0, 1, 0)
-
-	rotationX += 0.5
-	rotationY += 0.5
-
-	gl.BindTexture(gl.TEXTURE_2D, texture)
-
-	gl.Color4f(1, 1, 1, 1)
-
-	gl.Begin(gl.QUADS)
-
-	gl.Normal3f(0, 0, 1)
-	gl.TexCoord2f(0, 0)
-	gl.Vertex3f(-1, -1, 1)
-	gl.TexCoord2f(1, 0)
-	gl.Vertex3f(1, -1, 1)
-	gl.TexCoord2f(1, 1)
-	gl.Vertex3f(1, 1, 1)
-	gl.TexCoord2f(0, 1)
-	gl.Vertex3f(-1, 1, 1)
-
-	gl.Normal3f(0, 0, -1)
-	gl.TexCoord2f(1, 0)
-	gl.Vertex3f(-1, -1, -1)
-	gl.TexCoord2f(1, 1)
-	gl.Vertex3f(-1, 1, -1)
-	gl.TexCoord2f(0, 1)
-	gl.Vertex3f(1, 1, -1)
-	gl.TexCoord2f(0, 0)
-	gl.Vertex3f(1, -1, -1)
-
-	gl.Normal3f(0, 1, 0)
-	gl.TexCoord2f(0, 1)
-	gl.Vertex3f(-1, 1, -1)
-	gl.TexCoord2f(0, 0)
-	gl.Vertex3f(-1, 1, 1)
-	gl.TexCoord2f(1, 0)
-	gl.Vertex3f(1, 1, 1)
-	gl.TexCoord2f(1, 1)
-	gl.Vertex3f(1, 1, -1)
-
-	gl.Normal3f(0, -1, 0)
-	gl.TexCoord2f(1, 1)
-	gl.Vertex3f(-1, -1, -1)
-	gl.TexCoord2f(0, 1)
-	gl.Vertex3f(1, -1, -1)
-	gl.TexCoord2f(0, 0)
-	gl.Vertex3f(1, -1, 1)
-	gl.TexCoord2f(1, 0)
-	gl.Vertex3f(-1, -1, 1)
-
-	gl.Normal3f(1, 0, 0)
-	gl.TexCoord2f(1, 0)
-	gl.Vertex3f(1, -1, -1)
-	gl.TexCoord2f(1, 1)
-	gl.Vertex3f(1, 1, -1)
-	gl.TexCoord2f(0, 1)
-	gl.Vertex3f(1, 1, 1)
-	gl.TexCoord2f(0, 0)
-	gl.Vertex3f(1, -1, 1)
-
-	gl.Normal3f(-1, 0, 0)
-	gl.TexCoord2f(0, 0)
-	gl.Vertex3f(-1, -1, -1)
-	gl.TexCoord2f(1, 0)
-	gl.Vertex3f(-1, -1, 1)
-	gl.TexCoord2f(1, 1)
-	gl.Vertex3f(-1, 1, 1)
-	gl.TexCoord2f(0, 1)
-	gl.Vertex3f(-1, 1, -1)
-
+	gl.Begin(gl.LINE_STRIP)
+	size := 100
+	for i := 0; i<size; i++ {
+		frac := float32(i)/float32(size-1)
+		xc := xr.GetProjection(frac*2*math.Pi)
+		frac = float32(shift + i)/float32(size-1)
+		yc := yr.GetProjection(float32(math.Sin(float64(frac*2*math.Pi))))
+		gl.Vertex2f(xc, yc)
+	}
 	gl.End()
+	shift += 1
 }
 
-// Set the working directory to the root of Go package, so that its assets can be accessed.
-func init() {
-	dir, err := importPathToDir("github.com/go-gl/example/gl21-cube")
-	if err != nil {
-		log.Fatalln("Unable to find Go package in your GOPATH, it's needed to load assets:", err)
-	}
-	err = os.Chdir(dir)
-	if err != nil {
-		log.Panicln("os.Chdir:", err)
-	}
-}
-
-// importPathToDir resolves the absolute path from importPath.
-// There doesn't need to be a valid Go package inside that import path,
-// but the directory must exist.
-func importPathToDir(importPath string) (string, error) {
-	p, err := build.Import(importPath, "", build.FindOnly)
-	if err != nil {
-		return "", err
-	}
-	return p.Dir, nil
-}
