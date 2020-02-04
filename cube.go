@@ -95,7 +95,8 @@ func drawGraph(xrange, yrange float32, width, height int) {
 		frac = float32(shift + i)/float32(size-1)
 		yc := yr.GetProjection(float32(math.Sin(float64(frac*2*math.Pi))))
 	//	gl.Vertex2f(xc, yc)
-		drawGlyph(xc, yc, CircleGlyph)
+		//drawGlyph(xc, yc, CircleGlyph)
+		drawGlyph(xc, yc, XGlyph)
 	}
 	//gl.End()
 	inc += size
@@ -136,7 +137,23 @@ func drawGlyph(xc, yc float32, gt GlyphType) {
 	switch gt {
 	case CircleGlyph:
 		DrawCircle(xc, yc, 0.010, 6)
+	case XGlyph:
+		DrawXGlyph(xc, yc)
 	}
+}
+
+func DrawXGlyph(cx, cy float32) {
+	var (
+		hWidth = float32(0.01)
+	)
+	gl.Begin(gl.LINE_STRIP)
+	gl.Vertex2f(cx-hWidth, cy-hWidth)
+	gl.Vertex2f(cx+hWidth, cy+hWidth)
+	gl.End()
+	gl.Begin(gl.LINE_STRIP)
+	gl.Vertex2f(cx-hWidth, cy+hWidth)
+	gl.Vertex2f(cx+hWidth, cy-hWidth)
+	gl.End()
 }
 
 func DrawCircle(cx, cy, r float32, numSegments int) {
