@@ -22,7 +22,9 @@ func main() {
 		panic(err)
 	}
 	go cc.Plot()
+	var iters int
 	for {
+		iters++
 		time.Sleep(16 * time.Millisecond)
 		if inc%1200 == 0 {
 			shift += 1
@@ -38,7 +40,14 @@ func main() {
 		if err := cc.AddSeries("base", x, f, gt, chart2d.Solid); err != nil {
 			panic(err)
 		}
+		if iters == 1000 {
+			goto END
+		}
 	}
+END:
+	fmt.Println("Stopping Plot")
+	cc.StopPlot()
+	return
 }
 
 func getFunc(size, Ht int) (x, f []float32) {

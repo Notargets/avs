@@ -34,6 +34,7 @@ type Chart2D struct {
 	RmX, RmY     *RangeMap
 	activeSeries map[string]Series
 	inputChan    chan *NewDataMsg
+	stopChan     chan struct{}
 }
 
 func NewChart2D(w, h int, xmin, xmax, ymin, ymax float32) (cc *Chart2D) {
@@ -43,7 +44,12 @@ func NewChart2D(w, h int, xmin, xmax, ymin, ymax float32) (cc *Chart2D) {
 	cc.RmY = NewRangeMap(ymin, ymax, 0, 1)
 	cc.activeSeries = make(map[string]Series)
 	cc.inputChan = make(chan *NewDataMsg, 1000)
+	cc.stopChan = make(chan struct{})
 	return
+}
+
+func (cc *Chart2D) StopPlot() {
+	cc.stopChan <- struct{}{}
 }
 
 func (cc *Chart2D) AddSeries(name string, x, f []float32, gl GlyphType, lt LineType) (err error) {
@@ -91,13 +97,20 @@ func (cc *Chart2D) Plot() {
 
 	// GLFW event handling must run on the main OS thread
 	runtime.LockOSThread()
+	ticker := time.NewTicker(8 * time.Millisecond)
 	for !window.ShouldClose() {
-		cc.processNewData()
-		cc.drawGraph()
-		window.SwapBuffers()
-		glfw.PollEvents()
-		time.Sleep(8 * time.Millisecond)
+		select {
+		case <-ticker.C:
+			cc.processNewData()
+			cc.drawGraph()
+			window.SwapBuffers()
+			glfw.PollEvents()
+		case <-cc.stopChan:
+			goto END
+		}
 	}
+END:
+	return
 }
 
 func (cc *Chart2D) drawGraph() {
