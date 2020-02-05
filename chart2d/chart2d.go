@@ -7,18 +7,19 @@ import (
 	_ "image/png"
 	"log"
 	"math"
-	"runtime"
 	"time"
 )
 
 func init() {
 	// GLFW event handling must run on the main OS thread
-	runtime.LockOSThread()
+	//runtime.LockOSThread()
 }
 
 type Series struct {
 	Xdata []float32
 	Ydata []float32
+	Gl GlyphType
+	Lt LineType
 }
 
 type NewDataMsg struct {
@@ -184,10 +185,19 @@ func drawAxes() {
 	gl.End()
 }
 
+type LineType uint8
+
+const (
+	NoLine LineType = iota
+	Solid
+	Dashed
+)
+
 type GlyphType uint8
 
 const (
-	CircleGlyph GlyphType = iota
+	NoGlyph GlyphType = iota
+	CircleGlyph
 	XGlyph
 	CrossGlyph
 	StarGlyph

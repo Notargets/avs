@@ -4,6 +4,7 @@ import (
     "fmt"
     "github.com/notargets/avs/chart2d"
     "math"
+    "time"
 )
 
 var (
@@ -20,17 +21,26 @@ func main() {
     if err := cc.AddSeries("base", x, f); err != nil {
         panic(err)
     }
-    cc.Plot()
+    go cc.Plot()
+    for {
+        time.Sleep(16*time.Millisecond)
+        if inc%1200 == 0 {
+            shift += 1
+            if shift%10 == 0 {
+                gt = chart2d.GlyphType(shift / 10 % 4)
+                fmt.Printf("10x reached, shift = %d, gt = %d\n", shift, gt)
+                cc.SetGlyph(gt)
+            }
+        }
+        x, f = getFunc(100, 1200)
+        if err := cc.AddSeries("base", x, f); err != nil {
+            panic(err)
+        }
+    }
 }
 
 func getFunc(size, Ht int) (x, f []float32){
-    if inc%Ht == 0 {
-        shift += 1
-        if shift%10 == 0 {
-            gt = chart2d.GlyphType(shift / 10 % 4)
-            fmt.Printf("10x reached, shift = %d, gt = %d\n", shift, gt)
-        }
-    }
+
     x = make([]float32, size)
     f = make([]float32, size)
     for i := 0; i < size; i++ {
