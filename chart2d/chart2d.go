@@ -2,20 +2,13 @@ package chart2d
 
 import (
 	"fmt"
+	"github.com/go-gl/gl/v2.1/gl"
+	"github.com/go-gl/glfw/v3.3/glfw"
 	_ "image/png"
 	"log"
 	"math"
 	"runtime"
 	"time"
-
-	"github.com/go-gl/gl/v2.1/gl"
-	"github.com/go-gl/glfw/v3.3/glfw"
-)
-
-var (
-	shift = 0
-	inc   = 0
-	gt    = GlyphType(0)
 )
 
 func init() {
@@ -23,9 +16,22 @@ func init() {
 	runtime.LockOSThread()
 }
 
+type Series struct {
+	Xdata []float32
+	Ydata []float32
+}
+
+type NewDataMsg struct {
+	Name string
+	Data Series
+}
+
 type Chart2D struct {
 	Sc *Screen
 	RmX, RmY *RangeMap
+	Gl GlyphType
+	activeSeries map[string]Series
+	inputChan chan *NewDataMsg
 }
 
 func NewChart2D(w, h int, xmin, xmax, ymin, ymax float32) (cc *Chart2D) {
@@ -33,7 +39,104 @@ func NewChart2D(w, h int, xmin, xmax, ymin, ymax float32) (cc *Chart2D) {
 	cc.Sc = &Screen{ w,h}
 	cc.RmX = NewRangeMap(xmin, xmax, 0, 1)
 	cc.RmY = NewRangeMap(ymin, ymax, 0, 1)
+	cc.activeSeries = make(map[string]Series)
+	cc.inputChan = make(chan *NewDataMsg, 1000)
 	return
+}
+
+func (cc *Chart2D) SetGlyph(gt GlyphType) {
+	cc.Gl = gt
+}
+
+func (cc *Chart2D) AddSeries(name string, x, f []float32) (err error) {
+    switch {
+	case len(name) == 0 || len(f) == 0 || len(x) == 0:
+		return fmt.Errorf("empty series")
+	case len(x) != len(f):
+    	return fmt.Errorf("length of x data not equal to function data length")
+	}
+	s := Series{
+		Xdata: x,
+		Ydata: f,
+	}
+	cc.inputChan <- &NewDataMsg{name, s}
+	return
+}
+
+func (cc *Chart2D) processNewData() {
+	for i :=0; i<len(cc.inputChan); i++ {
+		msg := <- cc.inputChan
+		cc.activeSeries[msg.Name] = msg.Data
+	}
+}
+
+func (cc *Chart2D) Plot() {
+	if err := glfw.Init(); err != nil {
+		log.Fatalln("failed to initialize glfw:", err)
+	}
+	defer glfw.Terminate()
+
+	glfw.WindowHint(glfw.Resizable, glfw.True)
+	glfw.WindowHint(glfw.ContextVersionMajor, 2)
+	glfw.WindowHint(glfw.ContextVersionMinor, 1)
+	window, err := glfw.CreateWindow(cc.Sc.Width, cc.Sc.Height, "Chart2D", nil, nil)
+	if err != nil {
+		panic(err)
+	}
+	window.MakeContextCurrent()
+
+	if err := gl.Init(); err != nil {
+		panic(err)
+	}
+
+	for !window.ShouldClose() {
+		cc.processNewData()
+		cc.drawGraph()
+		window.SwapBuffers()
+		glfw.PollEvents()
+		time.Sleep(8 * time.Millisecond)
+	}
+}
+
+func (cc *Chart2D) drawGraph() {
+	var (
+		xmargin = 0.1
+		ymargin = 0.1
+	)
+	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+	gl.MatrixMode(gl.PROJECTION)
+	gl.LoadIdentity()
+	gl.Ortho(-xmargin, 1+xmargin, -ymargin, 1+ymargin, 0, 2)
+
+	drawAxes()
+	gl.Color3f(1, 1, 1)
+
+	for _, s := range cc.activeSeries {
+		for i, x := range s.Xdata {
+			f := s.Ydata[i]
+			xc := cc.RmX.GetMappedCoordinate(x)
+			yc := cc.RmY.GetMappedCoordinate(f)
+			drawGlyph(xc, yc, cc.Gl, cc.Sc.GetRatio())
+		}
+	}
+	/*
+	//gl.Begin(gl.LINE_STRIP)
+	size := 100
+	for i := 0; i < size; i++ {
+		frac := float32(i) / float32(size-1)
+		xc := cc.RmX.GetMappedCoordinate(frac * 2 * math.Pi)
+		frac = float32(shift+i) / float32(size-1)
+		yc := cc.RmY.GetMappedCoordinate(float32(math.Sin(float64(frac * 2 * math.Pi))))
+		//	gl.Vertex2f(xc, yc)
+		//drawGlyph(xc, yc, CircleGlyph)
+		//drawGlyph(xc, yc, XGlyph)
+		//drawGlyph(xc, yc, CrossGlyph)
+		//drawGlyph(xc, yc, StarGlyph)
+		drawGlyph(xc, yc, gt, cc.Sc.GetRatio())
+	}
+	//gl.End()
+	inc += size
+	 */
 }
 
 type Screen struct {
@@ -60,71 +163,6 @@ func (rg *RangeMap) GetMappedCoordinate(x float32) (p float32) {
 	p = float32(math.Max(float64(p), float64(rg.pMin)))
 	p = float32(math.Min(float64(p), float64(rg.pMax)))
 	return p
-}
-
-func (cc *Chart2D) Plot() {
-	if err := glfw.Init(); err != nil {
-		log.Fatalln("failed to initialize glfw:", err)
-	}
-	defer glfw.Terminate()
-
-	glfw.WindowHint(glfw.Resizable, glfw.True)
-	glfw.WindowHint(glfw.ContextVersionMajor, 2)
-	glfw.WindowHint(glfw.ContextVersionMinor, 1)
-	window, err := glfw.CreateWindow(cc.Sc.Width, cc.Sc.Height, "Chart2D", nil, nil)
-	if err != nil {
-		panic(err)
-	}
-	window.MakeContextCurrent()
-
-	if err := gl.Init(); err != nil {
-		panic(err)
-	}
-
-	for !window.ShouldClose() {
-		time.Sleep(1 * time.Millisecond)
-		cc.drawGraph()
-		window.SwapBuffers()
-		glfw.PollEvents()
-	}
-}
-
-func (cc *Chart2D) drawGraph() {
-	var (
-		xmargin = 0.1
-		ymargin = 0.1
-	)
-	if inc%cc.Sc.Height == 0 {
-		shift += 1
-		if shift%10 == 0 {
-			gt = GlyphType(shift / 10 % 4)
-			fmt.Printf("10x reached, shift = %d, gt = %d\n", shift, gt)
-		}
-	}
-	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
-
-	gl.MatrixMode(gl.PROJECTION)
-	gl.LoadIdentity()
-	gl.Ortho(-xmargin, 1+xmargin, -ymargin, 1+ymargin, 0, 2)
-
-	drawAxes()
-	gl.Color3f(1, 1, 1)
-	//gl.Begin(gl.LINE_STRIP)
-	size := 100
-	for i := 0; i < size; i++ {
-		frac := float32(i) / float32(size-1)
-		xc := cc.RmX.GetMappedCoordinate(frac * 2 * math.Pi)
-		frac = float32(shift+i) / float32(size-1)
-		yc := cc.RmY.GetMappedCoordinate(float32(math.Sin(float64(frac * 2 * math.Pi))))
-		//	gl.Vertex2f(xc, yc)
-		//drawGlyph(xc, yc, CircleGlyph)
-		//drawGlyph(xc, yc, XGlyph)
-		//drawGlyph(xc, yc, CrossGlyph)
-		//drawGlyph(xc, yc, StarGlyph)
-		drawGlyph(xc, yc, gt, cc.Sc.GetRatio())
-	}
-	//gl.End()
-	inc += size
 }
 
 func drawAxes() {
@@ -215,7 +253,6 @@ func DrawCircle(cx, cy, r float32, numSegments int, rat float32) {
 		x += float32(tx * tangentialFactor) * rat
 		y += float32(ty * tangentialFactor)
 		//correct using the radial factor
-		//x = float32(float64(x) * radialFactor) * rat
 		x = float32(float64(x) * radialFactor)
 		y = float32(float64(y) * radialFactor)
 	}
