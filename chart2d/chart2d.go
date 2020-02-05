@@ -1,4 +1,4 @@
-package main
+package chart2d
 
 import (
 	"fmt"
@@ -12,10 +12,6 @@ import (
 	"github.com/go-gl/glfw/v3.3/glfw"
 )
 
-const (
-	width, height = 1200, 800
-)
-
 var (
 	shift = 0
 	inc   = 0
@@ -27,7 +23,46 @@ func init() {
 	runtime.LockOSThread()
 }
 
-func run() {
+type Chart2D struct {
+	Sc *Screen
+	RmX, RmY *RangeMap
+}
+
+func NewChart2D(w, h int, xmin, xmax, ymin, ymax float32) (cc *Chart2D) {
+	cc = &Chart2D{}
+	cc.Sc = &Screen{ w,h}
+	cc.RmX = NewRangeMap(xmin, xmax, 0, 1)
+	cc.RmY = NewRangeMap(ymin, ymax, 0, 1)
+	return
+}
+
+type Screen struct {
+	Width, Height int
+}
+
+func (sc *Screen) GetRatio() (rat float32) {
+	return float32(sc.Height)/float32(sc.Width)
+}
+type RangeMap struct {
+	xMin, xMax float32
+	pMin, pMax float32
+}
+
+func NewRangeMap(xMin, xMax float32, pMin, pMax float32) *RangeMap {
+	return &RangeMap{
+		xMin, xMax,
+		pMin, pMax,
+	}
+}
+
+func (rg *RangeMap) GetMappedCoordinate(x float32) (p float32) {
+	p = (rg.pMax-rg.pMin)*(x-rg.xMin)/(rg.xMax-rg.xMin) + rg.pMin
+	p = float32(math.Max(float64(p), float64(rg.pMin)))
+	p = float32(math.Min(float64(p), float64(rg.pMax)))
+	return p
+}
+
+func (cc *Chart2D) Plot() {
 	if err := glfw.Init(); err != nil {
 		log.Fatalln("failed to initialize glfw:", err)
 	}
@@ -36,7 +71,7 @@ func run() {
 	glfw.WindowHint(glfw.Resizable, glfw.True)
 	glfw.WindowHint(glfw.ContextVersionMajor, 2)
 	glfw.WindowHint(glfw.ContextVersionMinor, 1)
-	window, err := glfw.CreateWindow(width, height, "Cube", nil, nil)
+	window, err := glfw.CreateWindow(cc.Sc.Width, cc.Sc.Height, "Chart2D", nil, nil)
 	if err != nil {
 		panic(err)
 	}
@@ -48,72 +83,51 @@ func run() {
 
 	for !window.ShouldClose() {
 		time.Sleep(1 * time.Millisecond)
-		drawGraph(0, 1, width, height)
+		cc.drawGraph()
 		window.SwapBuffers()
 		glfw.PollEvents()
 	}
 }
 
-type Range struct {
-	xMin, xMax float32
-	pMin, pMax float32
-}
-
-func NewRange(xMin, xMax float32, pMin, pMax float32) *Range {
-	return &Range{
-		xMin, xMax,
-		pMin, pMax,
-	}
-}
-
-func (rg *Range) GetProjection(x float32) (p float32) {
-	p = (rg.pMax-rg.pMin)*(x-rg.xMin)/(rg.xMax-rg.xMin) + rg.pMin
-	p = float32(math.Max(float64(p), float64(rg.pMin)))
-	p = float32(math.Min(float64(p), float64(rg.pMax)))
-	return p
-}
-
-func drawGraph(xrange, yrange float32, width, height int) {
+func (cc *Chart2D) drawGraph() {
 	var (
 		xmargin = 0.1
 		ymargin = 0.1
 	)
-	if inc%height == 0 {
+	if inc%cc.Sc.Height == 0 {
 		shift += 1
 		if shift%10 == 0 {
 			gt = GlyphType(shift / 10 % 4)
 			fmt.Printf("10x reached, shift = %d, gt = %d\n", shift, gt)
 		}
 	}
-	xr := NewRange(0, 2*math.Pi, 0, 1)
-	yr := NewRange(-1, 1, 0, 1)
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
 	gl.MatrixMode(gl.PROJECTION)
 	gl.LoadIdentity()
 	gl.Ortho(-xmargin, 1+xmargin, -ymargin, 1+ymargin, 0, 2)
 
-	drawAxes(0, 0, 0, 0)
+	drawAxes()
 	gl.Color3f(1, 1, 1)
 	//gl.Begin(gl.LINE_STRIP)
 	size := 100
 	for i := 0; i < size; i++ {
 		frac := float32(i) / float32(size-1)
-		xc := xr.GetProjection(frac * 2 * math.Pi)
+		xc := cc.RmX.GetMappedCoordinate(frac * 2 * math.Pi)
 		frac = float32(shift+i) / float32(size-1)
-		yc := yr.GetProjection(float32(math.Sin(float64(frac * 2 * math.Pi))))
+		yc := cc.RmY.GetMappedCoordinate(float32(math.Sin(float64(frac * 2 * math.Pi))))
 		//	gl.Vertex2f(xc, yc)
 		//drawGlyph(xc, yc, CircleGlyph)
 		//drawGlyph(xc, yc, XGlyph)
 		//drawGlyph(xc, yc, CrossGlyph)
 		//drawGlyph(xc, yc, StarGlyph)
-		drawGlyph(xc, yc, gt)
+		drawGlyph(xc, yc, gt, cc.Sc.GetRatio())
 	}
 	//gl.End()
 	inc += size
 }
 
-func drawAxes(xmin, xmax, ymin, ymax float32) {
+func drawAxes() {
 	// Y axis
 	gl.Color3f(0, 1, 0)
 	gl.Begin(gl.LINE_STRIP)
@@ -141,35 +155,35 @@ const (
 	StarGlyph
 )
 
-func drawGlyph(xc, yc float32, gt GlyphType) {
+func drawGlyph(xc, yc float32, gt GlyphType, rat float32) {
 	switch gt {
 	case CircleGlyph:
-		DrawCircle(xc, yc, 0.010, 6)
+		DrawCircle(xc, yc, 0.010, 6, rat)
 	case XGlyph:
-		DrawXGlyph(xc, yc)
+		DrawXGlyph(xc, yc, rat)
 	case CrossGlyph:
-		DrawCrossGlyph(xc, yc)
+		DrawCrossGlyph(xc, yc, rat)
 	case StarGlyph:
-		DrawXGlyph(xc, yc)
-		DrawCrossGlyph(xc, yc)
+		DrawXGlyph(xc, yc, rat)
+		DrawCrossGlyph(xc, yc, rat)
 	}
 }
 
-func DrawXGlyph(cx, cy float32) {
+func DrawXGlyph(cx, cy, rat float32) {
 	var (
 		hWidth = float32(0.01)
 	)
 	gl.Begin(gl.LINE_STRIP)
-	gl.Vertex2f(cx-hWidth, cy-hWidth)
-	gl.Vertex2f(cx+hWidth, cy+hWidth)
+	gl.Vertex2f(cx-hWidth*rat, cy-hWidth)
+	gl.Vertex2f(cx+hWidth*rat, cy+hWidth)
 	gl.End()
 	gl.Begin(gl.LINE_STRIP)
-	gl.Vertex2f(cx-hWidth, cy+hWidth)
-	gl.Vertex2f(cx+hWidth, cy-hWidth)
+	gl.Vertex2f(cx-hWidth*rat, cy+hWidth)
+	gl.Vertex2f(cx+hWidth*rat, cy-hWidth)
 	gl.End()
 }
 
-func DrawCrossGlyph(cx, cy float32) {
+func DrawCrossGlyph(cx, cy, rat float32) {
 	var (
 		hWidth = float32(0.01)
 	)
@@ -178,12 +192,12 @@ func DrawCrossGlyph(cx, cy float32) {
 	gl.Vertex2f(cx, cy+hWidth)
 	gl.End()
 	gl.Begin(gl.LINE_STRIP)
-	gl.Vertex2f(cx-hWidth, cy)
-	gl.Vertex2f(cx+hWidth, cy)
+	gl.Vertex2f(cx-hWidth*rat, cy)
+	gl.Vertex2f(cx+hWidth*rat, cy)
 	gl.End()
 }
 
-func DrawCircle(cx, cy, r float32, numSegments int) {
+func DrawCircle(cx, cy, r float32, numSegments int, rat float32) {
 	theta := 2 * math.Pi / float64(numSegments)
 	tangentialFactor := math.Tan(theta) //calculate the tangential factor
 	radialFactor := math.Cos(theta)     //calculate the radial factor
@@ -198,9 +212,10 @@ func DrawCircle(cx, cy, r float32, numSegments int) {
 		tx := float64(-y)
 		ty := float64(x)
 		//add the tangential vector
-		x += float32(tx * tangentialFactor)
+		x += float32(tx * tangentialFactor) * rat
 		y += float32(ty * tangentialFactor)
 		//correct using the radial factor
+		//x = float32(float64(x) * radialFactor) * rat
 		x = float32(float64(x) * radialFactor)
 		y = float32(float64(y) * radialFactor)
 	}
