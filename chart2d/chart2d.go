@@ -2,12 +2,14 @@ package chart2d
 
 import (
 	"fmt"
-	"github.com/go-gl/gl/v2.1/gl"
-	"github.com/go-gl/glfw/v3.3/glfw"
 	_ "image/png"
 	"log"
 	"math"
+	"runtime"
 	"time"
+
+	"github.com/go-gl/gl/v2.1/gl"
+	"github.com/go-gl/glfw/v3.3/glfw"
 )
 
 func init() {
@@ -18,8 +20,8 @@ func init() {
 type Series struct {
 	Xdata []float32
 	Ydata []float32
-	Gl GlyphType
-	Lt LineType
+	Gl    GlyphType
+	Lt    LineType
 }
 
 type NewDataMsg struct {
@@ -28,16 +30,15 @@ type NewDataMsg struct {
 }
 
 type Chart2D struct {
-	Sc *Screen
-	RmX, RmY *RangeMap
-	Gl GlyphType
+	Sc           *Screen
+	RmX, RmY     *RangeMap
 	activeSeries map[string]Series
-	inputChan chan *NewDataMsg
+	inputChan    chan *NewDataMsg
 }
 
 func NewChart2D(w, h int, xmin, xmax, ymin, ymax float32) (cc *Chart2D) {
 	cc = &Chart2D{}
-	cc.Sc = &Screen{ w,h}
+	cc.Sc = NewScreen(w, h)
 	cc.RmX = NewRangeMap(xmin, xmax, 0, 1)
 	cc.RmY = NewRangeMap(ymin, ymax, 0, 1)
 	cc.activeSeries = make(map[string]Series)
@@ -45,28 +46,26 @@ func NewChart2D(w, h int, xmin, xmax, ymin, ymax float32) (cc *Chart2D) {
 	return
 }
 
-func (cc *Chart2D) SetGlyph(gt GlyphType) {
-	cc.Gl = gt
-}
-
-func (cc *Chart2D) AddSeries(name string, x, f []float32) (err error) {
-    switch {
+func (cc *Chart2D) AddSeries(name string, x, f []float32, gl GlyphType, lt LineType) (err error) {
+	switch {
 	case len(name) == 0 || len(f) == 0 || len(x) == 0:
 		return fmt.Errorf("empty series")
 	case len(x) != len(f):
-    	return fmt.Errorf("length of x data not equal to function data length")
+		return fmt.Errorf("length of x data not equal to function data length")
 	}
 	s := Series{
 		Xdata: x,
 		Ydata: f,
+		Gl:    gl,
+		Lt:    lt,
 	}
 	cc.inputChan <- &NewDataMsg{name, s}
 	return
 }
 
 func (cc *Chart2D) processNewData() {
-	for i :=0; i<len(cc.inputChan); i++ {
-		msg := <- cc.inputChan
+	for i := 0; i < len(cc.inputChan); i++ {
+		msg := <-cc.inputChan
 		cc.activeSeries[msg.Name] = msg.Data
 	}
 }
@@ -90,6 +89,8 @@ func (cc *Chart2D) Plot() {
 		panic(err)
 	}
 
+	// GLFW event handling must run on the main OS thread
+	runtime.LockOSThread()
 	for !window.ShouldClose() {
 		cc.processNewData()
 		cc.drawGraph()
@@ -113,40 +114,44 @@ func (cc *Chart2D) drawGraph() {
 	gl.Color3f(1, 1, 1)
 
 	for _, s := range cc.activeSeries {
-		for i, x := range s.Xdata {
-			f := s.Ydata[i]
-			xc := cc.RmX.GetMappedCoordinate(x)
-			yc := cc.RmY.GetMappedCoordinate(f)
-			drawGlyph(xc, yc, cc.Gl, cc.Sc.GetRatio())
+		if s.Gl != NoGlyph {
+			for i, x := range s.Xdata {
+				f := s.Ydata[i]
+				xc := cc.RmX.GetMappedCoordinate(x)
+				yc := cc.RmY.GetMappedCoordinate(f)
+				drawGlyph(xc, yc, s.Gl, cc.Sc.GetRatio())
+			}
+		}
+		if s.Lt != NoLine {
+			gl.Begin(gl.LINE_STRIP)
+			for i, x := range s.Xdata {
+				f := s.Ydata[i]
+				xc := cc.RmX.GetMappedCoordinate(x)
+				yc := cc.RmY.GetMappedCoordinate(f)
+				gl.Vertex2f(xc, yc)
+			}
+			gl.End()
 		}
 	}
-	/*
-	//gl.Begin(gl.LINE_STRIP)
-	size := 100
-	for i := 0; i < size; i++ {
-		frac := float32(i) / float32(size-1)
-		xc := cc.RmX.GetMappedCoordinate(frac * 2 * math.Pi)
-		frac = float32(shift+i) / float32(size-1)
-		yc := cc.RmY.GetMappedCoordinate(float32(math.Sin(float64(frac * 2 * math.Pi))))
-		//	gl.Vertex2f(xc, yc)
-		//drawGlyph(xc, yc, CircleGlyph)
-		//drawGlyph(xc, yc, XGlyph)
-		//drawGlyph(xc, yc, CrossGlyph)
-		//drawGlyph(xc, yc, StarGlyph)
-		drawGlyph(xc, yc, gt, cc.Sc.GetRatio())
-	}
-	//gl.End()
-	inc += size
-	 */
 }
 
 type Screen struct {
 	Width, Height int
+	Ratio         float32
+}
+
+func NewScreen(w, h int) *Screen {
+	return &Screen{
+		Width:  w,
+		Height: h,
+		Ratio:  float32(h) / float32(w),
+	}
 }
 
 func (sc *Screen) GetRatio() (rat float32) {
-	return float32(sc.Height)/float32(sc.Width)
+	return sc.Ratio
 }
+
 type RangeMap struct {
 	xMin, xMax float32
 	pMin, pMax float32
@@ -260,7 +265,7 @@ func DrawCircle(cx, cy, r float32, numSegments int, rat float32) {
 		tx := float64(-y)
 		ty := float64(x)
 		//add the tangential vector
-		x += float32(tx * tangentialFactor) * rat
+		x += float32(tx * tangentialFactor)
 		y += float32(ty * tangentialFactor)
 		//correct using the radial factor
 		x = float32(float64(x) * radialFactor)
