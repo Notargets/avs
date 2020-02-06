@@ -2,6 +2,7 @@ package chart2d
 
 import (
 	"fmt"
+	"image/color"
 	_ "image/png"
 	"log"
 	"math"
@@ -22,7 +23,7 @@ type Series struct {
 	Ydata []float32
 	Gl    GlyphType
 	Lt    LineType
-	Co    *Color
+	Co    *color.RGBA
 }
 
 type NewDataMsg struct {
@@ -53,19 +54,7 @@ func (cc *Chart2D) StopPlot() {
 	cc.stopChan <- struct{}{}
 }
 
-type Color struct {
-	Red, Green, Blue float32 // each should be from 0 - 1
-}
-
-func NewColor(red, green, blue float32) *Color {
-	return &Color{
-		red,
-		green,
-		blue,
-	}
-}
-
-func (cc *Chart2D) AddSeries(name string, x, f []float32, gl GlyphType, lt LineType, co *Color) (err error) {
+func (cc *Chart2D) AddSeries(name string, x, f []float32, gl GlyphType, lt LineType, co color.RGBA) (err error) {
 	switch {
 	case len(name) == 0 || len(f) == 0 || len(x) == 0:
 		return fmt.Errorf("empty series")
@@ -77,7 +66,7 @@ func (cc *Chart2D) AddSeries(name string, x, f []float32, gl GlyphType, lt LineT
 		Ydata: f,
 		Gl:    gl,
 		Lt:    lt,
-		Co:    co,
+		Co:    &co,
 	}
 	cc.inputChan <- &NewDataMsg{name, s}
 	return
@@ -140,7 +129,7 @@ func (cc *Chart2D) drawGraph() {
 	drawAxes()
 
 	for _, s := range cc.activeSeries {
-		gl.Color3f(s.Co.Red, s.Co.Green, s.Co.Blue)
+		gl.Color4ub(s.Co.R, s.Co.G, s.Co.B, s.Co.A)
 		if s.Gl != NoGlyph {
 			for i, x := range s.Xdata {
 				f := s.Ydata[i]

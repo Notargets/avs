@@ -5,6 +5,8 @@ import (
 	"math"
 	"time"
 
+	"github.com/notargets/avs/utils"
+
 	"github.com/notargets/avs/chart2d"
 )
 
@@ -18,7 +20,8 @@ func main() {
 	fmt.Println("Hello")
 	cc := chart2d.NewChart2D(1800, 1200, 0, 2*math.Pi, -1, 1)
 	x, f := getFunc(1000, 1200, math.Sin)
-	if err := cc.AddSeries("sin", x, f, 0, chart2d.Solid, chart2d.NewColor(1, 1, 1)); err != nil {
+	col := utils.NewColorMap(0, 1, 1)
+	if err := cc.AddSeries("sin", x, f, 0, chart2d.Solid, col.GetRGB(0.5)); err != nil {
 		panic(err)
 	}
 	go cc.Plot()
@@ -39,7 +42,7 @@ func main() {
 			}
 		}
 		x, f = getFunc(1000, 1200, math.Sin)
-		if err := cc.AddSeries("cos", x, f, 0, chart2d.Solid, chart2d.NewColor(0.7, 0.4, 0.7)); err != nil {
+		if err := cc.AddSeries("cos", x, f, 0, chart2d.Solid, col.GetRGB(0.8)); err != nil {
 			panic(err)
 		}
 		if iters == 1000 {
