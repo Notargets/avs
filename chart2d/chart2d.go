@@ -22,6 +22,7 @@ type Series struct {
 	Ydata []float32
 	Gl    GlyphType
 	Lt    LineType
+	Co    *Color
 }
 
 type NewDataMsg struct {
@@ -52,7 +53,19 @@ func (cc *Chart2D) StopPlot() {
 	cc.stopChan <- struct{}{}
 }
 
-func (cc *Chart2D) AddSeries(name string, x, f []float32, gl GlyphType, lt LineType) (err error) {
+type Color struct {
+	Red, Green, Blue float32 // each should be from 0 - 1
+}
+
+func NewColor(red, green, blue float32) *Color {
+	return &Color{
+		red,
+		green,
+		blue,
+	}
+}
+
+func (cc *Chart2D) AddSeries(name string, x, f []float32, gl GlyphType, lt LineType, co *Color) (err error) {
 	switch {
 	case len(name) == 0 || len(f) == 0 || len(x) == 0:
 		return fmt.Errorf("empty series")
@@ -64,6 +77,7 @@ func (cc *Chart2D) AddSeries(name string, x, f []float32, gl GlyphType, lt LineT
 		Ydata: f,
 		Gl:    gl,
 		Lt:    lt,
+		Co:    co,
 	}
 	cc.inputChan <- &NewDataMsg{name, s}
 	return
@@ -124,9 +138,9 @@ func (cc *Chart2D) drawGraph() {
 	gl.Ortho(-xmargin, 1+xmargin, -ymargin, 1+ymargin, 0, 2)
 
 	drawAxes()
-	gl.Color3f(1, 1, 1)
 
 	for _, s := range cc.activeSeries {
+		gl.Color3f(s.Co.Red, s.Co.Green, s.Co.Blue)
 		if s.Gl != NoGlyph {
 			for i, x := range s.Xdata {
 				f := s.Ydata[i]
