@@ -182,8 +182,8 @@ func NewRangeMap(xMin, xMax float32, pMin, pMax float32) *RangeMap {
 
 func (rg *RangeMap) GetMappedCoordinate(x float32) (p float32) {
 	p = (rg.pMax-rg.pMin)*(x-rg.xMin)/(rg.xMax-rg.xMin) + rg.pMin
-	p = float32(math.Max(float64(p), float64(rg.pMin)))
-	p = float32(math.Min(float64(p), float64(rg.pMax)))
+	//p = float32(math.Max(float64(p), float64(rg.pMin)))
+	//p = float32(math.Min(float64(p), float64(rg.pMax)))
 	return p
 }
 
@@ -222,6 +222,8 @@ const (
 	XGlyph
 	CrossGlyph
 	StarGlyph
+	BoxGlyph
+	TriangleGlyph
 )
 
 func drawGlyph(xc, yc float32, gt GlyphType, rat float32) {
@@ -235,6 +237,10 @@ func drawGlyph(xc, yc float32, gt GlyphType, rat float32) {
 	case StarGlyph:
 		DrawXGlyph(xc, yc, rat)
 		DrawCrossGlyph(xc, yc, rat)
+	case BoxGlyph:
+		DrawBoxGlyph(xc, yc, rat)
+	case TriangleGlyph:
+		DrawTriangleGlyph(xc, yc, rat)
 	}
 }
 
@@ -263,6 +269,31 @@ func DrawCrossGlyph(cx, cy, rat float32) {
 	gl.Begin(gl.LINE_STRIP)
 	gl.Vertex2f(cx-hWidth*rat, cy)
 	gl.Vertex2f(cx+hWidth*rat, cy)
+	gl.End()
+}
+
+func DrawBoxGlyph(cx, cy, rat float32) {
+	var (
+		hWidth = float32(0.01)
+		hWRat  = rat * hWidth
+	)
+	gl.Begin(gl.LINE_LOOP)
+	gl.Vertex2f(cx-hWRat, cy-hWidth)
+	gl.Vertex2f(cx-hWRat, cy+hWidth)
+	gl.Vertex2f(cx+hWRat, cy+hWidth)
+	gl.Vertex2f(cx+hWRat, cy-hWidth)
+	gl.End()
+}
+
+func DrawTriangleGlyph(cx, cy, rat float32) {
+	var (
+		hWidth = float32(0.01)
+		hWRat  = rat * hWidth
+	)
+	gl.Begin(gl.LINE_LOOP)
+	gl.Vertex2f(cx-hWRat, cy-hWidth)
+	gl.Vertex2f(cx, cy+hWidth)
+	gl.Vertex2f(cx+hWRat, cy-hWidth)
 	gl.End()
 }
 

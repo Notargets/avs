@@ -12,14 +12,13 @@ import (
 )
 
 func main() {
-	fmt.Println("Hello")
-	cc := chart2d.NewChart2D(1800, 1200, 0, 1, -1, 1)
+	cc := chart2d.NewChart2D(1800, 1200, 0, 1, -3.5, 3.5)
 	//x, f := getFunc(1000, 1200, math.Sin)
 	col := utils.NewColorMap(0, 1, 1)
 	for i := 0; i < 6; i++ {
-		x, f := getFunc(1000, 0, 1, utils.GetLegendrePoly(i))
+		x, f := getFunc(50, 0, 1, utils.GetLegendrePoly(i))
 		name := "L" + strconv.Itoa(i)
-		if err := cc.AddSeries(name, x, f, 0, chart2d.Solid, col.GetRGB(float32(i)/5)); err != nil {
+		if err := cc.AddSeries(name, x, f, chart2d.GlyphType(i+1), chart2d.Solid, col.GetRGB(float32(i)/5)); err != nil {
 			panic(err)
 		}
 	}
