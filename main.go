@@ -12,12 +12,13 @@ import (
 )
 
 func main() {
-	cc := chart2d.NewChart2D(1800, 1200, 0, 1, -1, 1)
+	cc := chart2d.NewChart2D(1800, 1200, -1, 1, -1, 1)
 	col := utils.NewColorMap(0, 1, 1)
 	//ff := make([]float32, 50)
 	var x, f []float32
 	for i := 0; i < 6; i++ {
-		x, f = getFunc(i+1, 0, 1, utils.GetLegendrePoly(i))
+		//x, f = getFunc(i+1, 0, 1, utils.GetLegendrePoly(i))
+		x, f = getFunc(100, -1, 1, utils.GetLegendrePoly(i))
 		/*
 			for i, val := range f {
 				ff[i] += val

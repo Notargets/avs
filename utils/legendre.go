@@ -16,19 +16,16 @@ Transformed Legendre Polynomials:
 		P5: SQRT(11)
 */
 func Legendre0(x float64) float64 { return 1 }
-func Legendre1(x float64) float64 { x = 2*x - 1; return x }
-func Legendre2(x float64) float64 { x = 2*x - 1; return 0.5 * (3*x*x - 1) }
+func Legendre1(x float64) float64 { return x }
+func Legendre2(x float64) float64 { return 0.5 * (3*x*x - 1) }
 func Legendre3(x float64) float64 {
-	x = 2*x - 1
 	return 0.5 * x * (5*x*x - 3)
 }
 func Legendre4(x float64) float64 {
-	x = 2*x - 1
 	x2 := x * x
 	return 0.125 * (35*x2*x2 - 30*x2 + 3)
 }
 func Legendre5(x float64) float64 {
-	x = 2*x - 1
 	x2 := x * x
 	return 0.125 * x * (63*x2*x2 - 70*x2 + 15)
 }
