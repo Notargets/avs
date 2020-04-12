@@ -12,26 +12,31 @@ import (
 )
 
 func main() {
-	cc := chart2d.NewChart2D(1800, 1200, 0, 1, -3.5, 3.5)
+	cc := chart2d.NewChart2D(1800, 1200, -1, 1, -1, 1)
 	col := utils.NewColorMap(0, 1, 1)
-	ff := make([]float32, 50)
+	//ff := make([]float32, 50)
 	var x, f []float32
 	for i := 0; i < 6; i++ {
-		x, f = getFunc(50, 0, 1, utils.GetLegendrePoly(i))
-		for i, val := range f {
-			ff[i] += val
-		}
+		//x, f = getFunc(i+1, 0, 1, utils.GetLegendrePoly(i))
+		x, f = getFunc(100, -1, 1, utils.GetLegendrePoly(i))
+		/*
+			for i, val := range f {
+				ff[i] += val
+			}
+		*/
 		//x, f := getFunc(i+1, 0, 1, utils.GetLegendrePoly(i))
 		name := "L" + strconv.Itoa(i)
-		//if err := cc.AddSeries(name, x, f, chart2d.GlyphType(i+1), chart2d.Solid, col.GetRGB(float32(i)/5)); err != nil {
-		if err := cc.AddSeries(name, x, f, 0, chart2d.Solid, col.GetRGB(float32(i)/5)); err != nil {
+		if err := cc.AddSeries(name, x, f, chart2d.GlyphType(i+1), chart2d.Solid, col.GetRGB(float32(i)/5)); err != nil {
+			//if err := cc.AddSeries(name, x, f, 0, chart2d.Solid, col.GetRGB(float32(i)/5)); err != nil {
 			panic(err)
 		}
 	}
-	if err := cc.AddSeries("sum", x, ff, chart2d.BoxGlyph, chart2d.Solid, col.GetRGB(0.5)); err != nil {
-		//if err := cc.AddSeries(name, x, f, 0, chart2d.Solid, col.GetRGB(float32(i)/5)); err != nil {
-		panic(err)
-	}
+	/*
+		if err := cc.AddSeries("sum", x, ff, chart2d.BoxGlyph, chart2d.Solid, col.GetRGB(0.5)); err != nil {
+			//if err := cc.AddSeries(name, x, f, 0, chart2d.Solid, col.GetRGB(float32(i)/5)); err != nil {
+			panic(err)
+		}
+	*/
 	go cc.Plot()
 	reader := bufio.NewReader(os.Stdin)
 	_, _ = reader.ReadString('\n')
