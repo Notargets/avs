@@ -39,13 +39,17 @@ type Chart2D struct {
 	stopChan     chan struct{}
 }
 
-func NewChart2D(w, h int, xmin, xmax, ymin, ymax float32) (cc *Chart2D) {
+func NewChart2D(w, h int, xmin, xmax, ymin, ymax float32, chanDepth ...int) (cc *Chart2D) {
 	cc = &Chart2D{}
 	cc.Sc = NewScreen(w, h)
 	cc.RmX = NewRangeMap(xmin, xmax, 0, 1)
 	cc.RmY = NewRangeMap(ymin, ymax, 0, 1)
 	cc.activeSeries = make(map[string]Series)
-	cc.inputChan = make(chan *NewDataMsg, 1000)
+	if len(chanDepth) != 0 {
+		cc.inputChan = make(chan *NewDataMsg, chanDepth[0])
+	} else {
+		cc.inputChan = make(chan *NewDataMsg)
+	}
 	cc.stopChan = make(chan struct{})
 	return
 }

@@ -12,9 +12,10 @@ import (
 )
 
 func main() {
-	cc := chart2d.NewChart2D(1800, 1200, -1, 1, -1, 1)
+	cc := chart2d.NewChart2D(1800, 1200, -1, 1, -1, 1, 1)
 	col := utils.NewColorMap(0, 1, 1)
 	//ff := make([]float32, 50)
+	go cc.Plot()
 	var x, f []float32
 	for i := 0; i < 6; i++ {
 		//x, f = getFunc(i+1, 0, 1, utils.GetLegendrePoly(i))
@@ -37,7 +38,6 @@ func main() {
 			panic(err)
 		}
 	*/
-	go cc.Plot()
 	reader := bufio.NewReader(os.Stdin)
 	_, _ = reader.ReadString('\n')
 	fmt.Println("Stopping Plot")
