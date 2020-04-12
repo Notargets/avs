@@ -48,7 +48,7 @@ func NewChart2D(w, h int, xmin, xmax, ymin, ymax float32, chanDepth ...int) (cc 
 	if len(chanDepth) != 0 {
 		cc.inputChan = make(chan *NewDataMsg, chanDepth[0])
 	} else {
-		cc.inputChan = make(chan *NewDataMsg)
+		cc.inputChan = make(chan *NewDataMsg, 1)
 	}
 	cc.stopChan = make(chan struct{})
 	return
