@@ -58,7 +58,18 @@ func (cc *Chart2D) StopPlot() {
 	cc.stopChan <- struct{}{}
 }
 
-func (cc *Chart2D) AddSeries(name string, x, f []float32, gl GlyphType, lt LineType, co color.RGBA) (err error) {
+func (cc *Chart2D) AddSeries(name string, xI, fI interface{}, gl GlyphType, lt LineType, co color.RGBA) (err error) {
+	var (
+		x, f []float32
+	)
+	switch xI.(type) {
+	case []float32:
+		x = xI.([]float32)
+		f = fI.([]float32)
+	case []float64:
+		x = ToFloat32Slice(xI.([]float64))
+		f = ToFloat32Slice(fI.([]float64))
+	}
 	switch {
 	case len(name) == 0 || len(f) == 0 || len(x) == 0:
 		return fmt.Errorf("empty series")
@@ -323,4 +334,12 @@ func DrawCircle(cx, cy, r float32, numSegments int, rat float32) {
 		y = float32(float64(y) * radialFactor)
 	}
 	gl.End()
+}
+
+func ToFloat32Slice(A []float64) (R []float32) {
+	R = make([]float32, len(A))
+	for i, val := range A {
+		R[i] = float32(val)
+	}
+	return R
 }
