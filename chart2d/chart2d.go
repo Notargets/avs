@@ -143,6 +143,7 @@ func (cc *Chart2D) drawGraph() {
 
 	drawAxes()
 
+	gl.LineWidth(2)
 	for _, s := range cc.activeSeries {
 		gl.Color4ub(s.Co.R, s.Co.G, s.Co.B, s.Co.A)
 		if s.Gl != NoGlyph {
