@@ -196,7 +196,7 @@ func (cc *Chart2D) drawGraph() {
 			if s.Lt != NoLine {
 				for k, tri := range s.TriMesh.Triangles {
 					for i, pt := range tri.Nodes {
-						gl.Begin(gl.LINE)
+						gl.Begin(gl.LINES)
 						if cc.colormap != nil && s.TriMesh.Attributes != nil {
 							edgeValue := s.TriMesh.Attributes[k][i]
 							edgeColor := cc.colormap.GetRGB(edgeValue)
