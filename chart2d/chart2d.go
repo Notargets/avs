@@ -9,6 +9,8 @@ import (
 	"runtime"
 	"time"
 
+	graphics2D "github.com/notargets/avs/geometry"
+
 	"github.com/go-gl/gl/v2.1/gl"
 	"github.com/go-gl/glfw/v3.3/glfw"
 )
@@ -19,11 +21,12 @@ func init() {
 }
 
 type Series struct {
-	Xdata []float32
-	Ydata []float32
-	Gl    GlyphType
-	Lt    LineType
-	Co    *color.RGBA
+	Xdata   []float32
+	Ydata   []float32
+	TriMesh *graphics2D.TriMesh
+	Gl      GlyphType
+	Lt      LineType
+	Co      *color.RGBA
 }
 
 type NewDataMsg struct {
@@ -56,6 +59,26 @@ func NewChart2D(w, h int, xmin, xmax, ymin, ymax float32, chanDepth ...int) (cc 
 
 func (cc *Chart2D) StopPlot() {
 	cc.stopChan <- struct{}{}
+}
+
+func (cc *Chart2D) AddTriMesh(name string, Geom []graphics2D.Point, Tris graphics2D.TriMesh, gl GlyphType, lt LineType, co color.RGBA) (err error) {
+	var (
+		x, y = make([]float32, len(Geom)), make([]float32, len(Geom))
+	)
+	for i, pt := range Geom {
+		x[i] = pt.X[0]
+		y[i] = pt.X[1]
+	}
+	s := Series{
+		Xdata:   x,
+		Ydata:   y,
+		TriMesh: &Tris,
+		Gl:      gl,
+		Lt:      lt,
+		Co:      &co,
+	}
+	cc.inputChan <- &NewDataMsg{name, s}
+	return
 }
 
 func (cc *Chart2D) AddSeries(name string, xI, fI interface{}, gl GlyphType, lt LineType, co color.RGBA) (err error) {
@@ -146,23 +169,47 @@ func (cc *Chart2D) drawGraph() {
 	gl.LineWidth(2)
 	for _, s := range cc.activeSeries {
 		gl.Color4ub(s.Co.R, s.Co.G, s.Co.B, s.Co.A)
-		if s.Gl != NoGlyph {
-			for i, x := range s.Xdata {
-				f := s.Ydata[i]
-				xc := cc.RmX.GetMappedCoordinate(x)
-				yc := cc.RmY.GetMappedCoordinate(f)
-				drawGlyph(xc, yc, s.Gl, cc.Sc.GetRatio())
+		switch {
+		case s.TriMesh != nil:
+			if s.Gl != NoGlyph {
+				for _, tri := range s.TriMesh.Triangles {
+					for _, pt := range tri.Nodes {
+						xc := cc.RmX.GetMappedCoordinate(s.Xdata[pt])
+						yc := cc.RmY.GetMappedCoordinate(s.Ydata[pt])
+						drawGlyph(xc, yc, s.Gl, cc.Sc.GetRatio())
+					}
+				}
 			}
-		}
-		if s.Lt != NoLine {
-			gl.Begin(gl.LINE_STRIP)
-			for i, x := range s.Xdata {
-				f := s.Ydata[i]
-				xc := cc.RmX.GetMappedCoordinate(x)
-				yc := cc.RmY.GetMappedCoordinate(f)
-				gl.Vertex2f(xc, yc)
+			if s.Lt != NoLine {
+				gl.Begin(gl.LINE_STRIP)
+				for _, tri := range s.TriMesh.Triangles {
+					for _, pt := range tri.Nodes {
+						xc := cc.RmX.GetMappedCoordinate(s.Xdata[pt])
+						yc := cc.RmY.GetMappedCoordinate(s.Ydata[pt])
+						gl.Vertex2f(xc, yc)
+					}
+				}
+				gl.End()
 			}
-			gl.End()
+		default:
+			if s.Gl != NoGlyph {
+				for i, x := range s.Xdata {
+					f := s.Ydata[i]
+					xc := cc.RmX.GetMappedCoordinate(x)
+					yc := cc.RmY.GetMappedCoordinate(f)
+					drawGlyph(xc, yc, s.Gl, cc.Sc.GetRatio())
+				}
+			}
+			if s.Lt != NoLine {
+				gl.Begin(gl.LINE_STRIP)
+				for i, x := range s.Xdata {
+					f := s.Ydata[i]
+					xc := cc.RmX.GetMappedCoordinate(x)
+					yc := cc.RmY.GetMappedCoordinate(f)
+					gl.Vertex2f(xc, yc)
+				}
+				gl.End()
+			}
 		}
 	}
 }
