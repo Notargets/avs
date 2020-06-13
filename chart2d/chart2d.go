@@ -181,15 +181,15 @@ func (cc *Chart2D) drawGraph() {
 				}
 			}
 			if s.Lt != NoLine {
-				gl.Begin(gl.LINE_STRIP)
 				for _, tri := range s.TriMesh.Triangles {
+					gl.Begin(gl.LINE_STRIP)
 					for _, pt := range tri.Nodes {
 						xc := cc.RmX.GetMappedCoordinate(s.Xdata[pt])
 						yc := cc.RmY.GetMappedCoordinate(s.Ydata[pt])
 						gl.Vertex2f(xc, yc)
 					}
+					gl.End()
 				}
-				gl.End()
 			}
 		default:
 			if s.Gl != NoGlyph {
