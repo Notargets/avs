@@ -9,6 +9,8 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/notargets/avs/utils"
+
 	graphics2D "github.com/notargets/avs/geometry"
 
 	"github.com/go-gl/gl/v2.1/gl"
@@ -40,6 +42,7 @@ type Chart2D struct {
 	activeSeries map[string]Series
 	inputChan    chan *NewDataMsg
 	stopChan     chan struct{}
+	colormap     *utils.ColorMap
 }
 
 func NewChart2D(w, h int, xmin, xmax, ymin, ymax float32, chanDepth ...int) (cc *Chart2D) {
@@ -79,6 +82,11 @@ func (cc *Chart2D) AddTriMesh(name string, Geom []graphics2D.Point, Tris graphic
 	}
 	cc.inputChan <- &NewDataMsg{name, s}
 	return
+}
+
+func (cc *Chart2D) AddColorMap(cm *utils.ColorMap) {
+	// Used to render data attributes
+	cc.colormap = cm
 }
 
 func (cc *Chart2D) AddSeries(name string, xI, fI interface{}, gl GlyphType, lt LineType, co color.RGBA) (err error) {
@@ -172,8 +180,13 @@ func (cc *Chart2D) drawGraph() {
 		switch {
 		case s.TriMesh != nil:
 			if s.Gl != NoGlyph {
-				for _, tri := range s.TriMesh.Triangles {
-					for _, pt := range tri.Nodes {
+				for k, tri := range s.TriMesh.Triangles {
+					for i, pt := range tri.Nodes {
+						if cc.colormap != nil && s.TriMesh.Attributes != nil {
+							edgeValue := s.TriMesh.Attributes[k][i]
+							edgeColor := cc.colormap.GetRGB(edgeValue)
+							gl.Color4ub(edgeColor.R, edgeColor.G, edgeColor.B, edgeColor.A)
+						}
 						xc := cc.RmX.GetMappedCoordinate(s.Xdata[pt])
 						yc := cc.RmY.GetMappedCoordinate(s.Ydata[pt])
 						drawGlyph(xc, yc, s.Gl, cc.Sc.GetRatio())
@@ -181,9 +194,14 @@ func (cc *Chart2D) drawGraph() {
 				}
 			}
 			if s.Lt != NoLine {
-				for _, tri := range s.TriMesh.Triangles {
+				for k, tri := range s.TriMesh.Triangles {
 					gl.Begin(gl.LINE_LOOP)
-					for _, pt := range tri.Nodes {
+					for i, pt := range tri.Nodes {
+						if cc.colormap != nil && s.TriMesh.Attributes != nil {
+							edgeValue := s.TriMesh.Attributes[k][i]
+							edgeColor := cc.colormap.GetRGB(edgeValue)
+							gl.Color4ub(edgeColor.R, edgeColor.G, edgeColor.B, edgeColor.A)
+						}
 						xc := cc.RmX.GetMappedCoordinate(s.Xdata[pt])
 						yc := cc.RmY.GetMappedCoordinate(s.Ydata[pt])
 						gl.Vertex2f(xc, yc)
