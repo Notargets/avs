@@ -195,8 +195,8 @@ func (cc *Chart2D) drawGraph() {
 			}
 			if s.Lt != NoLine {
 				for k, tri := range s.TriMesh.Triangles {
-					gl.Begin(gl.LINE_LOOP)
 					for i, pt := range tri.Nodes {
+						gl.Begin(gl.LINE)
 						if cc.colormap != nil && s.TriMesh.Attributes != nil {
 							edgeValue := s.TriMesh.Attributes[k][i]
 							edgeColor := cc.colormap.GetRGB(edgeValue)
@@ -205,8 +205,16 @@ func (cc *Chart2D) drawGraph() {
 						xc := cc.RmX.GetMappedCoordinate(s.Xdata[pt])
 						yc := cc.RmY.GetMappedCoordinate(s.Ydata[pt])
 						gl.Vertex2f(xc, yc)
+						iplus := i + 1
+						if i == 2 {
+							iplus = 0
+						}
+						ptp := tri.Nodes[iplus]
+						xc = cc.RmX.GetMappedCoordinate(s.Xdata[ptp])
+						yc = cc.RmY.GetMappedCoordinate(s.Ydata[ptp])
+						gl.Vertex2f(xc, yc)
+						gl.End()
 					}
-					gl.End()
 				}
 			}
 		default:
