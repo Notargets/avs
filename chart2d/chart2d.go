@@ -182,7 +182,7 @@ func (cc *Chart2D) drawGraph() {
 			}
 			if s.Lt != NoLine {
 				for _, tri := range s.TriMesh.Triangles {
-					gl.Begin(gl.LINE_STRIP)
+					gl.Begin(gl.LINE_LOOP)
 					for _, pt := range tri.Nodes {
 						xc := cc.RmX.GetMappedCoordinate(s.Xdata[pt])
 						yc := cc.RmY.GetMappedCoordinate(s.Ydata[pt])
