@@ -26,6 +26,7 @@ type Series struct {
 	Xdata   []float32
 	Ydata   []float32
 	TriMesh *graphics2D.TriMesh
+	Vectors [][2]float64
 	Gl      GlyphType
 	Lt      LineType
 	Co      *color.RGBA
@@ -62,6 +63,25 @@ func NewChart2D(w, h int, xmin, xmax, ymin, ymax float32, chanDepth ...int) (cc 
 
 func (cc *Chart2D) StopPlot() {
 	cc.stopChan <- struct{}{}
+}
+
+func (cc *Chart2D) AddVectors(name string, Geom []graphics2D.Point, vectors [][2]float64, lt LineType, co color.RGBA) (err error) {
+	var (
+		x, y = make([]float32, len(Geom)), make([]float32, len(Geom))
+	)
+	for i, pt := range Geom {
+		x[i] = pt.X[0]
+		y[i] = pt.X[1]
+	}
+	s := Series{
+		Xdata:   x,
+		Ydata:   y,
+		Vectors: vectors,
+		Lt:      lt,
+		Co:      &co,
+	}
+	cc.inputChan <- &NewDataMsg{name, s}
+	return
 }
 
 func (cc *Chart2D) AddTriMesh(name string, Geom []graphics2D.Point, Tris graphics2D.TriMesh, gl GlyphType, lt LineType, co color.RGBA) (err error) {
@@ -178,6 +198,22 @@ func (cc *Chart2D) drawGraph() {
 	for _, s := range cc.activeSeries {
 		gl.Color4ub(s.Co.R, s.Co.G, s.Co.B, s.Co.A)
 		switch {
+		case s.Vectors != nil:
+			if s.Lt != NoLine {
+				for i, x := range s.Xdata {
+					y := s.Ydata[i]
+					xc := cc.RmX.GetMappedCoordinate(x)
+					yc := cc.RmY.GetMappedCoordinate(y)
+					dx := float32(s.Vectors[i][0])
+					dy := float32(s.Vectors[i][1])
+					dxc := cc.RmX.GetMappedCoordinate(x + dx)
+					dyc := cc.RmY.GetMappedCoordinate(y + dy)
+					gl.Begin(gl.LINES)
+					gl.Vertex2f(xc, yc)
+					gl.Vertex2f(dxc, dyc)
+					gl.End()
+				}
+			}
 		case s.TriMesh != nil:
 			if s.Gl != NoGlyph {
 				for k, tri := range s.TriMesh.Triangles {
