@@ -3,3 +3,6 @@ avs:
 
 run: avs
 	avs
+
+test:
+	go test ./...
