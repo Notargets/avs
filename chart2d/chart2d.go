@@ -220,6 +220,7 @@ func (cc *Chart2D) drawGraph() {
 			}
 		case s.Surface != nil:
 			active := s.Surface.ActiveFunction
+			tmesh := s.Surface.Tris
 			switch {
 			case len(s.Surface.Functions) == 0:
 				panic("function surface has no data")
@@ -235,7 +236,7 @@ func (cc *Chart2D) drawGraph() {
 					vValue := f[vertIndex]
 					vertColor := cc.colormap.GetRGB(vValue)
 					gl.Color4ub(vertColor.R, vertColor.G, vertColor.B, vertColor.A)
-					pt := s.TriMesh.Geometry[vertIndex]
+					pt := tmesh.Geometry[vertIndex]
 					xc := cc.RmX.GetMappedCoordinate(pt.X[0])
 					yc := cc.RmY.GetMappedCoordinate(pt.X[1])
 					gl.Vertex2f(xc, yc)
