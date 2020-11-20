@@ -194,7 +194,7 @@ func (cc *Chart2D) drawGraph() {
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 	gl.MatrixMode(gl.PROJECTION)
 	gl.LoadIdentity()
-	gl.Ortho(-xmargin, 1+xmargin, -ymargin, 1+ymargin, 0, 2)
+	gl.Ortho(-xmargin, 1+xmargin, -ymargin, 1+ymargin, -1, 2)
 
 	drawAxes()
 
@@ -249,7 +249,7 @@ func (cc *Chart2D) drawGraph() {
 					pt := tmesh.Geometry[vertIndex]
 					xc := cc.RmX.GetMappedCoordinate(pt.X[0])
 					yc := cc.RmY.GetMappedCoordinate(pt.X[1])
-					gl.Vertex3f(xc, yc, 0.1)
+					gl.Vertex3f(xc, yc, -0.1)
 				}
 				gl.End()
 			}
