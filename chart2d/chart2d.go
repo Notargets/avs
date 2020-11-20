@@ -9,6 +9,8 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/notargets/avs/functions"
+
 	"github.com/notargets/avs/utils"
 
 	graphics2D "github.com/notargets/avs/geometry"
@@ -26,6 +28,7 @@ type Series struct {
 	Xdata   []float32
 	Ydata   []float32
 	TriMesh *graphics2D.TriMesh
+	Surface *functions.FSurface
 	Vectors [][2]float64
 	Gl      GlyphType
 	Lt      LineType
@@ -214,6 +217,7 @@ func (cc *Chart2D) drawGraph() {
 					gl.End()
 				}
 			}
+		case s.Surface != nil:
 		case s.TriMesh != nil:
 			if s.Gl != NoGlyph {
 				for k, tri := range s.TriMesh.Triangles {

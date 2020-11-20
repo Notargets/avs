@@ -151,7 +151,6 @@ type GeometryInterface interface {
 }
 
 type BaseGeometryClass struct {
-	GeometryInterface
 	Box      *BoundingBox
 	Geometry []Point
 }
@@ -207,7 +206,6 @@ func (bg *BaseGeometryClass) InverseTransformLambertAzimuthal(radius float64, ce
 }
 
 type Point struct {
-	BaseGeometryClass
 	X [2]float32
 }
 
