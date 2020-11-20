@@ -194,7 +194,7 @@ func (cc *Chart2D) drawGraph() {
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 	gl.MatrixMode(gl.PROJECTION)
 	gl.LoadIdentity()
-	gl.Ortho(-xmargin, 1+xmargin, -ymargin, 1+ymargin, -1, 2)
+	gl.Ortho(-xmargin, 1+xmargin, -ymargin, 1+ymargin, -1, 0.1)
 
 	drawAxes()
 
