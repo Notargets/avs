@@ -201,6 +201,7 @@ func (cc *Chart2D) drawGraph() {
 	gl.LineWidth(2)
 	for _, s := range cc.activeSeries {
 		gl.Color4ub(s.Co.R, s.Co.G, s.Co.B, s.Co.A)
+		gl.PolygonOffset(1, 1)
 		switch {
 		case s.Vectors != nil:
 			if s.Lt != NoLine {
@@ -219,6 +220,12 @@ func (cc *Chart2D) drawGraph() {
 				}
 			}
 		case s.Surface != nil:
+			drawVert := func(index int32, tmesh *graphics2D.TriMesh) {
+				pt := tmesh.Geometry[index]
+				xc := cc.RmX.GetMappedCoordinate(pt.X[0])
+				yc := cc.RmY.GetMappedCoordinate(pt.X[1])
+				gl.Vertex2f(xc, yc)
+			}
 			active := s.Surface.ActiveFunction
 			tmesh := s.Surface.Tris
 			switch {
@@ -231,28 +238,22 @@ func (cc *Chart2D) drawGraph() {
 			}
 			f := s.Surface.Functions[active]
 			for _, tri := range s.Surface.Tris.Triangles {
-				gl.PolygonOffset(1, 1)
 				gl.Enable(gl.POLYGON_OFFSET_FILL)
 				gl.Begin(gl.TRIANGLES)
 				for _, vertIndex := range tri.Nodes {
 					vValue := f[vertIndex]
 					vertColor := cc.colormap.GetRGB(vValue)
 					gl.Color4ub(vertColor.R, vertColor.G, vertColor.B, vertColor.A)
-					pt := tmesh.Geometry[vertIndex]
-					xc := cc.RmX.GetMappedCoordinate(pt.X[0])
-					yc := cc.RmY.GetMappedCoordinate(pt.X[1])
-					gl.Vertex2f(xc, yc)
+					drawVert(vertIndex, tmesh)
 				}
 				gl.End()
 				gl.Disable(gl.POLYGON_OFFSET_FILL)
+				gl.Color4ub(s.Co.R, s.Co.G, s.Co.B, s.Co.A)
 				gl.Begin(gl.LINES)
 				for _, vertIndex := range tri.Nodes {
-					gl.Color4ub(s.Co.R, s.Co.G, s.Co.B, s.Co.A)
-					pt := tmesh.Geometry[vertIndex]
-					xc := cc.RmX.GetMappedCoordinate(pt.X[0])
-					yc := cc.RmY.GetMappedCoordinate(pt.X[1])
-					gl.Vertex2f(xc, yc)
+					drawVert(vertIndex, tmesh)
 				}
+				drawVert(tri.Nodes[0], tmesh) // close the triangle
 				gl.End()
 			}
 		case s.TriMesh != nil:
