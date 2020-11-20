@@ -194,7 +194,7 @@ func (cc *Chart2D) drawGraph() {
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 	gl.MatrixMode(gl.PROJECTION)
 	gl.LoadIdentity()
-	gl.Ortho(-xmargin, 1+xmargin, -ymargin, 1+ymargin, -1, 0.1)
+	gl.Ortho(-xmargin, 1+xmargin, -ymargin, 1+ymargin, -1, 2.0)
 
 	drawAxes()
 
@@ -231,6 +231,8 @@ func (cc *Chart2D) drawGraph() {
 			}
 			f := s.Surface.Functions[active]
 			for _, tri := range s.Surface.Tris.Triangles {
+				gl.PolygonOffset(1, 1)
+				gl.Enable(gl.POLYGON_OFFSET_FILL)
 				gl.Begin(gl.TRIANGLES)
 				for _, vertIndex := range tri.Nodes {
 					vValue := f[vertIndex]
@@ -242,13 +244,14 @@ func (cc *Chart2D) drawGraph() {
 					gl.Vertex2f(xc, yc)
 				}
 				gl.End()
+				gl.Disable(gl.POLYGON_OFFSET_FILL)
 				gl.Begin(gl.LINES)
 				for _, vertIndex := range tri.Nodes {
 					gl.Color4ub(s.Co.R, s.Co.G, s.Co.B, s.Co.A)
 					pt := tmesh.Geometry[vertIndex]
 					xc := cc.RmX.GetMappedCoordinate(pt.X[0])
 					yc := cc.RmY.GetMappedCoordinate(pt.X[1])
-					gl.Vertex3f(xc, yc, -0.5)
+					gl.Vertex2f(xc, yc)
 				}
 				gl.End()
 			}
