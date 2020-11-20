@@ -231,7 +231,6 @@ func (cc *Chart2D) drawGraph() {
 			}
 			f := s.Surface.Functions[active]
 			for _, tri := range s.Surface.Tris.Triangles {
-				gl.LineWidth(1)
 				gl.Begin(gl.TRIANGLES)
 				for _, vertIndex := range tri.Nodes {
 					vValue := f[vertIndex]
