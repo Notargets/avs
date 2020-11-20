@@ -231,11 +231,21 @@ func (cc *Chart2D) drawGraph() {
 			}
 			f := s.Surface.Functions[active]
 			for _, tri := range s.Surface.Tris.Triangles {
+				gl.LineWidth(1)
 				gl.Begin(gl.TRIANGLES)
 				for _, vertIndex := range tri.Nodes {
 					vValue := f[vertIndex]
 					vertColor := cc.colormap.GetRGB(vValue)
 					gl.Color4ub(vertColor.R, vertColor.G, vertColor.B, vertColor.A)
+					pt := tmesh.Geometry[vertIndex]
+					xc := cc.RmX.GetMappedCoordinate(pt.X[0])
+					yc := cc.RmY.GetMappedCoordinate(pt.X[1])
+					gl.Vertex2f(xc, yc)
+				}
+				gl.End()
+				gl.Begin(gl.LINES)
+				for _, vertIndex := range tri.Nodes {
+					gl.Color4ub(s.Co.R, s.Co.G, s.Co.B, s.Co.A)
 					pt := tmesh.Geometry[vertIndex]
 					xc := cc.RmX.GetMappedCoordinate(pt.X[0])
 					yc := cc.RmY.GetMappedCoordinate(pt.X[1])
