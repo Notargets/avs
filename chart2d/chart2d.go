@@ -87,21 +87,22 @@ func (cc *Chart2D) AddVectors(name string, Geom []graphics2D.Point, vectors [][2
 	return
 }
 
-func (cc *Chart2D) AddTriMesh(name string, Geom []graphics2D.Point, Tris graphics2D.TriMesh, gl GlyphType, lt LineType, co color.RGBA) (err error) {
-	var (
-		x, y = make([]float32, len(Geom)), make([]float32, len(Geom))
-	)
-	for i, pt := range Geom {
-		x[i] = pt.X[0]
-		y[i] = pt.X[1]
-	}
+func (cc *Chart2D) AddTriMesh(name string, Tris graphics2D.TriMesh, gl GlyphType, lt LineType, co color.RGBA) (err error) {
 	s := Series{
-		Xdata:   x,
-		Ydata:   y,
 		TriMesh: &Tris,
 		Gl:      gl,
 		Lt:      lt,
 		Co:      &co,
+	}
+	cc.inputChan <- &NewDataMsg{name, s}
+	return
+}
+
+func (cc *Chart2D) AddFunctionSurface(name string, fs functions.FSurface, lineType LineType, lineColor color.RGBA) (err error) {
+	s := Series{
+		Surface: &fs,
+		Lt:      lineType,
+		Co:      &lineColor,
 	}
 	cc.inputChan <- &NewDataMsg{name, s}
 	return
@@ -218,40 +219,66 @@ func (cc *Chart2D) drawGraph() {
 				}
 			}
 		case s.Surface != nil:
+			active := s.Surface.ActiveFunction
+			switch {
+			case len(s.Surface.Functions) == 0:
+				panic("function surface has no data")
+			case len(s.Surface.Functions[active]) == 0:
+				panic("function surface has no data")
+			case cc.colormap == nil:
+				panic("empty colormap")
+			}
+			f := s.Surface.Functions[active]
+			for _, tri := range s.Surface.Tris.Triangles {
+				gl.Begin(gl.TRIANGLES)
+				for _, vertIndex := range tri.Nodes {
+					vValue := f[vertIndex]
+					vertColor := cc.colormap.GetRGB(vValue)
+					gl.Color4ub(vertColor.R, vertColor.G, vertColor.B, vertColor.A)
+					pt := s.TriMesh.Geometry[vertIndex]
+					xc := cc.RmX.GetMappedCoordinate(pt.X[0])
+					yc := cc.RmY.GetMappedCoordinate(pt.X[1])
+					gl.Vertex2f(xc, yc)
+				}
+				gl.End()
+			}
 		case s.TriMesh != nil:
 			if s.Gl != NoGlyph {
 				for k, tri := range s.TriMesh.Triangles {
-					for i, pt := range tri.Nodes {
+					for i, vertIndex := range tri.Nodes {
 						if cc.colormap != nil && s.TriMesh.Attributes != nil {
 							edgeValue := s.TriMesh.Attributes[k][i]
 							edgeColor := cc.colormap.GetRGB(edgeValue)
 							gl.Color4ub(edgeColor.R, edgeColor.G, edgeColor.B, edgeColor.A)
 						}
-						xc := cc.RmX.GetMappedCoordinate(s.Xdata[pt])
-						yc := cc.RmY.GetMappedCoordinate(s.Ydata[pt])
+						pt := s.TriMesh.Geometry[vertIndex]
+						xc := cc.RmX.GetMappedCoordinate(pt.X[0])
+						yc := cc.RmY.GetMappedCoordinate(pt.X[1])
 						drawGlyph(xc, yc, s.Gl, cc.Sc.GetRatio())
 					}
 				}
 			}
 			if s.Lt != NoLine {
 				for k, tri := range s.TriMesh.Triangles {
-					for i, pt := range tri.Nodes {
+					for i, vertIndex := range tri.Nodes {
 						gl.Begin(gl.LINES)
 						if cc.colormap != nil && s.TriMesh.Attributes != nil {
 							edgeValue := s.TriMesh.Attributes[k][i]
 							edgeColor := cc.colormap.GetRGB(edgeValue)
 							gl.Color4ub(edgeColor.R, edgeColor.G, edgeColor.B, edgeColor.A)
 						}
-						xc := cc.RmX.GetMappedCoordinate(s.Xdata[pt])
-						yc := cc.RmY.GetMappedCoordinate(s.Ydata[pt])
+						pt := s.TriMesh.Geometry[vertIndex]
+						xc := cc.RmX.GetMappedCoordinate(pt.X[0])
+						yc := cc.RmY.GetMappedCoordinate(pt.X[1])
 						gl.Vertex2f(xc, yc)
 						iplus := i + 1
 						if i == 2 {
 							iplus = 0
 						}
 						ptp := tri.Nodes[iplus]
-						xc = cc.RmX.GetMappedCoordinate(s.Xdata[ptp])
-						yc = cc.RmY.GetMappedCoordinate(s.Ydata[ptp])
+						pt = s.TriMesh.Geometry[ptp]
+						xc = cc.RmX.GetMappedCoordinate(pt.X[0])
+						yc = cc.RmY.GetMappedCoordinate(pt.X[1])
 						gl.Vertex2f(xc, yc)
 						gl.End()
 					}
