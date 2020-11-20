@@ -249,7 +249,7 @@ func (cc *Chart2D) drawGraph() {
 					pt := tmesh.Geometry[vertIndex]
 					xc := cc.RmX.GetMappedCoordinate(pt.X[0])
 					yc := cc.RmY.GetMappedCoordinate(pt.X[1])
-					gl.Vertex2f(xc, yc)
+					gl.Vertex3f(xc, yc, 0.1)
 				}
 				gl.End()
 			}
