@@ -250,7 +250,9 @@ func (cc *Chart2D) drawGraph() {
 					drawVert(vertIndex, tmesh)
 				}
 				gl.End()
-				if s.Lt != NoLine {
+			}
+			if s.Lt != NoLine {
+				for _, tri := range s.Surface.Tris.Triangles {
 					gl.Disable(gl.POLYGON_OFFSET_FILL)
 					gl.Color4ub(s.Co.R, s.Co.G, s.Co.B, s.Co.A)
 					gl.Begin(gl.LINES)
@@ -259,7 +261,6 @@ func (cc *Chart2D) drawGraph() {
 					}
 					drawVert(tri.Nodes[0], tmesh) // close the triangle
 					gl.End()
-					gl.Enable(gl.POLYGON_OFFSET_FILL)
 				}
 			}
 		case s.TriMesh != nil:
