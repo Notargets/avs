@@ -191,6 +191,7 @@ func (cc *Chart2D) drawGraph() {
 		xmargin = 0.1
 		ymargin = 0.1
 	)
+	gl.ClearColor(1.0, 1.0, 1.0, 1.0)
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 	gl.MatrixMode(gl.PROJECTION)
 	gl.LoadIdentity()
