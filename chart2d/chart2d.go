@@ -115,7 +115,7 @@ func (cc *Chart2D) AddColorMap(cm *utils.ColorMap) {
 	cc.colormap = cm
 }
 
-func (cc *Chart2D) AddSeries(name string, xI, fI interface{}, gl GlyphType, lt LineType, co color.RGBA) (err error) {
+func (cc *Chart2D) AddSeries(name string, xI interface{}, fI interface{}, glyphType GlyphType, glyphSize float32, lineType LineType, co color.RGBA) (err error) {
 	var (
 		x, f []float32
 	)
@@ -134,11 +134,12 @@ func (cc *Chart2D) AddSeries(name string, xI, fI interface{}, gl GlyphType, lt L
 		return fmt.Errorf("length of x data not equal to function data length")
 	}
 	s := Series{
-		Xdata:    x,
-		Ydata:    f,
-		Glyph:    gl,
-		Linetype: lt,
-		Color:    &co,
+		Xdata:     x,
+		Ydata:     f,
+		Glyph:     glyphType,
+		GlyphSize: glyphSize,
+		Linetype:  lineType,
+		Color:     &co,
 	}
 	cc.inputChan <- &NewDataMsg{name, s}
 	return

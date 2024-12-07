@@ -27,7 +27,7 @@ func main() {
 		*/
 		//x, f := getFunc(i+1, 0, 1, utils.GetLegendrePoly(i))
 		name := "L" + strconv.Itoa(i)
-		if err := cc.AddSeries(name, x, f, chart2d.GlyphType(i+1), chart2d.Solid, col.GetRGB(float32(i)/5)); err != nil {
+		if err := cc.AddSeries(name, x, f, chart2d.GlyphType(i+1), 0.01, chart2d.Solid, col.GetRGB(float32(i)/5)); err != nil {
 			//if err := cc.AddSeries(name, x, f, 0, chart2d.Solid, col.GetRGB(float32(i)/5)); err != nil {
 			panic(err)
 		}
