@@ -25,14 +25,15 @@ func init() {
 }
 
 type Series struct {
-	Xdata   []float32
-	Ydata   []float32
-	TriMesh *graphics2D.TriMesh
-	Surface *functions.FSurface
-	Vectors [][2]float64
-	Gl      GlyphType
-	Lt      LineType
-	Co      *color.RGBA
+	Xdata     []float32
+	Ydata     []float32
+	TriMesh   *graphics2D.TriMesh
+	Surface   *functions.FSurface
+	Vectors   [][2]float64
+	Glyph     GlyphType
+	GlyphSize float32
+	Linetype  LineType
+	Color     *color.RGBA
 }
 
 type NewDataMsg struct {
@@ -77,22 +78,23 @@ func (cc *Chart2D) AddVectors(name string, Geom []graphics2D.Point, vectors [][2
 		y[i] = pt.X[1]
 	}
 	s := Series{
-		Xdata:   x,
-		Ydata:   y,
-		Vectors: vectors,
-		Lt:      lt,
-		Co:      &co,
+		Xdata:    x,
+		Ydata:    y,
+		Vectors:  vectors,
+		Linetype: lt,
+		Color:    &co,
 	}
 	cc.inputChan <- &NewDataMsg{name, s}
 	return
 }
 
-func (cc *Chart2D) AddTriMesh(name string, Tris graphics2D.TriMesh, gl GlyphType, lt LineType, co color.RGBA) (err error) {
+func (cc *Chart2D) AddTriMesh(name string, Tris graphics2D.TriMesh, Glyph GlyphType, GlyphSize float32, lt LineType, co color.RGBA) (err error) {
 	s := Series{
-		TriMesh: &Tris,
-		Gl:      gl,
-		Lt:      lt,
-		Co:      &co,
+		TriMesh:   &Tris,
+		Glyph:     Glyph,
+		GlyphSize: GlyphSize,
+		Linetype:  lt,
+		Color:     &co,
 	}
 	cc.inputChan <- &NewDataMsg{name, s}
 	return
@@ -100,9 +102,9 @@ func (cc *Chart2D) AddTriMesh(name string, Tris graphics2D.TriMesh, gl GlyphType
 
 func (cc *Chart2D) AddFunctionSurface(name string, fs functions.FSurface, lineType LineType, lineColor color.RGBA) (err error) {
 	s := Series{
-		Surface: &fs,
-		Lt:      lineType,
-		Co:      &lineColor,
+		Surface:  &fs,
+		Linetype: lineType,
+		Color:    &lineColor,
 	}
 	cc.inputChan <- &NewDataMsg{name, s}
 	return
@@ -132,11 +134,11 @@ func (cc *Chart2D) AddSeries(name string, xI, fI interface{}, gl GlyphType, lt L
 		return fmt.Errorf("length of x data not equal to function data length")
 	}
 	s := Series{
-		Xdata: x,
-		Ydata: f,
-		Gl:    gl,
-		Lt:    lt,
-		Co:    &co,
+		Xdata:    x,
+		Ydata:    f,
+		Glyph:    gl,
+		Linetype: lt,
+		Color:    &co,
 	}
 	cc.inputChan <- &NewDataMsg{name, s}
 	return
@@ -201,11 +203,11 @@ func (cc *Chart2D) drawGraph() {
 
 	gl.LineWidth(2)
 	for _, s := range cc.activeSeries {
-		gl.Color4ub(s.Co.R, s.Co.G, s.Co.B, s.Co.A)
+		gl.Color4ub(s.Color.R, s.Color.G, s.Color.B, s.Color.A)
 		gl.PolygonOffset(1, 1)
 		switch {
 		case s.Vectors != nil:
-			if s.Lt != NoLine {
+			if s.Linetype != NoLine {
 				for i, x := range s.Xdata {
 					y := s.Ydata[i]
 					xc := cc.RmX.GetMappedCoordinate(x)
@@ -252,10 +254,10 @@ func (cc *Chart2D) drawGraph() {
 				}
 				gl.End()
 			}
-			if s.Lt != NoLine {
+			if s.Linetype != NoLine {
 				for _, tri := range s.Surface.Tris.Triangles {
 					gl.Disable(gl.POLYGON_OFFSET_FILL)
-					gl.Color4ub(s.Co.R, s.Co.G, s.Co.B, s.Co.A)
+					gl.Color4ub(s.Color.R, s.Color.G, s.Color.B, s.Color.A)
 					gl.Begin(gl.LINES)
 					for _, vertIndex := range tri.Nodes {
 						drawVert(vertIndex, tmesh)
@@ -274,11 +276,11 @@ func (cc *Chart2D) drawGraph() {
 			drawVert := func(index int32, tmesh *graphics2D.TriMesh) {
 				gl.Vertex2f(getXY(index, tmesh))
 			}
-			drawG := func(index int32, tmesh *graphics2D.TriMesh) {
+			drawGlyphL := func(index int32, tmesh *graphics2D.TriMesh) {
 				xc, yc := getXY(index, tmesh)
-				drawGlyph(xc, yc, s.Gl, cc.Sc.GetRatio())
+				drawGlyph(xc, yc, s.Glyph, s.GlyphSize, cc.Sc.GetRatio())
 			}
-			if s.Gl != NoGlyph {
+			if s.Glyph != NoGlyph {
 				for k, tri := range s.TriMesh.Triangles {
 					for i, vertIndex := range tri.Nodes {
 						if cc.colormap != nil && s.TriMesh.Attributes != nil {
@@ -286,11 +288,11 @@ func (cc *Chart2D) drawGraph() {
 							edgeColor := cc.colormap.GetRGB(edgeValue)
 							gl.Color4ub(edgeColor.R, edgeColor.G, edgeColor.B, edgeColor.A)
 						}
-						drawG(vertIndex, s.TriMesh)
+						drawGlyphL(vertIndex, s.TriMesh)
 					}
 				}
 			}
-			if s.Lt != NoLine {
+			if s.Linetype != NoLine {
 				for k, tri := range s.TriMesh.Triangles {
 					for i, vertIndex := range tri.Nodes {
 						gl.Begin(gl.LINES)
@@ -311,15 +313,15 @@ func (cc *Chart2D) drawGraph() {
 				}
 			}
 		default:
-			if s.Gl != NoGlyph {
+			if s.Glyph != NoGlyph {
 				for i, x := range s.Xdata {
 					f := s.Ydata[i]
 					xc := cc.RmX.GetMappedCoordinate(x)
 					yc := cc.RmY.GetMappedCoordinate(f)
-					drawGlyph(xc, yc, s.Gl, cc.Sc.GetRatio())
+					drawGlyph(xc, yc, s.Glyph, s.GlyphSize, cc.Sc.GetRatio())
 				}
 			}
-			if s.Lt != NoLine {
+			if s.Linetype != NoLine {
 				gl.Begin(gl.LINE_STRIP)
 				for i, x := range s.Xdata {
 					f := s.Ydata[i]
@@ -408,10 +410,10 @@ const (
 	TriangleGlyph
 )
 
-func drawGlyph(xc, yc float32, gt GlyphType, rat float32) {
-	switch gt {
+func drawGlyph(xc, yc float32, glyphType GlyphType, glyphSize, rat float32) {
+	switch glyphType {
 	case CircleGlyph:
-		DrawCircle(xc, yc, 0.010, 6, rat)
+		DrawCircle(xc, yc, glyphSize, 6, rat)
 	case XGlyph:
 		DrawXGlyph(xc, yc, rat)
 	case CrossGlyph:
