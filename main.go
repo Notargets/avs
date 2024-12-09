@@ -5,17 +5,44 @@ import (
 	"fmt"
 	"os"
 	"strconv"
-
-	"github.com/notargets/avs/utils"
+	"time"
 
 	"github.com/notargets/avs/chart2d"
+	"github.com/notargets/avs/utils"
 )
 
+//func main() {
+//	chart2d.Plot()
+//	return
+//}
+
 func main() {
-	cc := chart2d.NewChart2D(1800, 1200, -1, 1, -1, 1, 1)
+	chart := chart2d.NewChart2D(1080, 1080)
+	window := chart.Init()
+
+	count := 0
+	go func() {
+		for {
+			count++
+			fmt.Println("New Data... Count = ", count)
+			chart.DataChan <- chart2d.Series{
+				Vertices: []float32{
+					-0.5, -0.5, 1.0, 0.0, 0.0, // Vertex 1
+					0.5, -0.5, 0.0, 1.0, 0.0, // Vertex 2
+					0.0, 0.5, 0.0, 0.0, 1.0, // Vertex 3
+				}}
+			time.Sleep(500 * time.Millisecond)
+		}
+	}()
+
+	chart.EventLoop(window)
+}
+
+func old_main() {
+	cc := chart2d.NewChart2D_old(1920, 1080, 0, 1, 0, 1, 10)
 	col := utils.NewColorMap(0, 1, 1)
 	//ff := make([]float32, 50)
-	go cc.Plot()
+	//go cc.Plot()
 	var x, f []float32
 	for i := 0; i < 6; i++ {
 		//x, f = getFunc(i+1, 0, 1, utils.GetLegendrePoly(i))
@@ -41,8 +68,7 @@ func main() {
 	reader := bufio.NewReader(os.Stdin)
 	_, _ = reader.ReadString('\n')
 	fmt.Println("Stopping Plot")
-	cc.StopPlot()
-	return
+	//cc.StopPlot()
 }
 
 func getFunc(size int, xmin, xmax float64, ff func(float64) float64) (x, f []float32) {
