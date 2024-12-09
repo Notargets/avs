@@ -20,9 +20,39 @@ type Series struct {
 	Color     *color.RGBA
 }
 
-type NewDataMsg struct {
+type DataMsg struct {
 	Name string
 	Data Series
+}
+
+type GlyphType uint8
+
+const (
+	NoGlyph GlyphType = iota
+	CircleGlyph
+	XGlyph
+	CrossGlyph
+	StarGlyph
+	BoxGlyph
+	TriangleGlyph
+)
+
+const (
+	NoLine LineType = iota
+	Solid
+	Dashed
+)
+
+func (cc *Chart2D) AddTriMesh(name string, Tris graphics2D.TriMesh, Glyph GlyphType, GlyphSize float32, lt LineType, co color.RGBA) (err error) {
+	s := Series{
+		TriMesh:   &Tris,
+		Glyph:     Glyph,
+		GlyphSize: GlyphSize,
+		Linetype:  lt,
+		Color:     &co,
+	}
+	cc.DataChan <- DataMsg{name, s}
+	return
 }
 
 //func (cc *Chart2D_old) AddVectors(name string, Geom []graphics2D.Point, vectors [][2]float64, lt LineType, co color.RGBA) (err error) {
@@ -40,7 +70,7 @@ type NewDataMsg struct {
 //		Linetype: lt,
 //		Color:    &co,
 //	}
-//	cc.inputChan <- &NewDataMsg{name, s}
+//	cc.inputChan <- &DataMsg{name, s}
 //	return
 //}
 //
@@ -52,7 +82,7 @@ type NewDataMsg struct {
 //		Linetype:  lt,
 //		Color:     &co,
 //	}
-//	cc.inputChan <- &NewDataMsg{name, s}
+//	cc.inputChan <- &DataMsg{name, s}
 //	return
 //}
 //
@@ -62,7 +92,7 @@ type NewDataMsg struct {
 //		Linetype: lineType,
 //		Color:    &lineColor,
 //	}
-//	cc.inputChan <- &NewDataMsg{name, s}
+//	cc.inputChan <- &DataMsg{name, s}
 //	return
 //}
 //
@@ -97,7 +127,7 @@ type NewDataMsg struct {
 //		Linetype:  lineType,
 //		Color:     &co,
 //	}
-//	cc.inputChan <- &NewDataMsg{name, s}
+//	cc.inputChan <- &DataMsg{name, s}
 //	return
 //}
 

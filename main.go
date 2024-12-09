@@ -7,11 +7,6 @@ import (
 	"github.com/notargets/avs/chart2d"
 )
 
-//func main() {
-//	chart2d.Plot()
-//	return
-//}
-
 func main() {
 	chart := chart2d.NewChart2D(1920, 1080, -10, 10, -5, 5) // World coordinates range from -10 to 10 in X, and -5 to 5 in Y
 	window := chart.Init()
@@ -22,12 +17,12 @@ func main() {
 		for {
 			count++
 			fmt.Println("New Data... Count = ", count)
-			chart.DataChan <- chart2d.Series{
+			chart.DataChan <- chart2d.DataMsg{"triangle", chart2d.Series{
 				Vertices: []float32{
 					-2.5, -2.5, 1.0, 0.0, 0.0, // Vertex 1
 					2.5, -2.5, 0.0, 1.0, 0.0, // Vertex 2
 					0.0, 2.5, 0.0, 0.0, 1.0, // Vertex 3
-				}}
+				}}}
 			time.Sleep(500 * time.Millisecond)
 		}
 	}()

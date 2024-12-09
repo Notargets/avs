@@ -120,7 +120,10 @@ func (cc *Chart2D) EventLoop(window *glfw.Window) {
 
 		// Check for new data from the channel and update if available
 		select {
-		case newSeries := <-cc.DataChan:
+		case newDataMsg := <-cc.DataChan:
+			name := newDataMsg.Name
+			_ = name
+			newSeries := newDataMsg.Data
 			cc.UpdateSeries(newSeries) // Add new series to active series
 		default:
 			// No data, continue to render if state changed

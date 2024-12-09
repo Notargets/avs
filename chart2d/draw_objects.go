@@ -1,10 +1,54 @@
 package chart2d
 
+//func DrawGlyph(xc, yc float32, glyphType GlyphType, glyphSize float32) []float32 {
+//	switch glyphType {
+//	case CircleGlyph:
+//		return DrawCircle(xc, yc, glyphSize, 6)
+//		//DrawCircle(xc, yc, glyphSize, 6, rat)
+//	case XGlyph:
+//		//DrawXGlyph(xc, yc, rat)
+//	case CrossGlyph:
+//		return DrawCrossGlyph(xc, yc, glyphSize)
+//		//DrawCrossGlyph(xc, yc, rat)
+//	case StarGlyph:
+//		fallthrough
+//		//DrawXGlyph(xc, yc, rat)
+//		//DrawCrossGlyph(xc, yc, rat)
+//	case BoxGlyph:
+//		fallthrough
+//		//DrawBoxGlyph(xc, yc, rat)
+//	case TriangleGlyph:
+//		//DrawTriangleGlyph(xc, yc, rat)
+//		panic("unimplemented")
+//	}
+//	return []float32{}
+//}
+//
+//func DrawCircle(cx, cy, r float32, segments int) []float32 {
+//	vertices := []float32{}
+//	theta := 2 * math.Pi / float64(segments)
+//	for i := 0; i < segments; i++ {
+//		x := cx + r*float32(math.Cos(float64(i)*theta))
+//		y := cy + r*float32(math.Sin(float64(i)*theta))
+//		vertices = append(vertices, x, y, 1.0, 0.0, 0.0)
+//	}
+//	return vertices
+//}
+//
+//func DrawCrossGlyph(cx, cy, size float32) []float32 {
+//	return []float32{
+//		cx - size, cy, 1.0, 0.0, 0.0,
+//		cx + size, cy, 0.0, 1.0, 0.0,
+//		cx, cy - size, 0.0, 0.0, 1.0,
+//		cx, cy + size, 1.0, 1.0, 0.0,
+//	}
+//}
+
 //type Chart2D_old struct {
 //	Sc           *Screen
 //	RmX, RmY     *RangeMap
 //	activeSeries map[string]Series
-//	inputChan    chan *NewDataMsg
+//	inputChan    chan *DataMsg
 //	stopChan     chan struct{}
 //	colormap     *utils.ColorMap
 //}
@@ -26,9 +70,9 @@ package chart2d
 //	cc.RmY = NewRangeMap(ymin, ymax, 0, 1)
 //	cc.activeSeries = make(map[string]Series)
 //	if len(chanDepth) != 0 {
-//		cc.inputChan = make(chan *NewDataMsg, chanDepth[0])
+//		cc.inputChan = make(chan *DataMsg, chanDepth[0])
 //	} else {
-//		cc.inputChan = make(chan *NewDataMsg, 1)
+//		cc.inputChan = make(chan *DataMsg, 1)
 //	}
 //	cc.stopChan = make(chan struct{})
 //	return

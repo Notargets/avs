@@ -1,23 +1,5 @@
 package chart2d
 
-type GlyphType uint8
-
-const (
-	NoGlyph GlyphType = iota
-	CircleGlyph
-	XGlyph
-	CrossGlyph
-	StarGlyph
-	BoxGlyph
-	TriangleGlyph
-)
-
-const (
-	NoLine LineType = iota
-	Solid
-	Dashed
-)
-
 type Screen struct {
 	Width, Height int
 	Ratio         float32
