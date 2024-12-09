@@ -1,10 +1,12 @@
 package chart2d
 
 import (
+	"fmt"
 	"log"
 	"math"
 	"runtime"
 	"runtime/cgo"
+	"strings"
 	"unsafe"
 
 	"github.com/go-gl/mathgl/mgl32"
@@ -31,9 +33,16 @@ type Chart2D struct {
 	lastY        float64 // Last cursor Y position
 	ScreenWidth  int     // Current width of the screen
 	ScreenHeight int     // Current height of the screen
+	// Fields for World Coordinate Range**
+	XMin, XMax       float32 // World X-range
+	YMin, YMax       float32 // World Y-range
+	ProjectionMatrix mgl32.Mat4
+	PanSpeed         float32 // Speed of panning
+	ZoomSpeed        float32 // Speed of zooming
+	ZoomFactor       float32 // Factor controlling zoom (instead of scale)
 }
 
-func NewChart2D(width, height int) *Chart2D {
+func NewChart2D(width, height int, xmin, xmax, ymin, ymax float64) *Chart2D {
 	return &Chart2D{
 		DataChan:     make(chan Series, 100), // Buffer size can be adjusted
 		isDragging:   false,
@@ -43,6 +52,13 @@ func NewChart2D(width, height int) *Chart2D {
 		Position:     [2]float32{0.0, 0.0},
 		ScreenWidth:  width,  // Set initial width
 		ScreenHeight: height, // Set initial height
+		XMin:         float32(xmin),
+		XMax:         float32(xmax),
+		YMin:         float32(ymin),
+		YMax:         float32(ymax),
+		PanSpeed:     1.0,
+		ZoomSpeed:    1.0,
+		ZoomFactor:   1.0,
 	}
 }
 
@@ -58,6 +74,7 @@ func (cc *Chart2D) Init() *glfw.Window {
 		panic(err)
 	}
 	window.MakeContextCurrent()
+
 	if err := gl.Init(); err != nil {
 		panic(err)
 	}
@@ -89,9 +106,38 @@ func (cc *Chart2D) Init() *glfw.Window {
 		cc.resizeCallback(w, width, height)
 	})
 
+	// Setup OpenGL resources AFTER shader and VBO are ready
 	cc.setupGLResources()
+
+	// Compile shader and ensure it's ready for use
 	cc.shader = cc.compileShaders()
+	gl.UseProgram(cc.shader) // Activate the shader
+
+	// Set the viewport and update projection
+	gl.Viewport(0, 0, int32(cc.ScreenWidth), int32(cc.ScreenHeight))
+	cc.updateProjectionMatrix()
+
+	// Force a single render before the event loop to ensure something is drawn
+	cc.Render()
+
 	return window
+}
+
+func (cc *Chart2D) SetZoomSpeed(speed float32) {
+	if speed <= 0 {
+		log.Println("Zoom speed must be positive, defaulting to 1.0")
+		cc.ZoomSpeed = 1.0
+		return
+	}
+	cc.ZoomSpeed = speed
+}
+func (cc *Chart2D) SetPanSpeed(speed float32) {
+	if speed <= 0 {
+		log.Println("Pan speed must be positive, defaulting to 1.0")
+		cc.PanSpeed = 1.0
+		return
+	}
+	cc.PanSpeed = speed
 }
 
 func (cc *Chart2D) mouseButtonCallback(w *glfw.Window, button glfw.MouseButton, action glfw.Action, mods glfw.ModifierKey) {
@@ -106,65 +152,104 @@ func (cc *Chart2D) mouseButtonCallback(w *glfw.Window, button glfw.MouseButton, 
 func (cc *Chart2D) cursorPositionCallback(w *glfw.Window, xpos, ypos float64) {
 	if cc.isDragging {
 		width, height := w.GetSize()
-		dx := float32(xpos-cc.lastX) / float32(width) * 2
-		dy := float32(ypos-cc.lastY) / float32(height) * 2
+
+		// Normalize pan speed relative to the world coordinates
+		dx := float32(xpos-cc.lastX) / float32(width) * (cc.XMax - cc.XMin) * cc.PanSpeed
+		dy := float32(ypos-cc.lastY) / float32(height) * (cc.YMax - cc.YMin) * cc.PanSpeed
+
 		cc.Position[0] += dx
 		cc.Position[1] -= dy
+
 		cc.lastX = xpos
 		cc.lastY = ypos
 	}
 }
 
 func (cc *Chart2D) scrollCallback(w *glfw.Window, xoff, yoff float64) {
-	cc.Scale += float32(yoff) * 0.1
-	if cc.Scale < 0.1 {
-		cc.Scale = 0.1
+	// Calculate the zoom factor
+	zoomAmount := 1.0 + float32(yoff)*0.1*cc.ZoomSpeed
+	cc.ZoomFactor *= zoomAmount
+
+	if cc.ZoomFactor < 0.1 {
+		cc.ZoomFactor = 0.1
 	}
-	if cc.Scale > 10.0 {
-		cc.Scale = 10.0
+	if cc.ZoomFactor > 10.0 {
+		cc.ZoomFactor = 10.0
 	}
+
+	// Update the projection matrix to reflect the new zoom
+	cc.updateProjectionMatrix()
 }
 
 func (cc *Chart2D) resizeCallback(w *glfw.Window, width, height int) {
 	cc.ScreenWidth = width
 	cc.ScreenHeight = height
 
-	// Update the OpenGL viewport
 	gl.Viewport(0, 0, int32(width), int32(height))
-
-	// Recalculate the orthographic projection matrix
-	aspectRatio := float32(width) / float32(height)
-	cc.updateProjectionMatrix(aspectRatio)
+	cc.updateProjectionMatrix()
 }
 
-func (cc *Chart2D) updateProjectionMatrix(aspectRatio float32) {
-	// Adjust the orthographic projection to maintain the aspect ratio
-	projection := mgl32.Ortho2D(-aspectRatio, aspectRatio, -1, 1)
+func (cc *Chart2D) updateProjectionMatrix() {
+	aspectRatio := float32(cc.ScreenWidth) / float32(cc.ScreenHeight)
+
+	var xRange, yRange float32
+	if aspectRatio > 1.0 {
+		xRange = (cc.XMax - cc.XMin) / cc.ZoomFactor
+		yRange = xRange / aspectRatio
+	} else {
+		yRange = (cc.YMax - cc.YMin) / cc.ZoomFactor
+		xRange = yRange * aspectRatio
+	}
+
+	xCenter := (cc.XMin + cc.XMax) / 2.0
+	yCenter := (cc.YMin + cc.YMax) / 2.0
+
+	xmin := xCenter - xRange/2.0
+	xmax := xCenter + xRange/2.0
+	ymin := yCenter - yRange/2.0
+	ymax := yCenter + yRange/2.0
+
+	projection := mgl32.Ortho2D(xmin, xmax, ymin, ymax)
+
+	gl.UseProgram(cc.shader) // Activate the shader before accessing uniforms
+
 	projectionUniform := gl.GetUniformLocation(cc.shader, gl.Str("projection\x00"))
 	gl.UniformMatrix4fv(projectionUniform, 1, false, &projection[0])
+
+	if err := gl.GetError(); err != 0 {
+		fmt.Printf("OpenGL Error after setting projection: %d\n", err)
+	}
 }
 
 func (cc *Chart2D) Render() {
+	// Clear the screen
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+
+	// Use the shader program
 	gl.UseProgram(cc.shader)
 
-	// Calculate the projection and model matrices
-	aspectRatio := float32(cc.ScreenWidth) / float32(cc.ScreenHeight)
-	projection := mgl32.Ortho2D(-aspectRatio, aspectRatio, -1, 1)
+	// Calculate the model matrix for pan/zoom
+	model := mgl32.Translate3D(cc.Position[0], cc.Position[1], 0)
 
-	model := mgl32.Scale3D(cc.Scale, cc.Scale, 1).Mul4(
-		mgl32.Translate3D(cc.Position[0], cc.Position[1], 0),
-	)
-
+	// Get the uniform location for model matrix
 	modelUniform := gl.GetUniformLocation(cc.shader, gl.Str("model\x00"))
-	projectionUniform := gl.GetUniformLocation(cc.shader, gl.Str("projection\x00"))
 
+	// Send the model matrix to the shader
 	gl.UniformMatrix4fv(modelUniform, 1, false, &model[0])
-	gl.UniformMatrix4fv(projectionUniform, 1, false, &projection[0])
 
+	// Bind the Vertex Array Object (VAO)
 	gl.BindVertexArray(cc.VAO)
-	totalVertices := int32(len(cc.activeSeries) * 3)
+
+	// Calculate total number of vertices in the VBO
+	totalVertices := int32(0)
+	for _, series := range cc.activeSeries {
+		totalVertices += int32(len(series.Vertices) / 5) // 2D position + 3 color components
+	}
+
+	// Draw all the triangles
 	gl.DrawArrays(gl.TRIANGLES, 0, totalVertices)
+
+	// Unbind VAO to prevent unintended modifications
 	gl.BindVertexArray(0)
 }
 
@@ -196,10 +281,14 @@ func (cc *Chart2D) setupGLResources() {
 	gl.GenBuffers(1, &cc.VBO)
 	gl.BindBuffer(gl.ARRAY_BUFFER, cc.VBO)
 
-	gl.VertexAttribPointer(0, 2, gl.FLOAT, false, 5*4, gl.PtrOffset(0)) // X, Y
+	// Allocate an empty buffer of "potentially large" size (1MB here, but could be smaller)
+	gl.BufferData(gl.ARRAY_BUFFER, 1024*1024, nil, gl.DYNAMIC_DRAW)
+
+	// Set up vertex attributes for position (2 floats) and color (3 floats)
+	gl.VertexAttribPointer(0, 2, gl.FLOAT, false, 5*4, gl.PtrOffset(0)) // Position (x, y)
 	gl.EnableVertexAttribArray(0)
 
-	gl.VertexAttribPointer(1, 3, gl.FLOAT, false, 5*4, gl.PtrOffset(2*4)) // R, G, B
+	gl.VertexAttribPointer(1, 3, gl.FLOAT, false, 5*4, gl.PtrOffset(2*4)) // Color (r, g, b)
 	gl.EnableVertexAttribArray(1)
 
 	gl.BindBuffer(gl.ARRAY_BUFFER, 0)
@@ -209,50 +298,83 @@ func (cc *Chart2D) setupGLResources() {
 func (cc *Chart2D) compileShaders() uint32 {
 	vertexShaderSource := `
 #version 450
-layout (location = 0) in vec2 position;
-layout (location = 1) in vec3 color;
 
-uniform mat4 model;
-uniform mat4 projection;
+layout (location = 0) in vec2 position; // Vertex position
+layout (location = 1) in vec3 color;    // Vertex color
 
-out vec3 fragColor;
+uniform mat4 model;        // Model transformation (for pan, zoom, etc.)
+uniform mat4 projection;   // Projection transformation (for screen-to-world transform)
+
+out vec3 fragColor;        // Output color for the fragment shader
 
 void main() {
+    // Calculate final position using projection * model * position
     gl_Position = projection * model * vec4(position, 0.0, 1.0);
     fragColor = color;
-}` + "\x00"
+}
+` + "\x00"
 
 	fragmentShaderSource := `
-	#version 450
+#version 450
 
-in vec3 fragColor;
-out vec4 color;
+in vec3 fragColor; // Interpolated color from the vertex shader
+out vec4 color;    // Final color of the pixel
 
 void main() {
-    color = vec4(fragColor, 1.0);
-}` + "\x00"
+    color = vec4(fragColor, 1.0); // Use the interpolated color as output
+}
+` + "\x00"
 
 	vertexShader := gl.CreateShader(gl.VERTEX_SHADER)
 	csource, free := gl.Strs(vertexShaderSource)
 	defer free()
 	gl.ShaderSource(vertexShader, 1, csource, nil)
 	gl.CompileShader(vertexShader)
+	checkShaderCompileStatus(vertexShader) // Check for errors
 
 	fragmentShader := gl.CreateShader(gl.FRAGMENT_SHADER)
 	csource, free = gl.Strs(fragmentShaderSource)
 	defer free()
 	gl.ShaderSource(fragmentShader, 1, csource, nil)
 	gl.CompileShader(fragmentShader)
+	checkShaderCompileStatus(fragmentShader) // Check for errors
 
 	shaderProgram := gl.CreateProgram()
 	gl.AttachShader(shaderProgram, vertexShader)
 	gl.AttachShader(shaderProgram, fragmentShader)
 	gl.LinkProgram(shaderProgram)
+	checkProgramLinkStatus(shaderProgram) // Check for errors
 
 	gl.DeleteShader(vertexShader)
 	gl.DeleteShader(fragmentShader)
 
 	return shaderProgram
+}
+
+func checkShaderCompileStatus(shader uint32) {
+	var status int32
+	gl.GetShaderiv(shader, gl.COMPILE_STATUS, &status)
+	if status == gl.FALSE {
+		var logLength int32
+		gl.GetShaderiv(shader, gl.INFO_LOG_LENGTH, &logLength)
+		log := strings.Repeat("\x00", int(logLength+1))
+		gl.GetShaderInfoLog(shader, logLength, nil, gl.Str(log))
+		fmt.Printf("SHADER COMPILE ERROR: %s\n", log)
+		panic(log)
+	}
+}
+
+func checkProgramLinkStatus(program uint32) {
+	var status int32
+	gl.GetProgramiv(program, gl.LINK_STATUS, &status)
+	if status == gl.FALSE {
+		var logLength int32
+		gl.GetProgramiv(program, gl.INFO_LOG_LENGTH, &logLength)
+		log := strings.Repeat("\x00", int(logLength+1))
+		gl.GetProgramInfoLog(program, logLength, nil, gl.Str(log))
+		fmt.Printf("PROGRAM LINK ERROR: %s\n", log)
+		panic(log)
+	}
 }
 
 func (cc *Chart2D) UpdateSeries(newSeries Series) {

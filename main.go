@@ -17,9 +17,10 @@ import (
 //}
 
 func main() {
-	chart := chart2d.NewChart2D(1080, 1080)
+	chart := chart2d.NewChart2D(800, 600, -10, 10, -5, 5) // World coordinates range from -10 to 10 in X, and -5 to 5 in Y
 	window := chart.Init()
 
+	// Generate some data
 	count := 0
 	go func() {
 		for {
@@ -27,9 +28,9 @@ func main() {
 			fmt.Println("New Data... Count = ", count)
 			chart.DataChan <- chart2d.Series{
 				Vertices: []float32{
-					-0.5, -0.5, 1.0, 0.0, 0.0, // Vertex 1
-					0.5, -0.5, 0.0, 1.0, 0.0, // Vertex 2
-					0.0, 0.5, 0.0, 0.0, 1.0, // Vertex 3
+					-2.5, -2.5, 1.0, 0.0, 0.0, // Vertex 1
+					2.5, -2.5, 0.0, 1.0, 0.0, // Vertex 2
+					0.0, 2.5, 0.0, 0.0, 1.0, // Vertex 3
 				}}
 			time.Sleep(500 * time.Millisecond)
 		}
