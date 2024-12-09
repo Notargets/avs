@@ -13,7 +13,6 @@ import (
 
 	"github.com/go-gl/gl/v4.5-core/gl"
 	"github.com/go-gl/glfw/v3.3/glfw"
-	"github.com/notargets/avs/utils"
 )
 
 //type Series struct {
@@ -21,25 +20,27 @@ import (
 //}
 
 type Chart2D struct {
-	DataChan     chan Series // Channel for new data
-	VAO          uint32      // Vertex Array Object
-	VBO          uint32      // Vertex Buffer Object
-	shader       uint32      // Shader program
-	activeSeries []Series    // List of currently active series
-	Scale        float32
-	Position     [2]float32
-	isDragging   bool    // Tracks whether the right mouse button is being held
-	lastX        float64 // Last cursor X position
-	lastY        float64 // Last cursor Y position
-	ScreenWidth  int     // Current width of the screen
-	ScreenHeight int     // Current height of the screen
+	DataChan         chan Series // Channel for new data
+	VAO              uint32      // Vertex Array Object
+	VBO              uint32      // Vertex Buffer Object
+	shader           uint32      // Shader program
+	activeSeries     []Series    // List of currently active series
+	Scale            float32
+	Position         [2]float32
+	isDragging       bool    // Tracks whether the right mouse button is being held
+	lastX            float64 // Last cursor X position
+	lastY            float64 // Last cursor Y position
+	projectionMatrix mgl32.Mat4
+	ScreenWidth      int // Current width of the screen
+	ScreenHeight     int // Current height of the screen
 	// Fields for World Coordinate Range**
-	XMin, XMax       float32 // World X-range
-	YMin, YMax       float32 // World Y-range
-	ProjectionMatrix mgl32.Mat4
-	PanSpeed         float32 // Speed of panning
-	ZoomSpeed        float32 // Speed of zooming
-	ZoomFactor       float32 // Factor controlling zoom (instead of scale)
+	XMin, XMax      float32 // World X-range
+	YMin, YMax      float32 // World Y-range
+	PanSpeed        float32 // Speed of panning
+	ZoomSpeed       float32 // Speed of zooming
+	ZoomFactor      float32 // Factor controlling zoom (instead of scale)
+	PositionChanged bool    // Tracks if position has changed
+	ScaleChanged    bool    // Tracks if scale (zoom) has changed
 }
 
 func NewChart2D(width, height int, xmin, xmax, ymin, ymax float64) *Chart2D {
@@ -79,6 +80,9 @@ func (cc *Chart2D) Init() *glfw.Window {
 		panic(err)
 	}
 
+	// Enable VSync (limit frame rate to refresh rate)
+	glfw.SwapInterval(1)
+
 	handle := cgo.NewHandle(cc)
 	window.SetUserPointer(unsafe.Pointer(handle))
 
@@ -117,10 +121,99 @@ func (cc *Chart2D) Init() *glfw.Window {
 	gl.Viewport(0, 0, int32(cc.ScreenWidth), int32(cc.ScreenHeight))
 	cc.updateProjectionMatrix()
 
+	// Force the first frame to render
+	cc.PositionChanged = true
+	cc.ScaleChanged = true
+
 	// Force a single render before the event loop to ensure something is drawn
 	cc.Render()
 
 	return window
+}
+
+func (cc *Chart2D) Render() {
+	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+	gl.UseProgram(cc.shader)
+
+	// Calculate the model matrix for pan/zoom
+	model := mgl32.Translate3D(cc.Position[0], cc.Position[1], 0)
+
+	// Get the uniform location for model and projection matrices
+	modelUniform := gl.GetUniformLocation(cc.shader, gl.Str("model\x00"))
+	projectionUniform := gl.GetUniformLocation(cc.shader, gl.Str("projection\x00"))
+
+	// Send the model and projection matrices to the shader
+	gl.UniformMatrix4fv(modelUniform, 1, false, &model[0])
+	gl.UniformMatrix4fv(projectionUniform, 1, false, &cc.projectionMatrix[0])
+
+	// Bind the Vertex Array Object (VAO)
+	gl.BindVertexArray(cc.VAO)
+
+	// Calculate total number of vertices in the VBO
+	totalVertices := int32(0)
+	for _, series := range cc.activeSeries {
+		totalVertices += int32(len(series.Vertices) / 5)
+	}
+
+	// Draw all the triangles
+	gl.DrawArrays(gl.TRIANGLES, 0, totalVertices)
+
+	// Unbind VAO to prevent unintended modifications
+	gl.BindVertexArray(0)
+}
+
+func (cc *Chart2D) EventLoop(window *glfw.Window) {
+	for !window.ShouldClose() {
+		// Poll for events (mouse, keyboard, etc.)
+		glfw.WaitEventsTimeout(0.016) // Wait for events but limit to ~60 FPS
+
+		// Check for new data from the channel and update if available
+		select {
+		case newSeries := <-cc.DataChan:
+			cc.UpdateSeries(newSeries) // Add new series to active series
+		default:
+			// No data, continue to render if state changed
+		}
+
+		// Render only if position or scale has changed
+		if cc.PositionChanged || cc.ScaleChanged {
+			cc.Render()
+			cc.PositionChanged = false
+			cc.ScaleChanged = false
+		}
+
+		// Swap the buffers to show the new frame
+		window.SwapBuffers()
+	}
+}
+
+func (cc *Chart2D) updateProjectionMatrix() {
+	// Get the aspect ratio of the window
+	aspectRatio := float32(cc.ScreenWidth) / float32(cc.ScreenHeight)
+
+	// Determine X and Y ranges for the orthographic projection
+	var xRange, yRange float32
+	if aspectRatio > 1.0 {
+		// Screen is wider than tall, adjust Y range
+		xRange = (cc.XMax - cc.XMin) / cc.ZoomFactor
+		yRange = xRange / aspectRatio
+	} else {
+		// Screen is taller than wide, adjust X range
+		yRange = (cc.YMax - cc.YMin) / cc.ZoomFactor
+		xRange = yRange * aspectRatio
+	}
+
+	// Calculate the new world coordinate bounds, centered on the original world bounds
+	xCenter := (cc.XMin + cc.XMax) / 2.0
+	yCenter := (cc.YMin + cc.YMax) / 2.0
+
+	xmin := xCenter - xRange/2.0
+	xmax := xCenter + xRange/2.0
+	ymin := yCenter - yRange/2.0
+	ymax := yCenter + yRange/2.0
+
+	// Cache the orthographic projection matrix
+	cc.projectionMatrix = mgl32.Ortho2D(xmin, xmax, ymin, ymax)
 }
 
 func (cc *Chart2D) SetZoomSpeed(speed float32) {
@@ -160,16 +253,20 @@ func (cc *Chart2D) cursorPositionCallback(w *glfw.Window, xpos, ypos float64) {
 		cc.Position[0] += dx
 		cc.Position[1] -= dy
 
+		// Indicate that the position has changed
+		cc.PositionChanged = true
+
+		// Update last cursor position
 		cc.lastX = xpos
 		cc.lastY = ypos
 	}
 }
 
 func (cc *Chart2D) scrollCallback(w *glfw.Window, xoff, yoff float64) {
-	// Calculate the zoom factor
-	zoomAmount := 1.0 + float32(yoff)*0.1*cc.ZoomSpeed
-	cc.ZoomFactor *= zoomAmount
+	// Adjust zoom factor based on scroll input
+	cc.ZoomFactor *= 1.0 + float32(yoff)*0.1*cc.ZoomSpeed
 
+	// Constrain zoom factor to a safe range
 	if cc.ZoomFactor < 0.1 {
 		cc.ZoomFactor = 0.1
 	}
@@ -177,7 +274,10 @@ func (cc *Chart2D) scrollCallback(w *glfw.Window, xoff, yoff float64) {
 		cc.ZoomFactor = 10.0
 	}
 
-	// Update the projection matrix to reflect the new zoom
+	// Indicate that the scale has changed
+	cc.ScaleChanged = true
+
+	// Update the projection matrix
 	cc.updateProjectionMatrix()
 }
 
@@ -186,93 +286,58 @@ func (cc *Chart2D) resizeCallback(w *glfw.Window, width, height int) {
 	cc.ScreenHeight = height
 
 	gl.Viewport(0, 0, int32(width), int32(height))
+
+	aspectRatio := float32(width) / float32(height)
+
+	if aspectRatio > 1.0 {
+		viewHeight := (cc.YMax - cc.YMin)
+		viewWidth := viewHeight * aspectRatio
+		centerX := (cc.XMax + cc.XMin) / 2.0
+		cc.XMin = centerX - viewWidth/2.0
+		cc.XMax = centerX + viewWidth/2.0
+	} else {
+		viewWidth := (cc.XMax - cc.XMin)
+		viewHeight := viewWidth / aspectRatio
+		centerY := (cc.YMin + cc.YMax) / 2.0
+		cc.YMin = centerY - viewHeight/2.0
+		cc.YMax = centerY + viewHeight/2.0
+	}
+
+	// Update the projection matrix with new dimensions
 	cc.updateProjectionMatrix()
 }
 
-func (cc *Chart2D) updateProjectionMatrix() {
-	aspectRatio := float32(cc.ScreenWidth) / float32(cc.ScreenHeight)
-
-	var xRange, yRange float32
-	if aspectRatio > 1.0 {
-		xRange = (cc.XMax - cc.XMin) / cc.ZoomFactor
-		yRange = xRange / aspectRatio
-	} else {
-		yRange = (cc.YMax - cc.YMin) / cc.ZoomFactor
-		xRange = yRange * aspectRatio
-	}
-
-	xCenter := (cc.XMin + cc.XMax) / 2.0
-	yCenter := (cc.YMin + cc.YMax) / 2.0
-
-	xmin := xCenter - xRange/2.0
-	xmax := xCenter + xRange/2.0
-	ymin := yCenter - yRange/2.0
-	ymax := yCenter + yRange/2.0
-
-	projection := mgl32.Ortho2D(xmin, xmax, ymin, ymax)
-
-	gl.UseProgram(cc.shader) // Activate the shader before accessing uniforms
-
-	projectionUniform := gl.GetUniformLocation(cc.shader, gl.Str("projection\x00"))
-	gl.UniformMatrix4fv(projectionUniform, 1, false, &projection[0])
-
-	if err := gl.GetError(); err != 0 {
-		fmt.Printf("OpenGL Error after setting projection: %d\n", err)
-	}
-}
-
-func (cc *Chart2D) Render() {
-	// Clear the screen
-	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
-
-	// Use the shader program
-	gl.UseProgram(cc.shader)
-
-	// Calculate the model matrix for pan/zoom
-	model := mgl32.Translate3D(cc.Position[0], cc.Position[1], 0)
-
-	// Get the uniform location for model matrix
-	modelUniform := gl.GetUniformLocation(cc.shader, gl.Str("model\x00"))
-
-	// Send the model matrix to the shader
-	gl.UniformMatrix4fv(modelUniform, 1, false, &model[0])
-
-	// Bind the Vertex Array Object (VAO)
-	gl.BindVertexArray(cc.VAO)
-
-	// Calculate total number of vertices in the VBO
-	totalVertices := int32(0)
-	for _, series := range cc.activeSeries {
-		totalVertices += int32(len(series.Vertices) / 5) // 2D position + 3 color components
-	}
-
-	// Draw all the triangles
-	gl.DrawArrays(gl.TRIANGLES, 0, totalVertices)
-
-	// Unbind VAO to prevent unintended modifications
-	gl.BindVertexArray(0)
-}
-
-func (cc *Chart2D) EventLoop(window *glfw.Window) {
-	for !window.ShouldClose() {
-		// Poll for events (mouse, keyboard, etc.)
-		glfw.PollEvents()
-
-		// Check for new data from the channel and update if available
-		select {
-		case newSeries := <-cc.DataChan:
-			cc.UpdateSeries(newSeries) // Add new series to active series
-		default:
-			// No data, continue to render
-		}
-
-		// Render the current scene
-		cc.Render()
-
-		// Swap the buffers to show the new frame
-		window.SwapBuffers()
-	}
-}
+//func (cc *Chart2D) updateProjectionMatrix() {
+//	aspectRatio := float32(cc.ScreenWidth) / float32(cc.ScreenHeight)
+//
+//	var xRange, yRange float32
+//	if aspectRatio > 1.0 {
+//		xRange = (cc.XMax - cc.XMin) / cc.ZoomFactor
+//		yRange = xRange / aspectRatio
+//	} else {
+//		yRange = (cc.YMax - cc.YMin) / cc.ZoomFactor
+//		xRange = yRange * aspectRatio
+//	}
+//
+//	xCenter := (cc.XMin + cc.XMax) / 2.0
+//	yCenter := (cc.YMin + cc.YMax) / 2.0
+//
+//	xmin := xCenter - xRange/2.0
+//	xmax := xCenter + xRange/2.0
+//	ymin := yCenter - yRange/2.0
+//	ymax := yCenter + yRange/2.0
+//
+//	projection := mgl32.Ortho2D(xmin, xmax, ymin, ymax)
+//
+//	gl.UseProgram(cc.shader) // Activate the shader before accessing uniforms
+//
+//	projectionUniform := gl.GetUniformLocation(cc.shader, gl.Str("projection\x00"))
+//	gl.UniformMatrix4fv(projectionUniform, 1, false, &projection[0])
+//
+//	if err := gl.GetError(); err != 0 {
+//		fmt.Printf("OpenGL Error after setting projection: %d\n", err)
+//	}
+//}
 
 func (cc *Chart2D) setupGLResources() {
 	gl.GenVertexArrays(1, &cc.VAO)
@@ -434,38 +499,4 @@ func DrawCrossGlyph(cx, cy, size float32) []float32 {
 		cx, cy - size, 0.0, 0.0, 1.0,
 		cx, cy + size, 1.0, 1.0, 0.0,
 	}
-}
-
-type Chart2D_old struct {
-	Sc           *Screen
-	RmX, RmY     *RangeMap
-	activeSeries map[string]Series
-	inputChan    chan *NewDataMsg
-	stopChan     chan struct{}
-	colormap     *utils.ColorMap
-}
-
-func (cc *Chart2D_old) StopPlot() {
-	cc.stopChan <- struct{}{}
-}
-
-func (cc *Chart2D_old) processNewData() {
-	for i := 0; i < len(cc.inputChan); i++ {
-		msg := <-cc.inputChan
-		cc.activeSeries[msg.Name] = msg.Data
-	}
-}
-func NewChart2D_old(w, h int, xmin, xmax, ymin, ymax float32, chanDepth ...int) (cc *Chart2D_old) {
-	cc = &Chart2D_old{}
-	cc.Sc = NewScreen(w, h)
-	cc.RmX = NewRangeMap(xmin, xmax, 0, 1)
-	cc.RmY = NewRangeMap(ymin, ymax, 0, 1)
-	cc.activeSeries = make(map[string]Series)
-	if len(chanDepth) != 0 {
-		cc.inputChan = make(chan *NewDataMsg, chanDepth[0])
-	} else {
-		cc.inputChan = make(chan *NewDataMsg, 1)
-	}
-	cc.stopChan = make(chan struct{})
-	return
 }
