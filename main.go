@@ -4,10 +4,18 @@ import (
 	"fmt"
 	"time"
 
+	graphics2D "github.com/notargets/avs/geometry"
+
 	"github.com/notargets/avs/chart2d"
 )
 
 func main() {
+
+	//trimesh, xmin, xmax, ymin, ymax := makeExampleMesh()
+	//chart := chart2d.NewChart2D(1920, 1080, xmin, xmax, ymin, ymax)
+	//colorMap := utils.NewColorMap(0, 11, 1)
+	//chart.AddTriMesh("mesh", trimesh, chart2d.TriangleGlyph, 0.01, chart2d.Solid, colorMap.GetRGB(0))
+
 	chart := chart2d.NewChart2D(1920, 1080, -10, 10, -5, 5) // World coordinates range from -10 to 10 in X, and -5 to 5 in Y
 	window := chart.Init()
 
@@ -28,6 +36,53 @@ func main() {
 	}()
 
 	chart.EventLoop(window)
+}
+
+func makeExampleMesh() (trimesh graphics2D.TriMesh, xmin, xmax, ymin, ymax float64) {
+	xmin, xmax = -0.500, 2.500
+	ymin, ymax = 0.000, 1.000
+	var points = []graphics2D.Point{
+		{X: [2]float32{0.00, 0.00}},
+		{X: [2]float32{1.00, 0.00}},
+		{X: [2]float32{2.00, 0.00}},
+		{X: [2]float32{-0.50, 0.50}},
+		{X: [2]float32{0.50, 0.50}},
+		{X: [2]float32{1.50, 0.50}},
+		{X: [2]float32{2.50, 0.50}},
+		{X: [2]float32{0.00, 1.00}},
+		{X: [2]float32{1.00, 1.00}},
+		{X: [2]float32{2.00, 1.00}},
+	}
+	trimesh.Geometry = points
+
+	var triangles = []graphics2D.Triangle{
+		{Nodes: [3]int32{4, 3, 0}},
+		{Nodes: [3]int32{1, 4, 0}},
+		{Nodes: [3]int32{5, 4, 1}},
+		{Nodes: [3]int32{5, 1, 2}},
+		{Nodes: [3]int32{6, 5, 2}},
+		{Nodes: [3]int32{7, 3, 4}},
+		{Nodes: [3]int32{8, 7, 4}},
+		{Nodes: [3]int32{8, 4, 5}},
+		{Nodes: [3]int32{9, 8, 5}},
+		{Nodes: [3]int32{9, 5, 6}},
+	}
+	trimesh.Triangles = triangles
+
+	var data = [][]float32{
+		{0.00, 0.00, 5.00},
+		{0.00, 0.00, 0.00},
+		{0.00, 0.00, 0.00},
+		{0.00, 0.00, 0.00},
+		{0.00, 5.00, 0.00},
+		{0.00, 0.00, 0.00},
+		{0.00, 0.00, 0.00},
+		{5.00, 0.00, 0.00},
+		{0.00, 0.00, 0.00},
+		{0.00, 0.00, 0.00},
+	}
+	trimesh.Attributes = data
+	return
 }
 
 //func old_main() {
