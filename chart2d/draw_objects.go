@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-gl/gl/v4.5-core/gl"
 	"github.com/go-gl/glfw/v3.3/glfw"
+	"github.com/google/uuid"
 )
 
 type RenderType uint16
@@ -30,14 +31,21 @@ type ShaderPrograms map[RenderType]uint32
 type Screen struct {
 	Shaders ShaderPrograms // Stores precompiled shaders for all graphics types in the RenderType list
 	Window  *glfw.Window
+	Objects map[uuid.UUID]interface{}
 	// Insert initialization of OGL 4.5 shader definitions here and compile and save the shader programs
 }
 
 func (cc *Chart2D) NewScreen(width, height int) (scr *Screen) {
-	var err error
 	scr = &Screen{
 		Shaders: make(ShaderPrograms),
 	}
+	scr.InitGLScreen(cc, width, height)
+	scr.InitShaders()
+	return
+}
+
+func (scr *Screen) InitGLScreen(cc *Chart2D, width, height int) {
+	var err error
 	runtime.LockOSThread()
 
 	if err := glfw.Init(); err != nil {
@@ -84,7 +92,6 @@ func (cc *Chart2D) NewScreen(width, height int) (scr *Screen) {
 		cc.resizeCallback(w, width, height)
 	})
 
-	scr.InitShaders()
 	return
 }
 
@@ -353,66 +360,109 @@ type Line struct {
 	Colors        []float32 // Flat list of color data [r1, g1, b1, r2, g2, b2, ...]
 }
 
-// NewLine initializes a new Line object, creates GPU buffers, and sets up the VAO
-func NewLine() *Line {
-	line := &Line{}
+func (scr *Screen) AddLine(key uuid.UUID, X, Y, Colors []float32, defaultColor ...[3]float32) uuid.UUID {
+	var line *Line
 
-	// Generate VAO
-	gl.GenVertexArrays(1, &line.VAO)
-	gl.BindVertexArray(line.VAO)
+	// Check if the line already exists
+	if key != uuid.Nil {
+		// Try to retrieve existing line from the screen object map
+		existingLine, exists := scr.Objects[key]
+		if exists {
+			line = existingLine.(*Line)
+		} else {
+			// If no object exists for this key, create a new Line
+			key = uuid.New()
+			line = &Line{}
+			scr.Objects[key] = line
+		}
+	} else {
+		// Create a new Line if no key is provided
+		key = uuid.New()
+		line = &Line{}
+		scr.Objects[key] = line
+	}
 
-	// Generate VBO for vertex positions
-	gl.GenBuffers(1, &line.VBO)
-	gl.BindBuffer(gl.ARRAY_BUFFER, line.VBO)
-	gl.BufferData(gl.ARRAY_BUFFER, 0, nil, gl.STATIC_DRAW) // Initial empty buffer
+	// Initialize OpenGL resources only if this is a new line
+	if line.VAO == 0 {
+		// Generate VAO
+		gl.GenVertexArrays(1, &line.VAO)
+		gl.BindVertexArray(line.VAO)
 
-	// Define position layout (location = 0 in shader)
-	gl.VertexAttribPointer(0, 2, gl.FLOAT, false, 0, gl.PtrOffset(0))
-	gl.EnableVertexAttribArray(0)
+		// Generate VBO for vertex positions
+		gl.GenBuffers(1, &line.VBO)
+		gl.BindBuffer(gl.ARRAY_BUFFER, line.VBO)
 
-	// Generate CBO for vertex colors
-	gl.GenBuffers(1, &line.CBO)
-	gl.BindBuffer(gl.ARRAY_BUFFER, line.CBO)
-	gl.BufferData(gl.ARRAY_BUFFER, 0, nil, gl.STATIC_DRAW) // Initial empty buffer
+		// Define position layout (location = 0 in shader)
+		gl.VertexAttribPointer(0, 2, gl.FLOAT, false, 0, gl.Ptr(nil))
+		gl.EnableVertexAttribArray(0)
 
-	// Define color layout (location = 1 in shader)
-	gl.VertexAttribPointer(1, 3, gl.FLOAT, false, 0, gl.PtrOffset(0))
-	gl.EnableVertexAttribArray(1)
+		// Generate CBO for vertex colors
+		gl.GenBuffers(1, &line.CBO)
+		gl.BindBuffer(gl.ARRAY_BUFFER, line.CBO)
 
-	// Unbind the VAO
-	gl.BindVertexArray(0)
+		// Define color layout (location = 1 in shader)
+		gl.VertexAttribPointer(1, 3, gl.FLOAT, false, 0, gl.Ptr(nil))
+		gl.EnableVertexAttribArray(1)
 
-	return line
+		// Unbind the VAO
+		gl.BindVertexArray(0)
+	}
+
+	// Call the `Update` method to upload the vertex and color data
+	line.Update(X, Y, Colors, defaultColor...)
+
+	return key
 }
 
-// Add adds the line geometry (X and F) to the GPU
-func (line *Line) Add(X, F []float32) {
-	// Ensure X and F have the same length
-	if len(X) != len(F) {
-		panic("X and F must have the same length")
+// Update updates the line's vertex positions (X, Y) and vertex colors on the GPU
+func (line *Line) Update(X, Y, Colors []float32, defaultColor ...[3]float32) {
+	if len(X) > 0 && len(Y) > 0 && len(X) != len(Y) {
+		panic("X and Y must have the same length if both are provided")
 	}
 
-	// Create the vertex positions as [x1, y1, x2, y2, ...]
-	line.Vertices = make([]float32, len(X)*2)
-	for i := 0; i < len(X); i++ {
-		line.Vertices[2*i] = X[i]
-		line.Vertices[2*i+1] = F[i]
+	// Update vertex positions if X and Y are provided
+	if len(X) > 0 && len(Y) > 0 {
+		// Create the vertex positions as [x1, y1, x2, y2, ...]
+		line.Vertices = make([]float32, len(X)*2)
+		for i := 0; i < len(X); i++ {
+			line.Vertices[2*i] = X[i]
+			line.Vertices[2*i+1] = Y[i]
+		}
+
+		// Bind the VAO
+		gl.BindVertexArray(line.VAO)
+
+		// Update vertex positions in the VBO
+		gl.BindBuffer(gl.ARRAY_BUFFER, line.VBO)
+		gl.BufferData(gl.ARRAY_BUFFER, len(line.Vertices)*4, gl.Ptr(line.Vertices), gl.STATIC_DRAW)
 	}
 
-	// For simplicity, we'll use a default color of white for all vertices (can be customized later)
-	line.Colors = make([]float32, len(X)*3) // RGB for each vertex
-	for i := 0; i < len(X); i++ {
-		line.Colors[3*i] = 1.0   // R
-		line.Colors[3*i+1] = 1.0 // G
-		line.Colors[3*i+2] = 1.0 // B
+	// Determine default color if Colors are not provided
+	var colorToUse [3]float32 = [3]float32{1.0, 1.0, 1.0} // Default white color
+	if len(defaultColor) > 0 {
+		colorToUse = defaultColor[0]
+	}
+
+	// Update vertex colors if Colors are provided or generate default colors
+	if len(Colors) > 0 {
+		if len(Colors)%3 != 0 {
+			panic("Colors array must be a multiple of 3 (R, G, B per vertex)")
+		}
+		line.Colors = make([]float32, len(Colors))
+		copy(line.Colors, Colors)
+	} else {
+		// Generate color data using the default color
+		numVertices := len(X)
+		line.Colors = make([]float32, numVertices*3) // RGB for each vertex
+		for i := 0; i < numVertices; i++ {
+			line.Colors[3*i] = colorToUse[0]   // R
+			line.Colors[3*i+1] = colorToUse[1] // G
+			line.Colors[3*i+2] = colorToUse[2] // B
+		}
 	}
 
 	// Bind the VAO
 	gl.BindVertexArray(line.VAO)
-
-	// Update vertex positions in the VBO
-	gl.BindBuffer(gl.ARRAY_BUFFER, line.VBO)
-	gl.BufferData(gl.ARRAY_BUFFER, len(line.Vertices)*4, gl.Ptr(line.Vertices), gl.STATIC_DRAW)
 
 	// Update color data in the CBO
 	gl.BindBuffer(gl.ARRAY_BUFFER, line.CBO)

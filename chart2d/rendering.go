@@ -19,16 +19,13 @@ func (cc *Chart2D) Init() {
 	cc.shader = cc.compileShaders()
 	gl.UseProgram(cc.shader) // Activate the shader
 
-	// Set the viewport and update projection
+	//// Set the viewport and update projection
 	gl.Viewport(0, 0, int32(cc.ScreenWidth), int32(cc.ScreenHeight))
 	cc.updateProjectionMatrix()
 
 	// Force the first frame to render
 	cc.PositionChanged = true
 	cc.ScaleChanged = true
-
-	// Force a single render before the event loop to ensure something is drawn
-	cc.Render()
 }
 
 func (cc *Chart2D) Render() {
