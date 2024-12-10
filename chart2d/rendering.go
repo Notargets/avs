@@ -3,10 +3,7 @@ package chart2d
 import (
 	"fmt"
 	"log"
-	"runtime"
-	"runtime/cgo"
 	"strings"
-	"unsafe"
 
 	"github.com/go-gl/glfw/v3.3/glfw"
 	"github.com/go-gl/mathgl/mgl32"
@@ -14,53 +11,7 @@ import (
 	"github.com/go-gl/gl/v4.5-core/gl"
 )
 
-func (cc *Chart2D) Init() *glfw.Window {
-	runtime.LockOSThread()
-
-	if err := glfw.Init(); err != nil {
-		log.Fatalln("failed to initialize glfw:", err)
-	}
-
-	window, err := glfw.CreateWindow(cc.ScreenWidth, cc.ScreenHeight, "Chart2D", nil, nil)
-	if err != nil {
-		panic(err)
-	}
-	window.MakeContextCurrent()
-
-	if err := gl.Init(); err != nil {
-		panic(err)
-	}
-
-	// Enable VSync (limit frame rate to refresh rate)
-	glfw.SwapInterval(1)
-
-	handle := cgo.NewHandle(cc)
-	window.SetUserPointer(unsafe.Pointer(handle))
-
-	window.SetMouseButtonCallback(func(w *glfw.Window, button glfw.MouseButton, action glfw.Action, mods glfw.ModifierKey) {
-		handle := cgo.Handle(w.GetUserPointer())
-		cc := handle.Value().(*Chart2D)
-		cc.mouseButtonCallback(w, button, action, mods)
-	})
-
-	window.SetCursorPosCallback(func(w *glfw.Window, xpos, ypos float64) {
-		handle := cgo.Handle(w.GetUserPointer())
-		cc := handle.Value().(*Chart2D)
-		cc.cursorPositionCallback(w, xpos, ypos)
-	})
-
-	window.SetScrollCallback(func(w *glfw.Window, xoff, yoff float64) {
-		handle := cgo.Handle(w.GetUserPointer())
-		cc := handle.Value().(*Chart2D)
-		cc.scrollCallback(w, xoff, yoff)
-	})
-
-	window.SetSizeCallback(func(w *glfw.Window, width, height int) {
-		handle := cgo.Handle(w.GetUserPointer())
-		cc := handle.Value().(*Chart2D)
-		cc.resizeCallback(w, width, height)
-	})
-
+func (cc *Chart2D) Init() {
 	// Setup OpenGL resources AFTER shader and VBO are ready
 	cc.setupGLResources()
 
@@ -78,8 +29,6 @@ func (cc *Chart2D) Init() *glfw.Window {
 
 	// Force a single render before the event loop to ensure something is drawn
 	cc.Render()
-
-	return window
 }
 
 func (cc *Chart2D) Render() {
@@ -113,7 +62,8 @@ func (cc *Chart2D) Render() {
 	gl.BindVertexArray(0)
 }
 
-func (cc *Chart2D) EventLoop(window *glfw.Window) {
+func (cc *Chart2D) EventLoop() {
+	var window = cc.Scene.Window
 	for !window.ShouldClose() {
 		// Poll for events (mouse, keyboard, etc.)
 		glfw.WaitEventsTimeout(0.016) // Wait for events but limit to ~60 FPS

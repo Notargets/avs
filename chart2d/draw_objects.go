@@ -1,7 +1,13 @@
-package opengl_rendering
+package chart2d
 
 import (
+	"log"
+	"runtime"
+	"runtime/cgo"
+	"unsafe"
+
 	"github.com/go-gl/gl/v4.5-core/gl"
+	"github.com/go-gl/glfw/v3.3/glfw"
 )
 
 type RenderType uint16
@@ -23,13 +29,66 @@ type ShaderPrograms map[RenderType]uint32
 
 type Screen struct {
 	Shaders ShaderPrograms // Stores precompiled shaders for all graphics types in the RenderType list
+	Window  *glfw.Window
 	// Insert initialization of OGL 4.5 shader definitions here and compile and save the shader programs
 }
 
-func NewScreen() (scr *Screen) {
+func (cc *Chart2D) NewScreen(width, height int) (scr *Screen) {
+	var err error
 	scr = &Screen{
 		Shaders: make(ShaderPrograms),
 	}
+	runtime.LockOSThread()
+
+	if err := glfw.Init(); err != nil {
+		log.Fatalln("failed to initialize glfw:", err)
+	}
+
+	scr.Window, err = glfw.CreateWindow(width, height, "Chart2D", nil, nil)
+	if err != nil {
+		panic(err)
+	}
+	scr.Window.MakeContextCurrent()
+
+	if err := gl.Init(); err != nil {
+		panic(err)
+	}
+
+	// Enable VSync (limit frame rate to refresh rate)
+	glfw.SwapInterval(1)
+
+	handle := cgo.NewHandle(cc)
+	scr.Window.SetUserPointer(unsafe.Pointer(handle))
+
+	scr.Window.SetMouseButtonCallback(func(w *glfw.Window, button glfw.MouseButton, action glfw.Action, mods glfw.ModifierKey) {
+		handle := cgo.Handle(w.GetUserPointer())
+		cc := handle.Value().(*Chart2D)
+		cc.mouseButtonCallback(w, button, action, mods)
+	})
+
+	scr.Window.SetCursorPosCallback(func(w *glfw.Window, xpos, ypos float64) {
+		handle := cgo.Handle(w.GetUserPointer())
+		cc := handle.Value().(*Chart2D)
+		cc.cursorPositionCallback(w, xpos, ypos)
+	})
+
+	scr.Window.SetScrollCallback(func(w *glfw.Window, xoff, yoff float64) {
+		handle := cgo.Handle(w.GetUserPointer())
+		cc := handle.Value().(*Chart2D)
+		cc.scrollCallback(w, xoff, yoff)
+	})
+
+	scr.Window.SetSizeCallback(func(w *glfw.Window, width, height int) {
+		handle := cgo.Handle(w.GetUserPointer())
+		cc := handle.Value().(*Chart2D)
+		cc.resizeCallback(w, width, height)
+	})
+
+	scr.InitShaders()
+	return
+}
+
+func (scr *Screen) InitShaders() {
 
 	for i := int(LINE); i <= int(TRIMESHSMOOTH3D); i++ {
 		switch RenderType(i) {
@@ -261,7 +320,7 @@ void main() {
 			scr.Shaders[TRIMESHSMOOTH3D] = compileShaderProgram(vertexShaderSource, fragmentShaderSource)
 		}
 	}
-	return scr
+	return
 }
 
 func compileShaderProgram(vertexSource, fragmentSource string) uint32 {

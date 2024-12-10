@@ -1,12 +1,12 @@
 package chart2d
 
 import (
-	"github.com/go-gl/mathgl/mgl32"
-
 	"github.com/go-gl/gl/v4.5-core/gl"
+	"github.com/go-gl/mathgl/mgl32"
 )
 
 type Chart2D struct {
+	Scene            *Screen      // Manages OpenGL screen contents
 	DataChan         chan DataMsg // Channel for new data
 	VAO              uint32       // Vertex Array Object
 	VBO              uint32       // Vertex Buffer Object
@@ -30,8 +30,8 @@ type Chart2D struct {
 	ScaleChanged    bool    // Tracks if scale (zoom) has changed
 }
 
-func NewChart2D(width, height int, xmin, xmax, ymin, ymax float64) *Chart2D {
-	return &Chart2D{
+func NewChart2D(width, height int, xmin, xmax, ymin, ymax float64) (cc *Chart2D) {
+	cc = &Chart2D{
 		DataChan:     make(chan DataMsg, 100), // Buffer size can be adjusted
 		isDragging:   false,
 		lastX:        0,
@@ -48,6 +48,8 @@ func NewChart2D(width, height int, xmin, xmax, ymin, ymax float64) *Chart2D {
 		ZoomSpeed:    1.0,
 		ZoomFactor:   1.0,
 	}
+	cc.Scene = cc.NewScreen(width, height)
+	return
 }
 
 func (cc *Chart2D) UpdateSeries(newSeries Series) {

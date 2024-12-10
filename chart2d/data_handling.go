@@ -1,23 +1,21 @@
 package chart2d
 
 import (
-	"image/color"
-
 	"github.com/notargets/avs/functions"
 	graphics2D "github.com/notargets/avs/geometry"
 )
 
 type Series struct {
-	Vertices  []float32
-	Xdata     []float32
-	Ydata     []float32
-	TriMesh   *graphics2D.TriMesh
-	Surface   *functions.FSurface
-	Vectors   [][2]float64
-	Glyph     GlyphType
-	GlyphSize float32
-	Linetype  LineType
-	Color     *color.RGBA
+	Vertices []float32
+	Xdata    []float32
+	Ydata    []float32
+	TriMesh  *graphics2D.TriMesh
+	Surface  *functions.FSurface
+	Vectors  [][2]float64
+	//Glyph     GlyphType
+	//GlyphSize float32
+	//Linetype  LineType
+	//Color     *color.RGBA
 }
 
 type DataMsg struct {
@@ -25,35 +23,36 @@ type DataMsg struct {
 	Data Series
 }
 
-type GlyphType uint8
-
-const (
-	NoGlyph GlyphType = iota
-	CircleGlyph
-	XGlyph
-	CrossGlyph
-	StarGlyph
-	BoxGlyph
-	TriangleGlyph
-)
-
-const (
-	NoLine LineType = iota
-	Solid
-	Dashed
-)
-
-func (cc *Chart2D) AddTriMesh(name string, Tris graphics2D.TriMesh, Glyph GlyphType, GlyphSize float32, lt LineType, co color.RGBA) (err error) {
-	s := Series{
-		TriMesh:   &Tris,
-		Glyph:     Glyph,
-		GlyphSize: GlyphSize,
-		Linetype:  lt,
-		Color:     &co,
-	}
-	cc.DataChan <- DataMsg{name, s}
-	return
-}
+//
+//type GlyphType uint8
+//
+//const (
+//	NoGlyph GlyphType = iota
+//	CircleGlyph
+//	XGlyph
+//	CrossGlyph
+//	StarGlyph
+//	BoxGlyph
+//	TriangleGlyph
+//)
+//
+//const (
+//	NoLine LineType = iota
+//	Solid
+//	Dashed
+//)
+//
+//func (cc *Chart2D) AddTriMesh(name string, Tris graphics2D.TriMesh, Glyph GlyphType, GlyphSize float32, lt LineType, co color.RGBA) (err error) {
+//	s := Series{
+//		TriMesh:   &Tris,
+//		Glyph:     Glyph,
+//		GlyphSize: GlyphSize,
+//		Linetype:  lt,
+//		Color:     &co,
+//	}
+//	cc.DataChan <- DataMsg{name, s}
+//	return
+//}
 
 //func (cc *Chart2D_old) AddVectors(name string, Geom []graphics2D.Point, vectors [][2]float64, lt LineType, co color.RGBA) (err error) {
 //	var (

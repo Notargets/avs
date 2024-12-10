@@ -17,7 +17,7 @@ func main() {
 	//chart.AddTriMesh("mesh", trimesh, chart2d.TriangleGlyph, 0.01, chart2d.Solid, colorMap.GetRGB(0))
 
 	chart := chart2d.NewChart2D(1920, 1080, -10, 10, -5, 5) // World coordinates range from -10 to 10 in X, and -5 to 5 in Y
-	window := chart.Init()
+	chart.Init()
 
 	// Generate some data
 	count := 0
@@ -35,7 +35,7 @@ func main() {
 		}
 	}()
 
-	chart.EventLoop(window)
+	chart.EventLoop()
 }
 
 func makeExampleMesh() (trimesh graphics2D.TriMesh, xmin, xmax, ymin, ymax float64) {
