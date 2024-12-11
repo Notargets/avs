@@ -1,4 +1,4 @@
-package chart2d
+package screen
 
 //func DrawGlyph(xc, yc float32, glyphType GlyphType, glyphSize float32) []float32 {
 //	switch glyphType {
