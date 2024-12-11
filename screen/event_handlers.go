@@ -30,34 +30,30 @@ func (scr *Screen) SetCallbacks() {
 	scr.Window.SetMouseButtonCallback(scr.mouseButtonCallback)
 	scr.Window.SetCursorPosCallback(scr.cursorPositionCallback)
 	scr.Window.SetScrollCallback(scr.scrollCallback)
+	scr.Window.SetSizeCallback(scr.resizeCallback)
+
 }
 
 func (scr *Screen) updateProjectionMatrix() {
-	// Get the aspect ratio of the window
-	aspectRatio := float32(scr.ScreenWidth) / float32(scr.ScreenHeight)
+	// Log for debug purposes
+	fmt.Println("Updating projection matrix...")
 
-	// Calculate the world coordinates relative to the zoom and position
-	var xRange, yRange float32
-	if aspectRatio > 1.0 {
-		// Landscape orientation
-		xRange = (scr.XMax - scr.XMin) / scr.Scale
-		yRange = xRange / aspectRatio
-	} else {
-		// Portrait orientation
-		yRange = (scr.YMax - scr.YMin) / scr.Scale
-		xRange = yRange * aspectRatio
-	}
+	// Calculate the world range based on Scale and ZoomFactor
+	xRange := (scr.XMax - scr.XMin) / scr.ZoomFactor / scr.Scale
+	yRange := (scr.YMax - scr.YMin) / scr.ZoomFactor / scr.Scale
 
-	// Apply position offset (world shift)
-	xmin := scr.Position[0] - xRange/2.0
-	xmax := scr.Position[0] + xRange/2.0
-	ymin := scr.Position[1] - yRange/2.0
-	ymax := scr.Position[1] + yRange/2.0
+	// Adjust the world coordinates for panning
+	centerX := (scr.XMin + scr.XMax) / 2.0
+	centerY := (scr.YMin + scr.YMax) / 2.0
+	xmin := centerX - xRange/2.0 + scr.Position[0]
+	xmax := centerX + xRange/2.0 + scr.Position[0]
+	ymin := centerY - yRange/2.0 + scr.Position[1]
+	ymax := centerY + yRange/2.0 + scr.Position[1]
 
-	// Update the orthographic projection matrix
+	// Update the projection matrix
 	scr.projectionMatrix = mgl32.Ortho2D(xmin, xmax, ymin, ymax)
 
-	// Upload the new projection matrix to all shaders
+	// Update the projection matrix for all shader programs
 	for renderType, shaderProgram := range scr.Shaders {
 		projectionUniform := gl.GetUniformLocation(shaderProgram, gl.Str("projection\x00"))
 		if projectionUniform < 0 {
@@ -100,26 +96,34 @@ func (scr *Screen) cursorPositionCallback(w *glfw.Window, xpos, ypos float64) {
 }
 
 func (scr *Screen) scrollCallback(w *glfw.Window, xoff, yoff float64) {
-	// Calculate new zoom scale (increase/decrease)
-	scaleChange := 1.0 + float32(yoff)*0.1*scr.ZoomSpeed
-	newScale := scr.Scale * scaleChange
+	// Adjust the zoom factor based on scroll input
+	scr.ZoomFactor *= 1.0 + float32(yoff)*0.1*scr.ZoomSpeed
 
-	// Constrain zoom level (avoid excessive zoom-in/out)
-	if newScale < 0.1 {
-		newScale = 0.1
+	// Constrain the zoom factor to prevent excessive zoom
+	if scr.ZoomFactor < 0.1 {
+		scr.ZoomFactor = 0.1
 	}
-	if newScale > 10.0 {
-		newScale = 10.0
+	if scr.ZoomFactor > 10.0 {
+		scr.ZoomFactor = 10.0
 	}
 
-	// Update the scale
-	scr.Scale = newScale
+	// Also adjust the scale value (legacy, previously working logic)
+	scr.Scale *= 1.0 + float32(yoff)*0.1*scr.ZoomSpeed
 
-	// Mark screen to update projection matrix
+	// Constrain the scale to prevent excessive zoom (if needed)
+	if scr.Scale < 0.1 {
+		scr.Scale = 0.1
+	}
+	if scr.Scale > 10.0 {
+		scr.Scale = 10.0
+	}
+
+	// Flag that the scale has changed to trigger re-rendering
 	scr.ScaleChanged = true
 }
 
 func (scr *Screen) resizeCallback(w *glfw.Window, width, height int) {
+	// Update screen dimensions
 	scr.ScreenWidth = width
 	scr.ScreenHeight = height
 
@@ -129,27 +133,22 @@ func (scr *Screen) resizeCallback(w *glfw.Window, width, height int) {
 	// Calculate the aspect ratio
 	aspectRatio := float32(width) / float32(height)
 
-	// Adjust world bounds based on aspect ratio
 	if aspectRatio > 1.0 {
-		// Landscape (widescreen) adjustment
+		// Landscape (more width), expand x-axis
 		viewHeight := (scr.YMax - scr.YMin)
 		viewWidth := viewHeight * aspectRatio
-		centerX := (scr.XMax + scr.XMin) / 2.0
-		scr.XMin = centerX - viewWidth/2.0
-		scr.XMax = centerX + viewWidth/2.0
+		scr.XMin = -viewWidth / 2.0
+		scr.XMax = viewWidth / 2.0
 	} else {
-		// Portrait (tall screen) adjustment
+		// Portrait (more height), expand y-axis
 		viewWidth := (scr.XMax - scr.XMin)
 		viewHeight := viewWidth / aspectRatio
-		centerY := (scr.YMin + scr.YMax) / 2.0
-		scr.YMin = centerY - viewHeight/2.0
-		scr.YMax = centerY + viewHeight/2.0
+		scr.YMin = -viewHeight / 2.0
+		scr.YMax = viewHeight / 2.0
 	}
 
-	// Update the projection matrix for the new window size
+	// Recompute the projection matrix
 	scr.updateProjectionMatrix()
-
-	// Mark the position and scale as changed so the event loop will force a re-render
 	scr.PositionChanged = true
 	scr.ScaleChanged = true
 }

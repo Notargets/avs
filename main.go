@@ -9,10 +9,10 @@ import (
 
 func main() {
 	//chart := screen.NewScreen(800, 600, 0, 10, -5, 5)
-	chart := screen.NewScreen(800, 600, -10, 10, -5, 5)
+	chart := screen.NewScreen(800, 600, 0, 10, -5, 5)
 	chart.SetBackgroundColor(0.1, 0.1, 0.1, 1.0)
 	X := []float32{0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0}
-	Y := []float32{0.0, 1.0, 0.0, -1.0, 0.0, 1.0, 0.0, -1.0, 0.0, 1.0}
+	Y := []float32{0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0}
 
 	linekey := chart.AddLine(uuid.Nil, X, Y, nil)
 	_ = linekey
