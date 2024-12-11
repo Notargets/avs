@@ -9,6 +9,74 @@ import (
 	"github.com/go-gl/mathgl/mgl32"
 )
 
+func (scr *Screen) EventLoop() {
+	for !scr.Window.ShouldClose() {
+		// Process input events like key presses, mouse, etc.
+		glfw.WaitEvents()
+
+		// Process any commands from the RenderChannel
+		select {
+		case command := <-scr.RenderChannel:
+			command()
+		default:
+			// No command to process
+		}
+
+		// Update the projection matrix if pan/zoom has changed
+		if scr.PositionChanged || scr.ScaleChanged {
+			fmt.Println("Updating projection matrix...")
+			scr.updateProjectionMatrix()
+			scr.PositionChanged = false
+			scr.ScaleChanged = false
+		}
+
+		// Clear the screen before rendering
+		gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+
+		// Render all active objects (type-coerce and render)
+		for _, renderable := range scr.Objects {
+			if renderable.Active {
+				switch obj := renderable.Object.(type) {
+				case *Line:
+					obj.Render(scr)
+				case *TriMesh:
+					//obj.Render(scr)
+				case *TriMeshEdges:
+					//obj.Render(scr)
+				case *TriMeshContours:
+					//obj.Render(scr)
+				case *TriMeshSmooth:
+					//obj.Render(scr)
+				default:
+					fmt.Printf("Unknown object type: %T\n", obj)
+				}
+			}
+		}
+
+		// Swap buffers to present the frame
+		scr.Window.SwapBuffers()
+	}
+}
+
+func (scr *Screen) fullScreenRender() {
+	for _, obj := range scr.Objects {
+		switch renderObj := obj.Object.(type) {
+		case *Line:
+			renderObj.Render(scr)
+		case *TriMesh:
+			//renderObj.Render(scr)
+		case *TriMeshEdges:
+			//renderObj.Render(scr)
+		case *TriMeshContours:
+			//renderObj.Render(scr)
+		case *TriMeshSmooth:
+			//renderObj.Render(scr)
+		default:
+			fmt.Printf("Unknown object type: %T\n", renderObj)
+		}
+	}
+}
+
 func (scr *Screen) SetZoomSpeed(speed float32) {
 	if speed <= 0 {
 		log.Println("Zoom speed must be positive, defaulting to 1.0")
