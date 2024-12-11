@@ -8,6 +8,8 @@ import (
 	"github.com/google/uuid"
 )
 
+var counter int
+
 type RenderType uint16
 
 const (
@@ -263,6 +265,15 @@ void main() {
 	return
 }
 
+func (scr *Screen) SetObjectActive(key uuid.UUID, active bool) {
+	scr.RenderChannel <- func() {
+		if renderable, exists := scr.Objects[key]; exists {
+			renderable.Active = active
+			scr.Objects[key] = renderable
+		}
+	}
+}
+
 func compileShaderProgram(vertexSource, fragmentSource string) uint32 {
 	// Compile vertex shader
 	vertexShader := gl.CreateShader(gl.VERTEX_SHADER)
@@ -397,7 +408,8 @@ func (line *Line) Render(scr *Screen) {
 	}
 
 	// Draw the line segments
-	fmt.Printf("Vertex count: %d, Vertices: %v\n", len(line.Vertices)/2, line.Vertices)
+	counter++
+	fmt.Printf("Redraw line %d: Vertex count: %d, Vertices: %v\n", counter, len(line.Vertices)/2, line.Vertices)
 	gl.DrawArrays(gl.LINE_STRIP, 0, int32(len(line.Vertices)/2))
 	gl.BindVertexArray(0)
 }
