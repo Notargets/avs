@@ -1,8 +1,6 @@
 package main
 
 import (
-	"time"
-
 	"github.com/google/uuid"
 
 	"github.com/notargets/avs/screen"
@@ -16,23 +14,27 @@ func main() {
 	Y := []float32{0.0, 1.0, 0.0, -1.0, 0.0, 1.0, 0.0, -1.0, 0.0, 1.0}
 
 	lineKey := chart.AddLine(uuid.Nil, X, Y, nil)
+	_ = lineKey
 
-	active := true
-	for i := 0; ; i++ {
-		if i%2 == 0 {
-			chart.SetBackgroundColor(0.1, 0.1, 0.1, 1.0)
-		} else {
-			chart.SetBackgroundColor(0.3, 0.3, 0.3, 1.0)
-		}
-
-		if i%3 == 1 {
-			active = !active
-			chart.SetObjectActive(lineKey, active) // Hide the line every 20 frames
-		}
-
-		time.Sleep(time.Second)
-	}
+	select {}
 }
+
+//	active := true
+//	for i := 0; ; i++ {
+//		if i%2 == 0 {
+//			chart.SetBackgroundColor(0.1, 0.1, 0.1, 1.0)
+//		} else {
+//			chart.SetBackgroundColor(0.3, 0.3, 0.3, 1.0)
+//		}
+//
+//		if i%3 == 1 {
+//			active = !active
+//			chart.SetObjectActive(lineKey, active) // Hide the line every 20 frames
+//		}
+//
+//		time.Sleep(time.Second)
+//	}
+//}
 
 //func makeExampleMesh() (trimesh graphics2D.TriMesh, xmin, xmax, ymin, ymax float64) {
 //	xmin, xmax = -0.500, 2.500

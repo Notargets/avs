@@ -119,21 +119,28 @@ func NewScreen(width, height int, xmin, xmax, ymin, ymax float32) *Screen {
 
 func (scr *Screen) EventLoop() {
 	for !scr.Window.ShouldClose() {
-		// Poll for window events (keyboard, resize, etc.)
+		// Process input events like key presses, mouse, etc.
 		glfw.PollEvents()
 
-		// Execute commands from the RenderChannel
+		// Process any commands from the RenderChannel
 		select {
 		case command := <-scr.RenderChannel:
-			command() // Execute the command, which could modify objects or add new objects
+			command()
 		default:
 			// No command to process
 		}
 
-		// Clear the screen once per frame
+		// Update the projection matrix if pan/zoom has changed
+		if scr.PositionChanged || scr.ScaleChanged {
+			scr.updateProjectionMatrix()
+			scr.PositionChanged = false
+			scr.ScaleChanged = false
+		}
+
+		// Clear the screen before rendering
 		gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
-		// Render all active objects in the scene
+		// Render all active objects (type-coerce and render)
 		for _, renderable := range scr.Objects {
 			if renderable.Active {
 				switch obj := renderable.Object.(type) {
@@ -141,13 +148,19 @@ func (scr *Screen) EventLoop() {
 					obj.Render(scr)
 				case *TriMesh:
 					//obj.Render(scr)
+				case *TriMeshEdges:
+					//obj.Render(scr)
+				case *TriMeshContours:
+					//obj.Render(scr)
+				case *TriMeshSmooth:
+					//obj.Render(scr)
 				default:
 					fmt.Printf("Unknown object type: %T\n", obj)
 				}
 			}
 		}
 
-		// Swap buffers to make the rendered frame visible
+		// Swap buffers to present the frame
 		scr.Window.SwapBuffers()
 	}
 }
@@ -673,47 +686,6 @@ func (scr *Screen) AddLine(key uuid.UUID, X, Y, Colors []float32) uuid.UUID {
 	return key
 }
 
-func (scr *Screen) updateProjectionMatrix() {
-	// Get the aspect ratio of the window
-	aspectRatio := float32(scr.ScreenWidth) / float32(scr.ScreenHeight)
-
-	// Determine X and Y ranges for the orthographic projection
-	var xRange, yRange float32
-	if aspectRatio > 1.0 {
-		// Screen is wider than tall, adjust Y range
-		xRange = (scr.XMax - scr.XMin) / scr.ZoomFactor
-		yRange = xRange / aspectRatio
-	} else {
-		// Screen is taller than wide, adjust X range
-		yRange = (scr.YMax - scr.YMin) / scr.ZoomFactor
-		xRange = yRange * aspectRatio
-	}
-
-	// Calculate the new world coordinate bounds, centered on the original world bounds
-	xCenter := (scr.XMin + scr.XMax) / 2.0
-	yCenter := (scr.YMin + scr.YMax) / 2.0
-
-	xmin := xCenter - xRange/2.0
-	xmax := xCenter + xRange/2.0
-	ymin := yCenter - yRange/2.0
-	ymax := yCenter + yRange/2.0
-
-	// Create the orthographic projection matrix
-	scr.projectionMatrix = mgl32.Ortho2D(xmin, xmax, ymin, ymax)
-
-	// Upload the projection matrix to all shaders
-	for renderType, shaderProgram := range scr.Shaders {
-		projectionUniform := gl.GetUniformLocation(shaderProgram, gl.Str("projection\x00"))
-		if projectionUniform < 0 {
-			fmt.Printf("Projection uniform not found for RenderType %v\n", renderType)
-		} else {
-			gl.UseProgram(shaderProgram)
-			gl.UniformMatrix4fv(projectionUniform, 1, false, &scr.projectionMatrix[0])
-		}
-	}
-
-}
-
 func (scr *Screen) SetZoomSpeed(speed float32) {
 	if speed <= 0 {
 		log.Println("Zoom speed must be positive, defaulting to 1.0")
@@ -731,6 +703,43 @@ func (scr *Screen) SetPanSpeed(speed float32) {
 	scr.PanSpeed = speed
 }
 
+func (scr *Screen) updateProjectionMatrix() {
+	// Get the aspect ratio of the window
+	aspectRatio := float32(scr.ScreenWidth) / float32(scr.ScreenHeight)
+
+	// Determine world coordinate range (XMin/XMax and YMin/YMax) based on zoom and position
+	var xRange, yRange float32
+	if aspectRatio > 1.0 {
+		// Landscape view
+		xRange = (scr.XMax - scr.XMin) / scr.ZoomFactor
+		yRange = xRange / aspectRatio
+	} else {
+		// Portrait view
+		yRange = (scr.YMax - scr.YMin) / scr.ZoomFactor
+		xRange = yRange * aspectRatio
+	}
+
+	// Adjust for position (pan offset)
+	xmin := scr.Position[0] - xRange/2.0
+	xmax := scr.Position[0] + xRange/2.0
+	ymin := scr.Position[1] - yRange/2.0
+	ymax := scr.Position[1] + yRange/2.0
+
+	// Update the projection matrix
+	scr.projectionMatrix = mgl32.Ortho2D(xmin, xmax, ymin, ymax)
+
+	// Upload the new projection matrix to all shaders
+	for renderType, shaderProgram := range scr.Shaders {
+		projectionUniform := gl.GetUniformLocation(shaderProgram, gl.Str("projection\x00"))
+		if projectionUniform < 0 {
+			fmt.Printf("Projection uniform not found for RenderType %v\n", renderType)
+		} else {
+			gl.UseProgram(shaderProgram)
+			gl.UniformMatrix4fv(projectionUniform, 1, false, &scr.projectionMatrix[0])
+		}
+	}
+}
+
 func (scr *Screen) mouseButtonCallback(w *glfw.Window, button glfw.MouseButton, action glfw.Action, mods glfw.ModifierKey) {
 	if button == glfw.MouseButtonRight && action == glfw.Press {
 		scr.isDragging = true
@@ -744,14 +753,15 @@ func (scr *Screen) cursorPositionCallback(w *glfw.Window, xpos, ypos float64) {
 	if scr.isDragging {
 		width, height := w.GetSize()
 
-		// Normalize pan speed relative to the world coordinates
-		dx := float32(xpos-scr.lastX) / float32(width) * (scr.XMax - scr.XMin) * scr.PanSpeed
-		dy := float32(ypos-scr.lastY) / float32(height) * (scr.YMax - scr.YMin) * scr.PanSpeed
+		// Calculate delta in screen space
+		dx := float32(xpos-scr.lastX) / float32(width) * (scr.XMax - scr.XMin) / scr.ZoomFactor
+		dy := float32(ypos-scr.lastY) / float32(height) * (scr.YMax - scr.YMin) / scr.ZoomFactor
 
-		scr.Position[0] += dx
-		scr.Position[1] -= dy
+		// Update world position relative to the screen movement
+		scr.Position[0] -= dx
+		scr.Position[1] += dy
 
-		// Indicate that the position has changed
+		// Flag that position has changed
 		scr.PositionChanged = true
 
 		// Update last cursor position
@@ -761,10 +771,10 @@ func (scr *Screen) cursorPositionCallback(w *glfw.Window, xpos, ypos float64) {
 }
 
 func (scr *Screen) scrollCallback(w *glfw.Window, xoff, yoff float64) {
-	// Adjust zoom factor based on scroll input
+	// Adjust the zoom factor based on scroll input
 	scr.ZoomFactor *= 1.0 + float32(yoff)*0.1*scr.ZoomSpeed
 
-	// Constrain zoom factor to a safe range
+	// Constrain the zoom factor to prevent excessive zoom
 	if scr.ZoomFactor < 0.1 {
 		scr.ZoomFactor = 0.1
 	}
@@ -772,28 +782,30 @@ func (scr *Screen) scrollCallback(w *glfw.Window, xoff, yoff float64) {
 		scr.ZoomFactor = 10.0
 	}
 
-	// Indicate that the scale has changed
+	// Flag that the zoom has changed
 	scr.ScaleChanged = true
-
-	// Update the projection matrix
-	scr.updateProjectionMatrix()
 }
 
 func (scr *Screen) resizeCallback(w *glfw.Window, width, height int) {
 	scr.ScreenWidth = width
 	scr.ScreenHeight = height
 
+	// Update OpenGL viewport
 	gl.Viewport(0, 0, int32(width), int32(height))
 
+	// Calculate the aspect ratio
 	aspectRatio := float32(width) / float32(height)
 
+	// Adjust world bounds based on aspect ratio
 	if aspectRatio > 1.0 {
+		// Landscape (widescreen) adjustment
 		viewHeight := (scr.YMax - scr.YMin)
 		viewWidth := viewHeight * aspectRatio
 		centerX := (scr.XMax + scr.XMin) / 2.0
 		scr.XMin = centerX - viewWidth/2.0
 		scr.XMax = centerX + viewWidth/2.0
 	} else {
+		// Portrait (tall screen) adjustment
 		viewWidth := (scr.XMax - scr.XMin)
 		viewHeight := viewWidth / aspectRatio
 		centerY := (scr.YMin + scr.YMax) / 2.0
@@ -801,8 +813,12 @@ func (scr *Screen) resizeCallback(w *glfw.Window, width, height int) {
 		scr.YMax = centerY + viewHeight/2.0
 	}
 
-	// Update the projection matrix with new dimensions
+	// Update the projection matrix for the new window size
 	scr.updateProjectionMatrix()
+
+	// Mark the position and scale as changed so the event loop will force a re-render
+	scr.PositionChanged = true
+	scr.ScaleChanged = true
 }
 
 type TriMesh struct {
