@@ -1,22 +1,33 @@
 package main
 
 import (
-	"github.com/google/uuid"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/notargets/avs/screen"
 )
 
 func main() {
+	//chart := screen.NewScreen(800, 600, 0, 10, -5, 5)
 	chart := screen.NewScreen(800, 600, -10, 10, -5, 5)
 	chart.SetBackgroundColor(0.1, 0.1, 0.1, 1.0)
-
 	X := []float32{0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0}
 	Y := []float32{0.0, 1.0, 0.0, -1.0, 0.0, 1.0, 0.0, -1.0, 0.0, 1.0}
 
-	lineKey := chart.AddLine(uuid.Nil, X, Y, nil)
-	_ = lineKey
+	linekey := chart.AddLine(uuid.Nil, X, Y, nil)
+	_ = linekey
 
-	select {}
+	//select {}
+	i := 0
+	for {
+		time.Sleep(1 * time.Second)
+		if i%2 == 0 {
+			chart.SetBackgroundColor(0.1, 0.1, 0.1, 1.0)
+		} else {
+			chart.SetBackgroundColor(0.4, 0.4, 0.4, 1.0)
+		}
+		i++
+	}
 }
 
 //	active := true
