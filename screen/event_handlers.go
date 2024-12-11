@@ -11,54 +11,34 @@ import (
 
 func (scr *Screen) EventLoop() {
 	for !scr.Window.ShouldClose() {
-		// Process input events like key presses, mouse, etc.
-		glfw.WaitEvents()
+		// Wait for any input event (mouse, keyboard, resize, etc.)
+		glfw.WaitEventsTimeout(0.02)
 
-		// Process any commands from the RenderChannel
+		// Process commands from the RenderChannel
 		select {
 		case command := <-scr.RenderChannel:
-			command()
+			command() // Execute the command (can include OpenGL calls)
+			scr.NeedsRedraw = true
 		default:
-			// No command to process
+			// No command, continue
+			break
 		}
 
 		// Update the projection matrix if pan/zoom has changed
-		if scr.PositionChanged || scr.ScaleChanged {
-			fmt.Println("Updating projection matrix...")
+		if scr.NeedsRedraw || scr.PositionChanged || scr.ScaleChanged {
 			scr.updateProjectionMatrix()
 			scr.PositionChanged = false
 			scr.ScaleChanged = false
+			scr.NeedsRedraw = false
+			scr.fullScreenRender()
 		}
 
-		// Clear the screen before rendering
-		gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
-
-		// Render all active objects (type-coerce and render)
-		for _, renderable := range scr.Objects {
-			if renderable.Active {
-				switch obj := renderable.Object.(type) {
-				case *Line:
-					obj.Render(scr)
-				case *TriMesh:
-					//obj.Render(scr)
-				case *TriMeshEdges:
-					//obj.Render(scr)
-				case *TriMeshContours:
-					//obj.Render(scr)
-				case *TriMeshSmooth:
-					//obj.Render(scr)
-				default:
-					fmt.Printf("Unknown object type: %T\n", obj)
-				}
-			}
-		}
-
-		// Swap buffers to present the frame
-		scr.Window.SwapBuffers()
 	}
 }
 
 func (scr *Screen) fullScreenRender() {
+	// Clear the screen before rendering
+	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 	for _, obj := range scr.Objects {
 		switch renderObj := obj.Object.(type) {
 		case *Line:
@@ -75,6 +55,8 @@ func (scr *Screen) fullScreenRender() {
 			fmt.Printf("Unknown object type: %T\n", renderObj)
 		}
 	}
+	// Swap buffers to present the frame
+	scr.Window.SwapBuffers()
 }
 
 func (scr *Screen) SetZoomSpeed(speed float32) {
@@ -147,11 +129,20 @@ func (scr *Screen) updateProjectionMatrix() {
 }
 
 func (scr *Screen) mouseButtonCallback(w *glfw.Window, button glfw.MouseButton, action glfw.Action, mods glfw.ModifierKey) {
-	if button == glfw.MouseButtonRight && action == glfw.Press {
-		scr.isDragging = true
-		scr.lastX, scr.lastY = w.GetCursorPos()
-	} else if button == glfw.MouseButtonRight && action == glfw.Release {
-		scr.isDragging = false
+	switch button {
+	case glfw.MouseButtonLeft:
+		return
+	case glfw.MouseButtonRight:
+		if action == glfw.Press {
+			scr.isDragging = true
+			scr.lastX, scr.lastY = w.GetCursorPos()
+		} else if action == glfw.Release {
+			scr.isDragging = false
+		}
+	case glfw.MouseButtonMiddle:
+		return
+	default:
+		return
 	}
 }
 
@@ -217,4 +208,12 @@ func (scr *Screen) resizeCallback(w *glfw.Window, width, height int) {
 	// Mark that a change occurred so the view is updated
 	scr.PositionChanged = true
 	scr.ScaleChanged = true
+}
+
+func (scr *Screen) Redraw() {
+	select {
+	case scr.RenderChannel <- func() {}:
+	default:
+		// Channel is full, no need to push more redraws
+	}
 }

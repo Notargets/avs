@@ -34,6 +34,7 @@ type Screen struct {
 	ZoomFactor       float32
 	PositionChanged  bool
 	ScaleChanged     bool
+	NeedsRedraw      bool
 }
 
 type Renderable struct {
@@ -46,6 +47,7 @@ func NewScreen(width, height int, xmin, xmax, ymin, ymax float32) *Screen {
 		Shaders:       make(ShaderPrograms),
 		Objects:       make(map[uuid.UUID]Renderable),
 		RenderChannel: make(chan func(), 100),
+		isDragging:    false,
 		ScreenWidth:   width,
 		ScreenHeight:  height,
 		XMin:          float32(xmin),
@@ -57,6 +59,7 @@ func NewScreen(width, height int, xmin, xmax, ymin, ymax float32) *Screen {
 		ZoomFactor:    1.0,
 		Scale:         1.0,
 		Position:      [2]float32{0, 0},
+		NeedsRedraw:   true,
 	}
 
 	// Launch the OpenGL thread
