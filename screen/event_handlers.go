@@ -35,25 +35,38 @@ func (scr *Screen) SetCallbacks() {
 }
 
 func (scr *Screen) updateProjectionMatrix() {
-	// Log for debug purposes
 	fmt.Println("Updating projection matrix...")
 
-	// Calculate the world range based on Scale and ZoomFactor
+	// Get the aspect ratio of the window
+	aspectRatio := float32(scr.ScreenWidth) / float32(scr.ScreenHeight)
+
+	// Determine world coordinate range based on zoom and position
 	xRange := (scr.XMax - scr.XMin) / scr.ZoomFactor / scr.Scale
 	yRange := (scr.YMax - scr.YMin) / scr.ZoomFactor / scr.Scale
 
-	// Adjust the world coordinates for panning
+	// Calculate the current center of the view
 	centerX := (scr.XMin + scr.XMax) / 2.0
 	centerY := (scr.YMin + scr.YMax) / 2.0
+
+	// Adjust for the aspect ratio, but keep the world coordinates intact
+	if aspectRatio > 1.0 {
+		// Wide screen — stretch X
+		xRange = yRange * aspectRatio
+	} else {
+		// Tall screen — stretch Y
+		yRange = xRange / aspectRatio
+	}
+
+	// Use Position to adjust the camera's "pan" position in world space
 	xmin := centerX - xRange/2.0 + scr.Position[0]
 	xmax := centerX + xRange/2.0 + scr.Position[0]
 	ymin := centerY - yRange/2.0 + scr.Position[1]
 	ymax := centerY + yRange/2.0 + scr.Position[1]
 
-	// Update the projection matrix
+	// Update the orthographic projection matrix
 	scr.projectionMatrix = mgl32.Ortho2D(xmin, xmax, ymin, ymax)
 
-	// Update the projection matrix for all shader programs
+	// Send the updated projection matrix to all shaders
 	for renderType, shaderProgram := range scr.Shaders {
 		projectionUniform := gl.GetUniformLocation(shaderProgram, gl.Str("projection\x00"))
 		if projectionUniform < 0 {
@@ -130,25 +143,10 @@ func (scr *Screen) resizeCallback(w *glfw.Window, width, height int) {
 	// Update OpenGL viewport
 	gl.Viewport(0, 0, int32(width), int32(height))
 
-	// Calculate the aspect ratio
-	aspectRatio := float32(width) / float32(height)
-
-	if aspectRatio > 1.0 {
-		// Landscape (more width), expand x-axis
-		viewHeight := (scr.YMax - scr.YMin)
-		viewWidth := viewHeight * aspectRatio
-		scr.XMin = -viewWidth / 2.0
-		scr.XMax = viewWidth / 2.0
-	} else {
-		// Portrait (more height), expand y-axis
-		viewWidth := (scr.XMax - scr.XMin)
-		viewHeight := viewWidth / aspectRatio
-		scr.YMin = -viewHeight / 2.0
-		scr.YMax = viewHeight / 2.0
-	}
-
-	// Recompute the projection matrix
+	// Recompute the projection matrix to maintain the aspect ratio and world bounds
 	scr.updateProjectionMatrix()
+
+	// Mark that a change occurred so the view is updated
 	scr.PositionChanged = true
 	scr.ScaleChanged = true
 }
