@@ -35,7 +35,7 @@ type ShaderPrograms map[RenderType]uint32
 type Screen struct {
 	Shaders          ShaderPrograms // Stores precompiled shaders for all graphics types
 	Window           *glfw.Window
-	Objects          map[uuid.UUID]interface{}
+	Objects          map[uuid.UUID]Renderable
 	RenderChannel    chan func()
 	Scale            float32
 	Position         [2]float32
@@ -54,10 +54,15 @@ type Screen struct {
 	ScaleChanged     bool
 }
 
+type Renderable struct {
+	Active bool
+	Object interface{} // Any object that has a Render method (e.g., Line, TriMesh)
+}
+
 func NewScreen(width, height int, xmin, xmax, ymin, ymax float32) *Screen {
 	screen := &Screen{
 		Shaders:       make(ShaderPrograms),
-		Objects:       make(map[uuid.UUID]interface{}),
+		Objects:       make(map[uuid.UUID]Renderable),
 		RenderChannel: make(chan func(), 100),
 		ScreenWidth:   width,
 		ScreenHeight:  height,
@@ -114,31 +119,53 @@ func NewScreen(width, height int, xmin, xmax, ymin, ymax float32) *Screen {
 
 func (scr *Screen) EventLoop() {
 	for !scr.Window.ShouldClose() {
+		// Poll for window events (keyboard, resize, etc.)
 		glfw.PollEvents()
 
-		gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
-
+		// Execute commands from the RenderChannel
 		select {
 		case command := <-scr.RenderChannel:
-			command() // Execute the function sent via the channel
+			command() // Execute the command, which could modify objects or add new objects
 		default:
-			if scr.PositionChanged || scr.ScaleChanged {
-				scr.PositionChanged = false
-				scr.ScaleChanged = false
-				scr.updateProjectionMatrix()
-				scr.fullScreenRender()
+			// No command to process
+		}
+
+		// Clear the screen once per frame
+		gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+
+		// Render all active objects in the scene
+		for _, renderable := range scr.Objects {
+			if renderable.Active {
+				switch obj := renderable.Object.(type) {
+				case *Line:
+					obj.Render(scr)
+				case *TriMesh:
+					//obj.Render(scr)
+				default:
+					fmt.Printf("Unknown object type: %T\n", obj)
+				}
 			}
 		}
 
+		// Swap buffers to make the rendered frame visible
 		scr.Window.SwapBuffers()
+	}
+}
+
+func (scr *Screen) SetObjectActive(key uuid.UUID, active bool) {
+	scr.RenderChannel <- func() {
+		if renderable, exists := scr.Objects[key]; exists {
+			renderable.Active = active
+			scr.Objects[key] = renderable
+		}
 	}
 }
 
 func (scr *Screen) fullScreenRender() {
 	for _, obj := range scr.Objects {
-		switch renderObj := obj.(type) {
+		switch renderObj := obj.Object.(type) {
 		case *Line:
-			renderObj.Render(scr) // Call Line's Render method
+			renderObj.Render(scr)
 		case *TriMesh:
 			//renderObj.Render(scr)
 		case *TriMeshEdges:
@@ -530,15 +557,13 @@ type Line struct {
 	ShaderProgram uint32    // Shader program specific to this Line object
 }
 
-// Update updates the line's vertex positions (X, Y) and vertex colors on the GPU
 func (line *Line) Update(X, Y, Colors []float32, defaultColor ...[3]float32) {
 	if len(X) > 0 && len(Y) > 0 && len(X) != len(Y) {
 		panic("X and Y must have the same length if both are provided")
 	}
 
-	// Update vertex positions
+	// Flatten X and Y into vertex array [x1, y1, x2, y2, ...]
 	if len(X) > 0 && len(Y) > 0 {
-		// Interleave X and Y into flat vertex array [x1, y1, x2, y2, ...]
 		line.Vertices = make([]float32, len(X)*2)
 		for i := 0; i < len(X); i++ {
 			line.Vertices[2*i] = X[i]
@@ -546,13 +571,13 @@ func (line *Line) Update(X, Y, Colors []float32, defaultColor ...[3]float32) {
 		}
 	}
 
-	// Default color if not provided
+	// Default color logic
 	var colorToUse [3]float32 = [3]float32{1.0, 1.0, 1.0}
 	if len(defaultColor) > 0 {
 		colorToUse = defaultColor[0]
 	}
 
-	// Update color data if provided
+	// Create colors for each vertex
 	if len(Colors) > 0 {
 		if len(Colors)%3 != 0 {
 			panic("Colors array must be a multiple of 3 (R, G, B per vertex)")
@@ -560,7 +585,6 @@ func (line *Line) Update(X, Y, Colors []float32, defaultColor ...[3]float32) {
 		line.Colors = make([]float32, len(Colors))
 		copy(line.Colors, Colors)
 	} else {
-		// Generate color data using the default color
 		numVertices := len(X)
 		line.Colors = make([]float32, numVertices*3)
 		for i := 0; i < numVertices; i++ {
@@ -570,44 +594,33 @@ func (line *Line) Update(X, Y, Colors []float32, defaultColor ...[3]float32) {
 		}
 	}
 
-	// Bind the VAO
+	// Upload vertex positions
 	gl.BindVertexArray(line.VAO)
-
-	// Upload vertex positions to the VBO
 	gl.BindBuffer(gl.ARRAY_BUFFER, line.VBO)
 	gl.BufferData(gl.ARRAY_BUFFER, len(line.Vertices)*4, gl.Ptr(line.Vertices), gl.STATIC_DRAW)
 
-	// Upload color data to the CBO
+	// Upload color data
 	gl.BindBuffer(gl.ARRAY_BUFFER, line.CBO)
 	gl.BufferData(gl.ARRAY_BUFFER, len(line.Colors)*4, gl.Ptr(line.Colors), gl.STATIC_DRAW)
-
-	// Unbind the VAO to prevent state leakage
 	gl.BindVertexArray(0)
 }
 
 // Render draws the line using the shader program stored in Line
 func (line *Line) Render(scr *Screen) {
-	// Ensure the correct shader is being used
+	// Ensure shader program is active
 	gl.UseProgram(line.ShaderProgram)
 	gl.BindVertexArray(line.VAO)
 
-	// Check the current program to ensure the correct program is in use
-	var currentProgram int32
-	gl.GetIntegerv(gl.CURRENT_PROGRAM, &currentProgram)
-	fmt.Printf("Current Program: %d, Expected Program: %d\n", currentProgram, line.ShaderProgram)
-
-	// Get and set projection matrix
+	// Upload the projection matrix
 	projectionUniform := gl.GetUniformLocation(line.ShaderProgram, gl.Str("projection\x00"))
-	if projectionUniform < 0 {
-		fmt.Println("Projection matrix uniform not found in Line shader")
-	} else {
+	if projectionUniform >= 0 {
 		gl.UniformMatrix4fv(projectionUniform, 1, false, &scr.projectionMatrix[0])
+	} else {
+		fmt.Println("Projection matrix uniform not found in Line shader")
 	}
 
 	// Draw the line segments
-	gl.Clear(gl.COLOR_BUFFER_BIT)
 	gl.DrawArrays(gl.LINES, 0, int32(len(line.Vertices)/2))
-
 	gl.BindVertexArray(0)
 }
 
@@ -617,19 +630,25 @@ func checkGLError(message string) {
 		fmt.Printf("OpenGL Error [%s]: %d\n", message, err)
 	}
 }
-
 func (scr *Screen) AddLine(key uuid.UUID, X, Y, Colors []float32) uuid.UUID {
 	if key == uuid.Nil {
 		key = uuid.New()
 	}
 
+	// Send a command to create or update a line object
 	scr.RenderChannel <- func() {
 		var line *Line
-		if existingLine, exists := scr.Objects[key]; exists {
-			line = existingLine.(*Line)
+
+		// Check if the object exists in the scene
+		if existingRenderable, exists := scr.Objects[key]; exists {
+			line = existingRenderable.Object.(*Line)
 		} else {
+			// Create new line
 			line = &Line{ShaderProgram: scr.Shaders[LINE]}
-			scr.Objects[key] = line
+			scr.Objects[key] = Renderable{
+				Active: true,
+				Object: line,
+			}
 
 			gl.GenVertexArrays(1, &line.VAO)
 			gl.BindVertexArray(line.VAO)
@@ -647,6 +666,7 @@ func (scr *Screen) AddLine(key uuid.UUID, X, Y, Colors []float32) uuid.UUID {
 			gl.BindVertexArray(0)
 		}
 
+		// Update vertex positions and color
 		line.Update(X, Y, Colors)
 	}
 

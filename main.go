@@ -3,33 +3,34 @@ package main
 import (
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/notargets/avs/screen"
 )
 
 func main() {
-	// Create the OpenGL screen
-	chart := screen.NewScreen(800, 600, -10, 10, -5, 5) // World coordinates range from -10 to 10 in X, and -5 to 5 in Y
+	chart := screen.NewScreen(800, 600, -10, 10, -5, 5)
+	chart.SetBackgroundColor(0.1, 0.1, 0.1, 1.0)
 
-	// Set the background color (done via the RenderChannel)
-	chart.SetBackgroundColor(0.1, 0.1, 0.1, 1.0) // Dark background
+	X := []float32{0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0}
+	Y := []float32{0.0, 1.0, 0.0, -1.0, 0.0, 1.0, 0.0, -1.0, 0.0, 1.0}
 
-	// Static initializers for X and Y points
-	//X := []float32{0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0}
-	//Y := []float32{0.0, 1.0, 0.0, -1.0, 0.0, 1.0, 0.0, -1.0, 0.0, 1.0}
+	lineKey := chart.AddLine(uuid.Nil, X, Y, nil)
 
-	// Add the line to the screen
-	//chart.AddLine(uuid.Nil, X, Y, nil)
-
-	// Keep the application running (so the screen stays open)
-	var i int
-	for {
+	active := true
+	for i := 0; ; i++ {
 		if i%2 == 0 {
-			chart.SetBackgroundColor(0.1, 0.1, 0.1, 1.0) // Dark background
+			chart.SetBackgroundColor(0.1, 0.1, 0.1, 1.0)
 		} else {
-			chart.SetBackgroundColor(0.9, 0.9, 0.9, 1.0) // Light background
+			chart.SetBackgroundColor(0.3, 0.3, 0.3, 1.0)
 		}
+
+		if i%3 == 1 {
+			active = !active
+			chart.SetObjectActive(lineKey, active) // Hide the line every 20 frames
+		}
+
 		time.Sleep(time.Second)
-		i = i + 1
 	}
 }
 
