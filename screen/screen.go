@@ -27,6 +27,7 @@ var (
 type Screen struct {
 	Shaders          ShaderPrograms // Stores precompiled shaders for all graphics types
 	Window           *glfw.Window
+	FontTextureID    uint32 // Texture ID for the font atlas
 	Objects          map[Key]Renderable
 	RenderChannel    chan func()
 	Scale            float32

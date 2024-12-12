@@ -86,7 +86,7 @@ func (scr *Screen) SetCallbacks() {
 }
 
 func (scr *Screen) updateProjectionMatrix() {
-	fmt.Println("Updating projection matrix...")
+	//fmt.Println("Updating projection matrix...")
 
 	// Get the aspect ratio of the window
 	aspectRatio := float32(scr.ScreenWidth) / float32(scr.ScreenHeight)

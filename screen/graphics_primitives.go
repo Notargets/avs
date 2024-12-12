@@ -14,6 +14,7 @@ type RenderType uint16
 const (
 	LINE RenderType = iota
 	POLYLINE
+	CHARACTER
 	TRIMESHEDGESUNICOLOR
 	TRIMESHEDGES
 	TRIMESHCONTOURS
@@ -135,7 +136,7 @@ func (line *Line) Render(scr *Screen) {
 
 	// Draw the line segments
 	counter++
-	fmt.Printf("Redraw line %d: Vertex count: %d, Vertices: %v\n", counter, len(line.Vertices)/2, line.Vertices)
+	//fmt.Printf("Redraw line %d: Vertex count: %d, Vertices: %v\n", counter, len(line.Vertices)/2, line.Vertices)
 	if line.LineType == LINE {
 		gl.DrawArrays(gl.LINES, 0, int32(len(line.Vertices)/2))
 		checkGLError("After draw")
