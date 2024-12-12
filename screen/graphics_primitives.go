@@ -49,6 +49,9 @@ func (line *Line) Update(X, Y, Colors []float32, defaultColor ...[3]float32) {
 	if len(X) > 0 && len(Y) > 0 && len(X) != len(Y) {
 		panic("X and Y must have the same length if both are provided")
 	}
+	if len(Colors) != 0 && len(Colors) != 3*len(X) {
+		panic("Colors must have 3*length(X) if any are provided, one RGB each vertex")
+	}
 
 	// Validate vertex count based on LineType
 	switch line.LineType {
