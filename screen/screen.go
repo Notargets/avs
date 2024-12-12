@@ -88,7 +88,6 @@ func NewScreen(width, height int, xmin, xmax, ymin, ymax float32) *Screen {
 		glfw.SwapInterval(1)
 
 		// Call the GL screen initialization
-		screen.InitShaders()
 		gl.Viewport(0, 0, int32(width), int32(height))
 		screen.updateProjectionMatrix()
 		screen.SetCallbacks()

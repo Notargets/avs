@@ -67,6 +67,7 @@ func (scr *Screen) SetZoomSpeed(speed float32) {
 	}
 	scr.ZoomSpeed = speed
 }
+
 func (scr *Screen) SetPanSpeed(speed float32) {
 	if speed <= 0 {
 		log.Println("Pan speed must be positive, defaulting to 1.0")
