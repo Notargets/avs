@@ -57,7 +57,7 @@ func NewScreen(width, height int, xmin, xmax, ymin, ymax float32) *Screen {
 		PanSpeed:      1.0,
 		ZoomSpeed:     1.0,
 		ZoomFactor:    1.0,
-		Scale:         1.0,
+		Scale:         0.8,
 		Position:      [2]float32{0, 0},
 		NeedsRedraw:   true,
 	}
@@ -74,6 +74,19 @@ func NewScreen(width, height int, xmin, xmax, ymin, ymax float32) *Screen {
 		if err != nil {
 			panic(err)
 		}
+		// Get primary monitor video mode (used to get the screen dimensions)
+		monitor := glfw.GetPrimaryMonitor()
+		videoMode := monitor.GetVideoMode()
+
+		// Calculate the position to center the window
+		screenWidth := videoMode.Width
+		screenHeight := videoMode.Height
+		windowX := (screenWidth - width) / 2
+		windowY := (screenHeight - height) / 2
+
+		// Set the window position to the calculated coordinates
+		window.SetPos(windowX, windowY)
+
 		window.MakeContextCurrent()
 
 		if err := gl.Init(); err != nil {

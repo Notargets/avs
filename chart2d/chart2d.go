@@ -1,26 +1,84 @@
 package chart2d
 
 import (
+	"fmt"
+
 	"github.com/google/uuid"
 	"github.com/notargets/avs/screen"
 )
 
 type Chart2D struct {
-	Scale      float32
-	Position   [2]float32
-	XMin, XMax float32
-	YMin, YMax float32
-	Screen     *screen.Screen
+	Scale       float32
+	Position    [2]float32
+	XMin, XMax  float32
+	YMin, YMax  float32
+	Screen      *screen.Screen
+	LineColor   [3]float32
+	AxisColor   [3]float32
+	ScreenColor [3]float32
 }
 
 func NewChart2D(XMin, XMax, YMin, YMax float32, width, height int) *Chart2D {
 	return &Chart2D{
-		XMin:   XMin,
-		XMax:   XMax,
-		YMin:   YMin,
-		YMax:   YMax,
-		Screen: screen.NewScreen(width, height, XMin, XMax, YMin, YMax),
+		XMin:        XMin,
+		XMax:        XMax,
+		YMin:        YMin,
+		YMax:        YMax,
+		Screen:      screen.NewScreen(width, height, 0, 1, 0, 1),
+		LineColor:   [3]float32{1, 1, 1},
+		AxisColor:   [3]float32{1, 1, 1},
+		ScreenColor: [3]float32{0.2, 0.2, 0.2},
 	}
+}
+
+func (chart *Chart2D) AddLine(X, Y []float32) {
+	chart.TransformXYToUnit(X, Y)
+
+	chart.Screen.AddPolyLine(uuid.Nil, X, Y, chart.GetSingleColorArray(Y, chart.LineColor))
+}
+
+func (chart *Chart2D) GetSingleColorArray(Y []float32, color [3]float32) (colors []float32) {
+	colors = make([]float32, len(Y)*3)
+	for i := range colors {
+		colors[i*3] = color[0]
+		colors[i*3+1] = color[1]
+		colors[i*3+2] = color[2]
+	}
+	return
+}
+
+// TransformXYToUnit normalizes the X and Y arrays into the [0,1] range
+func (chart *Chart2D) TransformXYToUnit(X, Y []float32) (err error) {
+	if len(X) != len(Y) {
+		return fmt.Errorf("X and Y must have the same length, got X: %d, Y: %d", len(X), len(Y))
+	}
+	if chart.XMin == chart.XMax {
+		return fmt.Errorf("Invalid X-axis bounds: XMin (%.2f) cannot be equal to XMax (%.2f)", chart.XMin, chart.XMax)
+	}
+	if chart.YMin == chart.YMax {
+		return fmt.Errorf("Invalid Y-axis bounds: YMin (%.2f) cannot be equal to YMax (%.2f)", chart.YMin, chart.YMax)
+	}
+
+	xRange := chart.XMax - chart.XMin
+	yRange := chart.YMax - chart.YMin
+	for i := 0; i < len(X); i++ {
+		X[i] = (X[i] - chart.XMin) / xRange
+		Y[i] = (Y[i] - chart.YMin) / yRange
+
+		// Clamp values to [0,1] in case of small floating-point errors
+		if X[i] < 0 {
+			X[i] = 0
+		} else if X[i] > 1 {
+			X[i] = 1
+		}
+
+		if Y[i] < 0 {
+			Y[i] = 0
+		} else if Y[i] > 1 {
+			Y[i] = 1
+		}
+	}
+	return
 }
 
 func (chart *Chart2D) AddAxis(color [3]float32) {
@@ -32,19 +90,7 @@ func (chart *Chart2D) AddAxis(color [3]float32) {
 		color[0], color[1], color[2], // Color for (XMin, YMax)
 	}
 
-	Xmid := (chart.XMax-chart.XMin)*.5 + chart.XMin
-	Ymid := (chart.YMax-chart.YMin)*.5 + chart.YMin
-	// **X-Axis** (1 line from (XMin, YMin) to (XMax, YMin))
-	xAxisVertices := []float32{
-		chart.XMin, chart.XMax,
-		Ymid, Ymid,
-	}
-	// **Y-Axis** (1 line from (XMin, YMin) to (XMin, YMax))
-	yAxisVertices := []float32{
-		Xmid, Xmid,
-		chart.YMin, chart.YMax,
-	}
-	//	fmt.Println(xAxisVertices, yAxisVertices, axisColor)
-	//os.Exit(1)
+	xAxisVertices := []float32{0, 1, 0, 0}
+	yAxisVertices := []float32{0, 0, 1, 0}
 	chart.Screen.AddLine(uuid.Nil, xAxisVertices, yAxisVertices, axisColor) // 2 points, so 2 * 3 = 6 colors
 }
