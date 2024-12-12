@@ -53,8 +53,8 @@ func (line *Line) Update(X, Y, Colors []float32, defaultColor ...[3]float32) {
 	// Validate vertex count based on LineType
 	switch line.LineType {
 	case LINE:
-		if len(X) > 0 && len(Y) > 0 && len(X)%4 != 0 {
-			panic(fmt.Sprintf("Invalid vertex count for LINE: %d. Each line segment requires two points (X1, Y1, X2, Y2). Vertex count must be a multiple of 4.", len(X)))
+		if len(X) > 0 && len(Y) > 0 && len(X)%2 != 0 {
+			panic(fmt.Sprintf("Invalid vertex count for LINE: %d. Each line segment requires two points (X1, Y1, X2, Y2). Vertex count must be a multiple of 2.", len(X)))
 		}
 	case POLYLINE:
 		if len(X) < 2 {

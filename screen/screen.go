@@ -67,7 +67,7 @@ func NewScreen(width, height int, xmin, xmax, ymin, ymax float32) *Screen {
 		PanSpeed:      1.0,
 		ZoomSpeed:     1.0,
 		ZoomFactor:    1.0,
-		Scale:         0.8,
+		Scale:         0.9,
 		Position:      [2]float32{0, 0},
 		NeedsRedraw:   true,
 	}
@@ -197,6 +197,20 @@ func (scr *Screen) SetBackgroundColor(color [4]float32) {
 	scr.RenderChannel <- func() {
 		//gl.ClearColor(r, g, b, a)
 		gl.ClearColor(color[0], color[1], color[2], color[3])
+	}
+}
+
+func (scr *Screen) ChangeScale(scale float32) {
+	scr.RenderChannel <- func() {
+		scr.Scale = scale
+		scr.ScaleChanged = true
+	}
+}
+
+func (scr *Screen) ChangePosition(x, y float32) {
+	scr.RenderChannel <- func() {
+		scr.Position = [2]float32{x, y}
+		scr.PositionChanged = true
 	}
 }
 

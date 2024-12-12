@@ -84,16 +84,61 @@ func (chart *Chart2D) TransformXYToUnit(X, Y []float32) (err error) {
 	return
 }
 
-func (chart *Chart2D) AddAxis(color [3]float32) {
+func (chart *Chart2D) AddAxis(color Color) {
+	var (
+		nSegs     = 11
+		ticksize  = float32(0.015)
+		x, y      = float32(0), float32(0)
+		inc       = 1. / float32(nSegs-1)
+		tickColor = ScaleColor(chart.AxisColor, 0.8)
+		X         = make([]float32, 0)
+		Y         = make([]float32, 0)
+		C         = make([]float32, 0)
+	)
 	// Generate color array for 2 vertices per axis (X-axis and Y-axis)
-	axisColor := []float32{
-		color[0], color[1], color[2], // Color for (XMin, YMin)
-		color[0], color[1], color[2], // Color for (XMax, YMin)
-		color[0], color[1], color[2], // Color for (XMin, YMin)
-		color[0], color[1], color[2], // Color for (XMin, YMax)
-	}
 
-	xAxisVertices := []float32{0, 1, 0, 0}
-	yAxisVertices := []float32{0, 0, 1, 0}
-	chart.Screen.AddLine(screen.NEW, xAxisVertices, yAxisVertices, axisColor) // 2 points, so 2 * 3 = 6 colors
+	X, Y, C = AddSegmentToLine(X, Y, C, 0, 0, 1, 0, chart.AxisColor)
+	X, Y, C = AddSegmentToLine(X, Y, C, 0, 0, 0, 1, chart.AxisColor)
+
+	for i := 0; i < nSegs; i++ {
+		X, Y, C = AddSegmentToLine(X, Y, C, x, y, x, y-ticksize, tickColor)
+		x = x + inc
+	}
+	x = 0.
+	for i := 0; i < nSegs; i++ {
+		X, Y, C = AddSegmentToLine(X, Y, C, x, y, x-ticksize, y, tickColor)
+		y = y + inc
+	}
+	chart.Screen.ChangePosition(0.0, 0.0)
+	chart.Screen.AddLine(screen.NEW, X, Y, C) // 2 points, so 2 * 3 = 6 colors
+}
+
+func ScaleColor(color Color, scale float32) (scaled Color) {
+	for i, f := range color {
+		scaled[i] = f * scale
+		if scaled[i] > 1. {
+			scaled[i] = 1.
+		}
+	}
+	return
+}
+
+func AddSegmentToLine(X, Y, C []float32, X1, Y1, X2, Y2 float32, color Color) (XX, YY, CC []float32) {
+	XX = append(X, X1, X2)
+	YY = append(Y, Y1, Y2)
+	CC = append(C, color[0], color[1], color[2], color[0], color[1], color[2])
+	return
+}
+
+func ColorArray(X, Y []float32, color Color) (colorArray []float32) {
+	if len(X) != len(Y) {
+		panic("X and Y must have the same length")
+	}
+	colorArray = make([]float32, 3*len(X))
+	for i := 0; i < len(X); i++ {
+		colorArray[i*3] = color[0]
+		colorArray[i*3+1] = color[1]
+		colorArray[i*3+2] = color[2]
+	}
+	return
 }
