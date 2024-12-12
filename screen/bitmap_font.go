@@ -8,6 +8,8 @@ import (
 	"github.com/go-gl/gl/v4.5-core/gl"
 )
 
+// LAL: Can generate a font here: https://snowb.org/
+
 func (scr *Screen) LoadFontTexture(filePath string) error {
 	// Step 1: Load image file
 	imgFile, err := os.Open(filePath)
@@ -215,39 +217,38 @@ func (char *Character) addShader(scr *Screen) (shaderProgram uint32) {
 	if _, present := scr.Shaders[CHARACTER]; !present {
 		// Vertex Shader
 		var vertexShaderSource = `
-	#version 450
+#version 450
 
-	layout (location = 0) in vec2 position;
-	layout (location = 1) in vec2 uv;
-	layout (location = 2) in vec3 color;
+layout (location = 0) in vec2 position;  // Position of the character
+layout (location = 1) in vec2 uv;        // UV texture coordinates
+layout (location = 2) in vec3 color;     // Color for the character
 
-	uniform mat4 projection;
+uniform mat4 projection;  // Projection matrix
 
-	out vec2 fragUV;
-	out vec3 fragColor;
+out vec2 fragUV;         // Pass to fragment shader
+out vec3 fragColor;      // Pass to fragment shader
 
-	void main() {
-		gl_Position = projection * vec4(position, 0.0, 1.0);
-		fragUV = uv;
-		fragColor = color;
-	}
+void main() {
+    gl_Position = projection * vec4(position, 0.0, 1.0); // Transform position
+    fragUV = uv; // Pass the UVs to the fragment shader
+    fragColor = color; // Pass the color to the fragment shader
+}
 ` + "\x00"
 
 		var fragmentShaderSource = `
-	#version 450
+#version 450
 
-	// Fragment Shader
-	in vec2 fragUV;
-	in vec3 fragColor;
+in vec2 fragUV;          // UV coordinates from vertex shader
+in vec3 fragColor;       // Color from vertex shader
 
-	uniform sampler2D fontTexture;
+uniform sampler2D fontTexture; // Texture sampler for font
 
-	out vec4 outColor;
+out vec4 outColor;
 
-	void main() {
-		vec4 textureColor = texture(fontTexture, fragUV);
-		outColor = textureColor * vec4(fragColor, 1.0);
-	}
+void main() {
+    vec4 texColor = texture(fontTexture, fragUV); // Sample the font texture
+    outColor = texColor * vec4(fragColor, 1.0);   // Multiply font color by vertex color
+}
 ` + "\x00"
 		scr.Shaders[CHARACTER] = compileShaderProgram(vertexShaderSource, fragmentShaderSource)
 	}
