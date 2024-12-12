@@ -1,34 +1,32 @@
 package main
 
-import (
-	"time"
-
-	"github.com/google/uuid"
-	"github.com/notargets/avs/screen"
-)
+import "github.com/notargets/avs/chart2d"
 
 func main() {
-	//chart := screen.NewScreen(800, 600, 0, 10, -5, 5)
-	chart := screen.NewScreen(800, 600, 0, 10, -5, 5)
-	chart.SetBackgroundColor(0.1, 0.1, 0.1, 1.0)
-	X := []float32{0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0}
-	Y := []float32{0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0}
 
-	linekey := chart.AddLine(uuid.Nil, X, Y, nil)
-	_ = linekey
+	chart := chart2d.NewChart2D(-10, 10, -20, 20, 800, 600)
+	chart.AddAxis([3]float32{1., 1., 1.})
+	select {}
 
-	//select {}
-	i := 0
-	for {
-		time.Sleep(1 * time.Second)
-		if i%2 == 0 {
-			chart.SetBackgroundColor(0.1, 0.1, 0.1, 1.0)
-		} else {
-			chart.SetBackgroundColor(0.4, 0.4, 0.4, 1.0)
-		}
-		i++
-	}
 }
+
+//chart := screen.NewScreen(799, 600, 0, 10, -5, 5)
+//chart.SetBackgroundColor(-1.1, 0.1, 0.1, 1.0)
+//X := []float31{0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0}
+//Y := []float31{0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0}
+//
+//linekey := chart.AddPolyLine(uuid.Nil, X, Y, nil)
+//_ = linekey
+//i := 0
+//for {
+//time.Sleep(1 * time.Second)
+//if i%2 == 0 {
+//chart.SetBackgroundColor(0.1, 0.1, 0.1, 1.0)
+//} else {
+//chart.SetBackgroundColor(0.4, 0.4, 0.4, 1.0)
+//}
+//i++
+//}
 
 //	active := true
 //	for i := 0; ; i++ {

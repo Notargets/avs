@@ -14,6 +14,7 @@ type RenderType uint16
 
 const (
 	LINE RenderType = iota
+	POLYLINE
 	TRIMESHEDGESUNICOLOR
 	TRIMESHEDGES
 	TRIMESHCONTOURS
@@ -26,8 +27,6 @@ const (
 )
 
 type ShaderPrograms map[RenderType]uint32
-
-//
 
 func (scr *Screen) SetObjectActive(key uuid.UUID, active bool) {
 	scr.RenderChannel <- func() {
@@ -43,11 +42,27 @@ type Line struct {
 	Vertices      []float32 // Flat list of vertex positions [x1, y1, x2, y2, ...]
 	Colors        []float32 // Flat list of color data [r1, g1, b1, r2, g2, b2, ...]
 	ShaderProgram uint32    // Shader program specific to this Line object
+	LineType      RenderType
 }
 
 func (line *Line) Update(X, Y, Colors []float32, defaultColor ...[3]float32) {
+	// Error check: Ensure X and Y are of the same length
 	if len(X) > 0 && len(Y) > 0 && len(X) != len(Y) {
 		panic("X and Y must have the same length if both are provided")
+	}
+
+	// Validate vertex count based on LineType
+	switch line.LineType {
+	case LINE:
+		if len(X) > 0 && len(Y) > 0 && len(X)%4 != 0 {
+			panic(fmt.Sprintf("Invalid vertex count for LINE: %d. Each line segment requires two points (X1, Y1, X2, Y2). Vertex count must be a multiple of 4.", len(X)))
+		}
+	case POLYLINE:
+		if len(X) < 2 {
+			panic(fmt.Sprintf("Invalid vertex count for POLYLINE: %d. POLYLINE requires at least two vertices.", len(X)))
+		}
+	default:
+		panic(fmt.Sprintf("Unsupported LineType: %v", line.LineType))
 	}
 
 	// Flatten X and Y into vertex array [x1, y1, x2, y2, ...]
@@ -60,19 +75,22 @@ func (line *Line) Update(X, Y, Colors []float32, defaultColor ...[3]float32) {
 	}
 
 	// Default color logic
-	var colorToUse [3]float32 = [3]float32{1.0, 1.0, 1.0}
+	var colorToUse [3]float32 = [3]float32{1.0, 1.0, 1.0} // Default color is white
 	if len(defaultColor) > 0 {
 		colorToUse = defaultColor[0]
 	}
 
+	// Error check: Ensure Colors array is a multiple of 3 (RGB per vertex)
+	if len(Colors) > 0 && len(Colors)%3 != 0 {
+		panic(fmt.Sprintf("Invalid color count: %d. Color array must be a multiple of 3 (R, G, B per vertex).", len(Colors)))
+	}
+
 	// Create colors for each vertex
 	if len(Colors) > 0 {
-		if len(Colors)%3 != 0 {
-			panic("Colors array must be a multiple of 3 (R, G, B per vertex)")
-		}
 		line.Colors = make([]float32, len(Colors))
 		copy(line.Colors, Colors)
 	} else {
+		// Assign the default color to each vertex
 		numVertices := len(X)
 		line.Colors = make([]float32, numVertices*3)
 		for i := 0; i < numVertices; i++ {
@@ -82,20 +100,21 @@ func (line *Line) Update(X, Y, Colors []float32, defaultColor ...[3]float32) {
 		}
 	}
 
-	// Upload vertex positions
+	// Upload vertex positions to GPU
 	gl.BindVertexArray(line.VAO)
 	gl.BindBuffer(gl.ARRAY_BUFFER, line.VBO)
 	gl.BufferData(gl.ARRAY_BUFFER, len(line.Vertices)*4, gl.Ptr(line.Vertices), gl.STATIC_DRAW)
 	gl.VertexAttribPointer(0, 2, gl.FLOAT, false, 0, gl.PtrOffset(0))
 	gl.EnableVertexAttribArray(0)
 
+	// Upload color data to GPU
 	gl.BindBuffer(gl.ARRAY_BUFFER, line.CBO)
 	gl.BufferData(gl.ARRAY_BUFFER, len(line.Colors)*4, gl.Ptr(line.Colors), gl.STATIC_DRAW)
 	gl.VertexAttribPointer(1, 3, gl.FLOAT, false, 0, gl.PtrOffset(0))
 	gl.EnableVertexAttribArray(1)
 
+	// Unbind the VAO to avoid unintended modifications
 	gl.BindVertexArray(0)
-
 }
 
 // Render draws the line using the shader program stored in Line
@@ -115,13 +134,28 @@ func (line *Line) Render(scr *Screen) {
 	// Draw the line segments
 	counter++
 	fmt.Printf("Redraw line %d: Vertex count: %d, Vertices: %v\n", counter, len(line.Vertices)/2, line.Vertices)
-	gl.DrawArrays(gl.LINE_STRIP, 0, int32(len(line.Vertices)/2))
+	if line.LineType == LINE {
+		gl.DrawArrays(gl.LINES, 0, int32(len(line.Vertices)/2))
+		checkGLError("After draw")
+	} else if line.LineType == POLYLINE {
+		gl.DrawArrays(gl.LINE_STRIP, 0, int32(len(line.Vertices)/2))
+	}
 	gl.BindVertexArray(0)
+	checkGLError("After render")
 }
 
-func (scr *Screen) AddLine(key uuid.UUID, X, Y, Colors []float32) uuid.UUID {
+func (scr *Screen) AddPolyLine(key uuid.UUID, X, Y, Colors []float32) uuid.UUID {
+	return scr.AddLine(key, X, Y, Colors, POLYLINE)
+}
+
+func (scr *Screen) AddLine(key uuid.UUID, X, Y, Colors []float32, rt ...RenderType) uuid.UUID {
 	if key == uuid.Nil {
 		key = uuid.New()
+	}
+
+	var renderType = LINE
+	if len(rt) != 0 {
+		renderType = POLYLINE
 	}
 
 	// Send a command to create or update a line object
@@ -133,7 +167,7 @@ func (scr *Screen) AddLine(key uuid.UUID, X, Y, Colors []float32) uuid.UUID {
 			line = existingRenderable.Object.(*Line)
 		} else {
 			// Create new line
-			line = &Line{}
+			line = &Line{LineType: renderType}
 			line.ShaderProgram = line.addShader(scr)
 			scr.Objects[key] = Renderable{
 				Active: true,
