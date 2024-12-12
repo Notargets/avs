@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/go-gl/gl/v4.5-core/gl"
-	"github.com/google/uuid"
 )
 
 var counter int
@@ -28,7 +27,7 @@ const (
 
 type ShaderPrograms map[RenderType]uint32
 
-func (scr *Screen) SetObjectActive(key uuid.UUID, active bool) {
+func (scr *Screen) SetObjectActive(key Key, active bool) {
 	scr.RenderChannel <- func() {
 		if renderable, exists := scr.Objects[key]; exists {
 			renderable.Active = active
@@ -144,13 +143,13 @@ func (line *Line) Render(scr *Screen) {
 	checkGLError("After render")
 }
 
-func (scr *Screen) AddPolyLine(key uuid.UUID, X, Y, Colors []float32) uuid.UUID {
+func (scr *Screen) AddPolyLine(key Key, X, Y, Colors []float32) (newKey Key) {
 	return scr.AddLine(key, X, Y, Colors, POLYLINE)
 }
 
-func (scr *Screen) AddLine(key uuid.UUID, X, Y, Colors []float32, rt ...RenderType) uuid.UUID {
-	if key == uuid.Nil {
-		key = uuid.New()
+func (scr *Screen) AddLine(key Key, X, Y, Colors []float32, rt ...RenderType) (newKey Key) {
+	if key == NEW {
+		key = NewKey()
 	}
 
 	var renderType = LINE

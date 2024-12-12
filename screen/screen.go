@@ -14,10 +14,20 @@ import (
 	"github.com/google/uuid"
 )
 
+type Key uuid.UUID
+
+func NewKey() Key {
+	return Key(uuid.New())
+}
+
+var (
+	NEW = Key(uuid.Nil)
+)
+
 type Screen struct {
 	Shaders          ShaderPrograms // Stores precompiled shaders for all graphics types
 	Window           *glfw.Window
-	Objects          map[uuid.UUID]Renderable
+	Objects          map[Key]Renderable
 	RenderChannel    chan func()
 	Scale            float32
 	Position         [2]float32
@@ -45,7 +55,7 @@ type Renderable struct {
 func NewScreen(width, height int, xmin, xmax, ymin, ymax float32) *Screen {
 	screen := &Screen{
 		Shaders:       make(ShaderPrograms),
-		Objects:       make(map[uuid.UUID]Renderable),
+		Objects:       make(map[Key]Renderable),
 		RenderChannel: make(chan func(), 100),
 		isDragging:    false,
 		ScreenWidth:   width,
@@ -183,9 +193,10 @@ func (scr *Screen) InitGLScreen(width, height int) {
 	return
 }
 
-func (scr *Screen) SetBackgroundColor(r, g, b, a float32) {
+func (scr *Screen) SetBackgroundColor(color [4]float32) {
 	scr.RenderChannel <- func() {
-		gl.ClearColor(r, g, b, a)
+		//gl.ClearColor(r, g, b, a)
+		gl.ClearColor(color[0], color[1], color[2], color[3])
 	}
 }
 

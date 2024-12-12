@@ -3,7 +3,6 @@ package chart2d
 import (
 	"fmt"
 
-	"github.com/google/uuid"
 	"github.com/notargets/avs/screen"
 )
 
@@ -13,31 +12,35 @@ type Chart2D struct {
 	XMin, XMax  float32
 	YMin, YMax  float32
 	Screen      *screen.Screen
-	LineColor   [3]float32
-	AxisColor   [3]float32
-	ScreenColor [3]float32
+	LineColor   Color
+	AxisColor   Color
+	ScreenColor Color
 }
 
-func NewChart2D(XMin, XMax, YMin, YMax float32, width, height int) *Chart2D {
-	return &Chart2D{
+type Color [4]float32 // RGBA
+
+func NewChart2D(XMin, XMax, YMin, YMax float32, width, height int) (chart *Chart2D) {
+	chart = &Chart2D{
 		XMin:        XMin,
 		XMax:        XMax,
 		YMin:        YMin,
 		YMax:        YMax,
 		Screen:      screen.NewScreen(width, height, 0, 1, 0, 1),
-		LineColor:   [3]float32{1, 1, 1},
-		AxisColor:   [3]float32{1, 1, 1},
-		ScreenColor: [3]float32{0.2, 0.2, 0.2},
+		LineColor:   Color{1, 1, 1, 1},
+		AxisColor:   Color{1, 1, 1, 1},
+		ScreenColor: Color{0.18, 0.18, 0.18, 1.},
 	}
+	chart.Screen.SetBackgroundColor(chart.ScreenColor)
+	return
 }
 
 func (chart *Chart2D) AddLine(X, Y []float32) {
 	chart.TransformXYToUnit(X, Y)
 
-	chart.Screen.AddPolyLine(uuid.Nil, X, Y, chart.GetSingleColorArray(Y, chart.LineColor))
+	chart.Screen.AddPolyLine(screen.NEW, X, Y, chart.GetSingleColorArray(Y, chart.LineColor))
 }
 
-func (chart *Chart2D) GetSingleColorArray(Y []float32, color [3]float32) (colors []float32) {
+func (chart *Chart2D) GetSingleColorArray(Y []float32, color Color) (colors []float32) {
 	colors = make([]float32, len(Y)*3)
 	for i := range colors {
 		colors[i*3] = color[0]
@@ -92,5 +95,5 @@ func (chart *Chart2D) AddAxis(color [3]float32) {
 
 	xAxisVertices := []float32{0, 1, 0, 0}
 	yAxisVertices := []float32{0, 0, 1, 0}
-	chart.Screen.AddLine(uuid.Nil, xAxisVertices, yAxisVertices, axisColor) // 2 points, so 2 * 3 = 6 colors
+	chart.Screen.AddLine(screen.NEW, xAxisVertices, yAxisVertices, axisColor) // 2 points, so 2 * 3 = 6 colors
 }
