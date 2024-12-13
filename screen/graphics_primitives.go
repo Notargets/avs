@@ -155,6 +155,7 @@ func (scr *Screen) AddLine(key Key, X, Y, Colors []float32, rt ...RenderType) (n
 	if key == NEW {
 		key = NewKey()
 	}
+	newKey = key
 
 	var renderType = LINE
 	if len(rt) != 0 {

@@ -7,10 +7,10 @@ import (
 	"runtime/cgo"
 	"unsafe"
 
-	v45 "github.com/4ydx/gltext/v4.5"
 	"github.com/go-gl/gl/v4.5-core/gl"
 	"github.com/go-gl/glfw/v3.3/glfw"
 	"github.com/go-gl/mathgl/mgl32"
+	"github.com/golang/freetype/truetype"
 	"github.com/google/uuid"
 )
 
@@ -27,10 +27,10 @@ var (
 type Screen struct {
 	Shaders          ShaderPrograms // Stores precompiled shaders for all graphics types
 	Window           *glfw.Window
-	FontTextureID    uint32    // Texture ID for the font atlas
-	Font             *v45.Font // Using gltext font instead of raw OpenGL textures
-	FontFilePath     string    // Path to the TTF font
-	FontSize         int       //
+	FontTextureID    uint32         // Texture ID for the font atlas
+	Font             *truetype.Font // Using gltext font instead of raw OpenGL textures
+	FontFilePath     string         // Path to the TTF font
+	FontSize         float64        //
 	Objects          map[Key]Renderable
 	RenderChannel    chan func()
 	Scale            float32

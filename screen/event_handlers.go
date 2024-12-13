@@ -43,6 +43,8 @@ func (scr *Screen) fullScreenRender() {
 		switch renderObj := obj.Object.(type) {
 		case *Line:
 			renderObj.Render(scr)
+		case *String:
+			renderObj.Render(scr)
 		case *TriMesh:
 			//renderObj.Render(scr)
 		case *TriMeshEdges:
