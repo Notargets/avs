@@ -1,6 +1,8 @@
 package main
 
-import "github.com/notargets/avs/chart2d"
+import (
+	"github.com/notargets/avs/chart2d"
+)
 
 func main() {
 
