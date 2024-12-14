@@ -8,6 +8,8 @@ import (
 	"os"
 	"runtime"
 
+	"golang.org/x/image/math/fixed"
+
 	"github.com/go-gl/gl/v4.5-core/gl"
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/golang/freetype"
@@ -68,14 +70,40 @@ func (scr *Screen) AddString(key Key, text string, x, y float32, color [3]float3
 			}
 			str.ShaderProgram = str.addShader(scr)
 
-			// Create transparent RGBA image
-			img := image.NewRGBA(image.Rect(0, 0, 512, 512))
+			// **Dynamically calculate texture size based on text dimensions**
+			scaledSize := fixed.Int26_6(scr.FontSize * scale * 64) // Convert to fixed-point
+			textWidth := 0
+			for _, ch := range text {
+				glyphIndex := scr.Font.Index(ch)
+				hMetric := scr.Font.HMetric(scaledSize, glyphIndex)
+				textWidth += int(hMetric.AdvanceWidth >> 6) // Convert to pixels
+			}
+
+			textHeight := int32(scr.FontSize * scale) // Text height directly from font size and scale
+
+			// Add padding, then align to 4-byte boundaries
+			textureWidth := int32((textWidth + 16 + 3) & ^3) // Align to next multiple of 4
+			textureHeight := (textHeight + 16 + 3) & ^3      // Align to next multiple of 4
+
+			// Ensure texture size is at least 1x1
+			if textureWidth < 1 {
+				textureWidth = 1
+			}
+			if textureHeight < 1 {
+				textureHeight = 1
+			}
+
+			fmt.Printf("[AddString] Calculated texture size: %dx%d (Width x Height)\n", textureWidth, textureHeight)
+
+			// **Create transparent RGBA image**
+			img := image.NewRGBA(image.Rect(0, 0, int(textureWidth), int(textureHeight)))
 			for i := 0; i < len(img.Pix); i += 4 {
 				img.Pix[i+0] = 0 // Red
 				img.Pix[i+1] = 0 // Green
 				img.Pix[i+2] = 0 // Blue
 				img.Pix[i+3] = 0 // Alpha (fully transparent)
 			}
+
 			ctx := freetype.NewContext()
 			ctx.SetDPI(72)
 			ctx.SetFont(scr.Font)
@@ -95,25 +123,31 @@ func (scr *Screen) AddString(key Key, text string, x, y float32, color [3]float3
 			var texture uint32
 			gl.GenTextures(1, &texture)
 			gl.BindTexture(gl.TEXTURE_2D, texture)
-			gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 512, 512, 0, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(img.Pix))
+			//gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
+			//gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, textureHeight, textureWidth, 0, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(img.Pix))
+			gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, textureWidth, textureHeight, 0, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(img.Pix))
 			gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
 			gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
 			gl.BindTexture(gl.TEXTURE_2D, 0)
 
-			// Calculate proper position and scale
+			aspect := float32(textureWidth) / float32(textureHeight)
 			width := float32(scr.XMax-scr.XMin) * float32(scale) / 10
-			height := float32(scr.YMax-scr.YMin) * float32(scale) / 10
+			height := width / aspect
+
+			// Calculate proper position and scale
+			//width := float32(scr.XMax-scr.XMin) * float32(scale) / 10
+			//height := float32(scr.YMax-scr.YMin) * float32(scale) / 10
 			posX := x
 			posY := y
 
-			// Create VAO and VBO for quad
 			vertices := []float32{
-				posX, posY, 0.0, 1.0, color[0], color[1], color[2],
-				posX + width, posY, 1.0, 1.0, color[0], color[1], color[2],
-				posX, posY + height, 0.0, 0.0, color[0], color[1], color[2],
-				posX + width, posY + height, 1.0, 0.0, color[0], color[1], color[2],
+				posX, posY, 0.0, 1.0, color[0], color[1], color[2], // Bottom-left
+				posX + width, posY, 1.0, 1.0, color[0], color[1], color[2], // Bottom-right
+				posX, posY + height, 0.0, 0.0, color[0], color[1], color[2], // Top-left
+				posX + width, posY + height, 1.0, 0.0, color[0], color[1], color[2], // Top-right
 			}
 
+			// Create VAO and VBO for quad
 			gl.GenVertexArrays(1, &str.VAO)
 			gl.GenBuffers(1, &str.VBO)
 			gl.BindVertexArray(str.VAO)
@@ -179,26 +213,6 @@ void main() {
 	return scr.Shaders[STRING]
 }
 
-func SaveDebugImage(img *image.RGBA, filename string) {
-	if img == nil {
-		fmt.Println("[SaveDebugImage] Image is nil, nothing to save.")
-		return
-	}
-	file, err := os.Create(filename)
-	if err != nil {
-		fmt.Printf("[SaveDebugImage] Failed to create image file: %v\n", err)
-		return
-	}
-	defer file.Close()
-
-	err = png.Encode(file, img)
-	if err != nil {
-		fmt.Printf("[SaveDebugImage] Failed to save image as PNG: %v\n", err)
-	} else {
-		fmt.Printf("[SaveDebugImage] Image saved as '%s'.\n", filename)
-	}
-}
-
 func (str *String) Render(scr *Screen) {
 	gl.UseProgram(scr.Shaders[STRING])
 	checkGLError("After UseProgram")
@@ -248,4 +262,24 @@ func (str *String) Render(scr *Screen) {
 	gl.Disable(gl.BLEND)
 	gl.BindVertexArray(0)
 	gl.BindTexture(gl.TEXTURE_2D, 0)
+}
+
+func SaveDebugImage(img *image.RGBA, filename string) {
+	if img == nil {
+		fmt.Println("[SaveDebugImage] Image is nil, nothing to save.")
+		return
+	}
+	file, err := os.Create(filename)
+	if err != nil {
+		fmt.Printf("[SaveDebugImage] Failed to create image file: %v\n", err)
+		return
+	}
+	defer file.Close()
+
+	err = png.Encode(file, img)
+	if err != nil {
+		fmt.Printf("[SaveDebugImage] Failed to save image as PNG: %v\n", err)
+	} else {
+		fmt.Printf("[SaveDebugImage] Image saved as '%s'.\n", filename)
+	}
 }
