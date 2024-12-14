@@ -51,7 +51,7 @@ func printMemoryStats(label string) {
 		label, m.Alloc/1024/1024, m.TotalAlloc/1024/1024, m.Sys/1024/1024, m.NumGC)
 }
 
-func (scr *Screen) AddString(key Key, text string, x, y float32, color [3]float32, scale float64) (newKey Key) {
+func (scr *Screen) AddString(key Key, text string, x, y float32, color [3]float32, scale float64, centered bool) (newKey Key) {
 	if key == NEW {
 		key = Key(uuid.New())
 	}
@@ -135,10 +135,14 @@ func (scr *Screen) AddString(key Key, text string, x, y float32, color [3]float3
 			height := width / aspect
 
 			// Calculate proper position and scale
-			//width := float32(scr.XMax-scr.XMin) * float32(scale) / 10
-			//height := float32(scr.YMax-scr.YMin) * float32(scale) / 10
-			posX := x
-			posY := y
+			var posX, posY float32
+			if centered {
+				posX = x - float32(width)/2
+				posY = y - float32(height)/2
+			} else {
+				posX = x
+				posY = y
+			}
 
 			vertices := []float32{
 				posX, posY, 0.0, 1.0, color[0], color[1], color[2], // Bottom-left

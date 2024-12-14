@@ -16,6 +16,6 @@ func main() {
 	chart.AddAxis(chart2d.Color{1., 1., 1.})
 	chart.Screen.LoadFont("assets/fonts/Noto-Sans/static/NotoSans-Regular.ttf", 64)
 	//chart.Screen.LoadFont("assets/fonts/snob.org/sans-serif.fnt", 64)
-	chart.Screen.AddString(screen.NEW, "0123456789012345678901234567890", 0, 0.5, [3]float32{1, 1, 1}, 10.0)
+	chart.Screen.AddString(screen.NEW, "0123456789012345678901234567890", 0, 0.5, [3]float32{1, 1, 1}, 10.0, true)
 	select {}
 }
