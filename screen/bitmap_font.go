@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"image"
 	colorlib "image/color"
-	"image/draw"
 	"image/png"
 	"os"
 	"runtime"
@@ -57,7 +56,7 @@ func (scr *Screen) AddString(key Key, text string, x, y float32, color [3]float3
 	newKey = key
 
 	scr.RenderChannel <- func() {
-		fmt.Println("[AddString] Starting to create text image")
+		fmt.Println("[AddString] Starting to create transparent text image")
 		var str *String
 		if object, present := scr.Objects[key]; present {
 			str = object.Object.(*String)
@@ -69,9 +68,14 @@ func (scr *Screen) AddString(key Key, text string, x, y float32, color [3]float3
 			}
 			str.ShaderProgram = str.addShader(scr)
 
-			// Create the font image
+			// Create transparent RGBA image
 			img := image.NewRGBA(image.Rect(0, 0, 512, 512))
-			draw.Draw(img, img.Bounds(), image.Black, image.Point{}, draw.Src)
+			for i := 0; i < len(img.Pix); i += 4 {
+				img.Pix[i+0] = 0 // Red
+				img.Pix[i+1] = 0 // Green
+				img.Pix[i+2] = 0 // Blue
+				img.Pix[i+3] = 0 // Alpha (fully transparent)
+			}
 			ctx := freetype.NewContext()
 			ctx.SetDPI(72)
 			ctx.SetFont(scr.Font)
@@ -84,7 +88,7 @@ func (scr *Screen) AddString(key Key, text string, x, y float32, color [3]float3
 			if err != nil {
 				fmt.Printf("Error drawing string: %v\n", err)
 			} else {
-				SaveDebugImage(img, "debug_font.png")
+				SaveDebugImage(img, "debug_text_with_transparency.png")
 			}
 
 			// Create OpenGL Texture
@@ -104,10 +108,10 @@ func (scr *Screen) AddString(key Key, text string, x, y float32, color [3]float3
 
 			// Create VAO and VBO for quad
 			vertices := []float32{
-				posX, posY, 0.0, 1.0,
-				posX + width, posY, 1.0, 1.0,
-				posX, posY + height, 0.0, 0.0,
-				posX + width, posY + height, 1.0, 0.0,
+				posX, posY, 0.0, 1.0, color[0], color[1], color[2],
+				posX + width, posY, 1.0, 1.0, color[0], color[1], color[2],
+				posX, posY + height, 0.0, 0.0, color[0], color[1], color[2],
+				posX + width, posY + height, 1.0, 0.0, color[0], color[1], color[2],
 			}
 
 			gl.GenVertexArrays(1, &str.VAO)
@@ -117,13 +121,12 @@ func (scr *Screen) AddString(key Key, text string, x, y float32, color [3]float3
 			gl.BindBuffer(gl.ARRAY_BUFFER, str.VBO)
 			gl.BufferData(gl.ARRAY_BUFFER, len(vertices)*4, gl.Ptr(vertices), gl.STATIC_DRAW)
 
-			// Set position attribute
-			gl.VertexAttribPointer(0, 2, gl.FLOAT, false, 4*4, gl.PtrOffset(0))
+			gl.VertexAttribPointer(0, 2, gl.FLOAT, false, 7*4, gl.PtrOffset(0))
 			gl.EnableVertexAttribArray(0)
-
-			// Set UV attribute
-			gl.VertexAttribPointer(1, 2, gl.FLOAT, false, 4*4, gl.PtrOffset(2*4))
+			gl.VertexAttribPointer(1, 2, gl.FLOAT, false, 7*4, gl.PtrOffset(2*4))
 			gl.EnableVertexAttribArray(1)
+			gl.VertexAttribPointer(2, 3, gl.FLOAT, false, 7*4, gl.PtrOffset(4*4))
+			gl.EnableVertexAttribArray(2)
 
 			gl.BindBuffer(gl.ARRAY_BUFFER, 0)
 			gl.BindVertexArray(0)
@@ -141,25 +144,30 @@ func (scr *Screen) AddString(key Key, text string, x, y float32, color [3]float3
 func (str *String) addShader(scr *Screen) (shaderProgram uint32) {
 	if _, present := scr.Shaders[STRING]; !present {
 		vertexShaderSource := `
-		#version 450
-		layout (location = 0) in vec2 position;
-		layout (location = 1) in vec2 uv;
-		uniform mat4 projection;
-		out vec2 fragUV;
-		void main() {
-			gl_Position = projection * vec4(position, 0.0, 1.0);
-			fragUV = uv;
-		}` + "\x00"
+#version 450
+layout (location = 0) in vec2 position;
+layout (location = 1) in vec2 uv;
+layout (location = 2) in vec3 color;
+uniform mat4 projection; // <-- projection matrix
+out vec2 fragUV;
+out vec3 fragColor;
+void main() {
+    gl_Position = projection * vec4(position, 0.0, 1.0); // Apply projection matrix here
+    fragUV = uv;
+    fragColor = color;
+}
+` + "\x00"
 
 		fragmentShaderSource := `
 		#version 450
-		in vec2 fragUV;
-		uniform sampler2D fontTexture;
-		out vec4 outColor;
-		void main() {
-			vec4 texColor = texture(fontTexture, fragUV);
-			outColor = texColor; // Display texture without multiplying it with another color
-		}` + "\x00"
+in vec2 fragUV;
+in vec3 fragColor;
+uniform sampler2D fontTexture;
+out vec4 outColor;
+void main() {
+	vec4 texColor = texture(fontTexture, fragUV);
+	outColor = texColor * vec4(fragColor, texColor.a); // Properly consider alpha
+}` + "\x00"
 
 		shaderProgram := compileShaderProgram(vertexShaderSource, fragmentShaderSource)
 		if shaderProgram == 0 {
@@ -195,10 +203,6 @@ func (str *String) Render(scr *Screen) {
 	gl.UseProgram(scr.Shaders[STRING])
 	checkGLError("After UseProgram")
 
-	// Enable depth testing
-	gl.Enable(gl.DEPTH_TEST)
-	checkGLError("After Enable DEPTH_TEST")
-
 	// Check if the active program matches
 	var activeProgram int32
 	gl.GetIntegerv(gl.CURRENT_PROGRAM, &activeProgram)
@@ -212,7 +216,7 @@ func (str *String) Render(scr *Screen) {
 		panic("[Render] Shader program handle is 0")
 	}
 
-	// Set projection matrix
+	// Bind the projection matrix to the shader
 	projectionUniform := gl.GetUniformLocation(scr.Shaders[STRING], gl.Str("projection\x00"))
 	checkGLError("After GetUniformLocation")
 	if projectionUniform < 0 {
@@ -222,32 +226,26 @@ func (str *String) Render(scr *Screen) {
 	gl.UniformMatrix4fv(projectionUniform, 1, false, &scr.projectionMatrix[0])
 	checkGLError("After UniformMatrix4fv")
 
-	// Activate texture unit and bind the texture
+	// Bind the texture
 	gl.ActiveTexture(gl.TEXTURE0)
-	checkGLError("After ActiveTexture")
 	gl.BindTexture(gl.TEXTURE_2D, str.Texture)
 	checkGLError("After BindTexture")
 
-	// Bind the shader texture uniform to the correct texture unit
-	textureUniform := gl.GetUniformLocation(scr.Shaders[STRING], gl.Str("fontTexture\x00"))
-	checkGLError("After GetUniformLocation for fontTexture")
-	if textureUniform < 0 {
-		fmt.Println("[Render] fontTexture uniform not found!")
-		panic("[Render] fontTexture uniform location returned -1")
-	}
-	gl.Uniform1i(textureUniform, 0)
-	checkGLError("After Uniform1i")
-
-	// Bind the VAO (Vertex Array Object)
+	// Bind the VAO and draw the polygon
 	gl.BindVertexArray(str.VAO)
 	checkGLError("After BindVertexArray")
 
-	// Draw the quad (two triangles)
+	// Enable Blending
+	gl.Enable(gl.BLEND)
+	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+	checkGLError("After BlendFunc")
+
+	// Draw the quad (TRIANGLE_STRIP for simplicity)
 	gl.DrawArrays(gl.TRIANGLE_STRIP, 0, 4)
 	checkGLError("After DrawArrays")
 
-	// Unbind VAO and texture to avoid side effects
+	// Clean up
+	gl.Disable(gl.BLEND)
 	gl.BindVertexArray(0)
 	gl.BindTexture(gl.TEXTURE_2D, 0)
-	checkGLError("After UnbindVertexArray and UnbindTexture")
 }
