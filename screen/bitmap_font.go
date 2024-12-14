@@ -90,11 +90,11 @@ func (scr *Screen) AddString(key Key, text string, x, y float32, color [3]float3
 			// Create OpenGL Texture
 			var texture uint32
 			gl.GenTextures(1, &texture)
-			gl.ActiveTexture(gl.TEXTURE0) // Activate texture unit 0
 			gl.BindTexture(gl.TEXTURE_2D, texture)
 			gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 512, 512, 0, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(img.Pix))
 			gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
 			gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+			gl.BindTexture(gl.TEXTURE_2D, 0)
 
 			// Calculate proper position and scale
 			width := float32(scr.XMax-scr.XMin) * float32(scale) / 10
@@ -104,44 +104,38 @@ func (scr *Screen) AddString(key Key, text string, x, y float32, color [3]float3
 
 			// Create VAO and VBO for quad
 			vertices := []float32{
-				posX, posY, 0.0, 0.0, // Bottom-left  (position, UV)
-				posX + width, posY, 1.0, 0.0, // Bottom-right (position, UV)
-				posX, posY + height, 0.0, 1.0, // Top-left (position, UV)
-				posX + width, posY + height, 1.0, 1.0, // Top-right (position, UV)
+				posX, posY, 0.0, 1.0,
+				posX + width, posY, 1.0, 1.0,
+				posX, posY + height, 0.0, 0.0,
+				posX + width, posY + height, 1.0, 0.0,
 			}
 
 			gl.GenVertexArrays(1, &str.VAO)
 			gl.GenBuffers(1, &str.VBO)
 			gl.BindVertexArray(str.VAO)
 
-			// Bind VBO and load vertex data
 			gl.BindBuffer(gl.ARRAY_BUFFER, str.VBO)
 			gl.BufferData(gl.ARRAY_BUFFER, len(vertices)*4, gl.Ptr(vertices), gl.STATIC_DRAW)
 
-			// Set position attribute (2D position, first 2 floats of each vertex)
+			// Set position attribute
 			gl.VertexAttribPointer(0, 2, gl.FLOAT, false, 4*4, gl.PtrOffset(0))
 			gl.EnableVertexAttribArray(0)
 
-			// Set UV attribute (2D UVs, next 2 floats of each vertex)
+			// Set UV attribute
 			gl.VertexAttribPointer(1, 2, gl.FLOAT, false, 4*4, gl.PtrOffset(2*4))
 			gl.EnableVertexAttribArray(1)
 
-			// Clean up
 			gl.BindBuffer(gl.ARRAY_BUFFER, 0)
 			gl.BindVertexArray(0)
 
-			// Unbind the texture AFTER the VBO/VAO are set up
-			gl.BindTexture(gl.TEXTURE_2D, 0)
-
 			str.Texture = texture
-
 			scr.Objects[key] = Renderable{
 				Active: true,
 				Object: str,
 			}
 		}
 	}
-	return key
+	return newKey
 }
 
 func (str *String) addShader(scr *Screen) (shaderProgram uint32) {
