@@ -26,8 +26,8 @@ type String struct {
 }
 
 func (scr *Screen) LoadFont(filePath string, fontSize float64) error {
-	fmt.Printf("Loading font from file: %s\n", filePath)
-	printMemoryStats("Start")
+	//fmt.Printf("Loading font from file: %s\n", filePath)
+	//printMemoryStats("Start")
 
 	fontBytes, err := os.ReadFile(filePath)
 	if err != nil {
@@ -58,7 +58,7 @@ func (scr *Screen) AddString(key Key, text string, x, y float32, color [3]float3
 	newKey = key
 
 	scr.RenderChannel <- func() {
-		fmt.Println("[AddString] Starting to create transparent text image")
+		//fmt.Println("[AddString] Starting to create transparent text image")
 		var str *String
 		if object, present := scr.Objects[key]; present {
 			str = object.Object.(*String)
@@ -93,7 +93,7 @@ func (scr *Screen) AddString(key Key, text string, x, y float32, color [3]float3
 				textureHeight = 1
 			}
 
-			fmt.Printf("[AddString] Calculated texture size: %dx%d (Width x Height)\n", textureWidth, textureHeight)
+			//fmt.Printf("[AddString] Calculated texture size: %dx%d (Width x Height)\n", textureWidth, textureHeight)
 
 			// **Create transparent RGBA image**
 			img := image.NewRGBA(image.Rect(0, 0, int(textureWidth), int(textureHeight)))
@@ -115,8 +115,8 @@ func (scr *Screen) AddString(key Key, text string, x, y float32, color [3]float3
 			_, err := ctx.DrawString(text, pt)
 			if err != nil {
 				fmt.Printf("Error drawing string: %v\n", err)
-			} else {
-				SaveDebugImage(img, "debug_text_with_transparency.png")
+				//} else {
+				//	SaveDebugImage(img, "debug_text_with_transparency.png")
 			}
 
 			// Create OpenGL Texture
@@ -207,7 +207,7 @@ void main() {
 		if shaderProgram == 0 {
 			panic("Failed to compile shader program for STRING")
 		}
-		fmt.Println("[AddShader] Successfully created shader program for STRING")
+		//fmt.Println("[AddShader] Successfully created shader program for STRING")
 		scr.Shaders[STRING] = shaderProgram
 	}
 	return scr.Shaders[STRING]
