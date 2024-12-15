@@ -60,8 +60,6 @@ func (scr *Screen) Printf(key Key, x, y float32, color [3]float32, scale float64
 	// Call AddString with the formatted text
 	newKey = scr.AddString(key, text, x, y, color, scale, centered, screenFixed)
 
-	fmt.Println("here...")
-
 	return newKey
 }
 
@@ -99,7 +97,7 @@ func (scr *Screen) AddString(key Key, text string, x, y float32, color [3]float3
 
 			textHeight := int32(scr.FontSize * scale)
 			textureWidth := int32((textWidth + 3) & ^3) // Fixed alignment
-			textureHeight := int32((textHeight + 3) & ^3)
+			textureHeight := (textHeight + 3) & ^3
 
 			img := image.NewRGBA(image.Rect(0, 0, int(textureWidth), int(textureHeight)))
 			ctx := freetype.NewContext()
@@ -152,7 +150,7 @@ func (str *String) initializeVBO(scr *Screen, img *image.RGBA, textureWidth, tex
 	var texture uint32
 	gl.GenTextures(1, &texture)
 	gl.BindTexture(gl.TEXTURE_2D, texture)
-	fmt.Printf("Texture width: %d, Texture height: %d\n", textureWidth, textureHeight)
+	//fmt.Printf("Texture width: %d, Texture height: %d\n", textureWidth, textureHeight)
 	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, textureWidth, textureHeight, 0, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(img.Pix))
 	checkGLError("After TexImage2D")
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
