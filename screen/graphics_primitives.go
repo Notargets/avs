@@ -7,27 +7,6 @@ import (
 	"github.com/go-gl/gl/v4.5-core/gl"
 )
 
-var counter int
-
-type RenderType uint16
-
-const (
-	LINE RenderType = iota
-	POLYLINE
-	STRING
-	TRIMESHEDGESUNICOLOR
-	TRIMESHEDGES
-	TRIMESHCONTOURS
-	TRIMESHSMOOTH
-	LINE3D
-	TRIMESHEDGESUNICOLOR3D
-	TRIMESHEDGES3D
-	TRIMESHCONTOURS3D
-	TRIMESHSMOOTH3D
-)
-
-type ShaderPrograms map[RenderType]uint32
-
 func (scr *Screen) SetObjectActive(key Key, active bool) {
 	scr.RenderChannel <- func() {
 		if renderable, exists := scr.Objects[key]; exists {
@@ -135,8 +114,6 @@ func (line *Line) Render(scr *Screen) {
 	}
 
 	// Draw the line segments
-	counter++
-	//fmt.Printf("Redraw line %d: Vertex count: %d, Vertices: %v\n", counter, len(line.Vertices)/2, line.Vertices)
 	if line.LineType == LINE {
 		gl.DrawArrays(gl.LINES, 0, int32(len(line.Vertices)/2))
 		checkGLError("After draw")
