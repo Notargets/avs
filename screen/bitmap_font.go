@@ -53,6 +53,18 @@ func printMemoryStats(label string) {
 		label, m.Alloc/1024/1024, m.TotalAlloc/1024/1024, m.Sys/1024/1024, m.NumGC)
 }
 
+func (scr *Screen) Printf(key Key, x, y float32, color [3]float32, scale float64, centered, screenFixed bool, format string, args ...interface{}) (newKey Key) {
+	// Format the string using fmt.Sprintf
+	text := fmt.Sprintf(format, args...)
+
+	// Call AddString with the formatted text
+	newKey = scr.AddString(key, text, x, y, color, scale, centered, screenFixed)
+
+	fmt.Println("here...")
+
+	return newKey
+}
+
 func (scr *Screen) AddString(key Key, text string, x, y float32, color [3]float32, scale float64, centered, screenFixed bool) (newKey Key) {
 	if key == NEW {
 		key = Key(uuid.New())

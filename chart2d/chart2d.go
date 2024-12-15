@@ -100,8 +100,11 @@ func (chart *Chart2D) AddAxis(color Color) {
 	X, Y, C = AddSegmentToLine(X, Y, C, 0, 0, 1, 0, chart.AxisColor)
 	X, Y, C = AddSegmentToLine(X, Y, C, 0, 0, 0, 1, chart.AxisColor)
 
+	colorTxt := [3]float32{chart.AxisColor[0], chart.AxisColor[1], chart.AxisColor[2]}
 	for i := 0; i < nSegs; i++ {
 		X, Y, C = AddSegmentToLine(X, Y, C, x, y, x, y-ticksize, tickColor)
+		chart.Screen.Printf(screen.NEW, x, y-2*ticksize, colorTxt, 0.35, true, false,
+			"%4.1f", x)
 		x = x + inc
 	}
 	x = 0.
