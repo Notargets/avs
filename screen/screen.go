@@ -30,11 +30,11 @@ type Screen struct {
 	FontTextureID    uint32         // Texture ID for the font atlas
 	Font             *truetype.Font // Using gltext font instead of raw OpenGL textures
 	FontFilePath     string         // Path to the TTF font
-	FontSize         float64        //
+	FontSize         float32        //
 	Objects          map[Key]Renderable
 	RenderChannel    chan func()
 	Scale            float32
-	Position         [2]float32
+	PositionDelta    [2]float32
 	isDragging       bool
 	lastX            float64
 	lastY            float64
@@ -71,8 +71,8 @@ func NewScreen(width, height int, xmin, xmax, ymin, ymax float32) *Screen {
 		PanSpeed:      1.0,
 		ZoomSpeed:     1.0,
 		ZoomFactor:    1.0,
-		Scale:         0.9,
-		Position:      [2]float32{0, 0},
+		Scale:         1.0,
+		PositionDelta: [2]float32{0, 0},
 		NeedsRedraw:   true,
 	}
 
@@ -208,13 +208,6 @@ func (scr *Screen) ChangeScale(scale float32) {
 	scr.RenderChannel <- func() {
 		scr.Scale = scale
 		scr.ScaleChanged = true
-	}
-}
-
-func (scr *Screen) ChangePosition(x, y float32) {
-	scr.RenderChannel <- func() {
-		scr.Position = [2]float32{x, y}
-		scr.PositionChanged = true
 	}
 }
 

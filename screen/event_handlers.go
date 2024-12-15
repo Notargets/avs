@@ -88,8 +88,50 @@ func (scr *Screen) SetCallbacks() {
 }
 
 func (scr *Screen) updateProjectionMatrix() {
-	//fmt.Println("Updating projection matrix...")
+	// Get the aspect ratio of the window
+	aspectRatio := float32(scr.ScreenWidth) / float32(scr.ScreenHeight)
 
+	// Determine world coordinate range based on zoom and position
+	xRange := (scr.XMax - scr.XMin) / scr.ZoomFactor / scr.Scale
+	yRange := (scr.YMax - scr.YMin) / scr.ZoomFactor / scr.Scale
+
+	// Calculate the current center of the view
+	centerX := (scr.XMin + scr.XMax) / 2.0
+	centerY := (scr.YMin + scr.YMax) / 2.0
+
+	// ** Key Change ** - Proper "squish" logic for X and Y
+	if aspectRatio > 1.0 {
+		// The screen is wider than it is tall, so "stretch" Y relative to X
+		yRange = yRange / aspectRatio
+	} else {
+		// The screen is taller than it is wide, so "stretch" X relative to Y
+		xRange = xRange * aspectRatio
+	}
+
+	// Use PositionDelta to adjust the camera's "pan" position in world space
+	xmin := centerX - xRange/2.0 + scr.PositionDelta[0]
+	xmax := centerX + xRange/2.0 + scr.PositionDelta[0]
+	ymin := centerY - yRange/2.0 + scr.PositionDelta[1]
+	ymax := centerY + yRange/2.0 + scr.PositionDelta[1]
+
+	// Update the orthographic projection matrix
+	scr.projectionMatrix = mgl32.Ortho2D(xmin, xmax, ymin, ymax)
+
+	// Send the updated projection matrix to all shaders
+	for renderType, shaderProgram := range scr.Shaders {
+		if renderType != FIXEDSTRING {
+			projectionUniform := gl.GetUniformLocation(shaderProgram, gl.Str("projection\x00"))
+			if projectionUniform < 0 {
+				fmt.Printf("Projection uniform not found for RenderType %v\n", renderType)
+			} else {
+				gl.UseProgram(shaderProgram)
+				gl.UniformMatrix4fv(projectionUniform, 1, false, &scr.projectionMatrix[0])
+			}
+		}
+	}
+}
+
+func (scr *Screen) updateProjectionMatrixSquare() {
 	// Get the aspect ratio of the window
 	aspectRatio := float32(scr.ScreenWidth) / float32(scr.ScreenHeight)
 
@@ -103,18 +145,18 @@ func (scr *Screen) updateProjectionMatrix() {
 
 	// Adjust for the aspect ratio, but keep the world coordinates intact
 	if aspectRatio > 1.0 {
-		// Wide screen — stretch X
+		// If the screen is wider than tall, we "stretch" xRange
 		xRange = yRange * aspectRatio
 	} else {
-		// Tall screen — stretch Y
+		// If the screen is taller than wide, we "stretch" yRange
 		yRange = xRange / aspectRatio
 	}
 
-	// Use Position to adjust the camera's "pan" position in world space
-	xmin := centerX - xRange/2.0 + scr.Position[0]
-	xmax := centerX + xRange/2.0 + scr.Position[0]
-	ymin := centerY - yRange/2.0 + scr.Position[1]
-	ymax := centerY + yRange/2.0 + scr.Position[1]
+	// Use PositionDelta to adjust the camera's "pan" position in world space
+	xmin := centerX - xRange/2.0 + scr.PositionDelta[0]
+	xmax := centerX + xRange/2.0 + scr.PositionDelta[0]
+	ymin := centerY - yRange/2.0 + scr.PositionDelta[1]
+	ymax := centerY + yRange/2.0 + scr.PositionDelta[1]
 
 	// Update the orthographic projection matrix
 	scr.projectionMatrix = mgl32.Ortho2D(xmin, xmax, ymin, ymax)
@@ -160,8 +202,8 @@ func (scr *Screen) cursorPositionCallback(w *glfw.Window, xpos, ypos float64) {
 		dy := float32(ypos-scr.lastY) / float32(height) * (scr.YMax - scr.YMin) / scr.Scale
 
 		// Update world position
-		scr.Position[0] -= dx // X-axis pan
-		scr.Position[1] += dy // Y-axis pan (inverted since screen Y is inverted)
+		scr.PositionDelta[0] -= dx // X-axis pan
+		scr.PositionDelta[1] += dy // Y-axis pan (inverted since screen Y is inverted)
 
 		// Mark the screen as needing a projection update
 		scr.PositionChanged = true

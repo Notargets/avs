@@ -27,7 +27,7 @@ type String struct {
 	polygonVertices [4]mgl32.Vec2
 }
 
-func (scr *Screen) LoadFont(filePath string, fontSize float64) error {
+func (scr *Screen) LoadFont(filePath string, fontSize float32) error {
 	//fmt.Printf("Loading font from file: %s\n", filePath)
 	//printMemoryStats("Start")
 
@@ -53,7 +53,7 @@ func printMemoryStats(label string) {
 		label, m.Alloc/1024/1024, m.TotalAlloc/1024/1024, m.Sys/1024/1024, m.NumGC)
 }
 
-func (scr *Screen) Printf(key Key, x, y float32, color [3]float32, scale float64, centered, screenFixed bool, format string, args ...interface{}) (newKey Key) {
+func (scr *Screen) Printf(key Key, x, y float32, color [3]float32, scale float32, centered, screenFixed bool, format string, args ...interface{}) (newKey Key) {
 	// Format the string using fmt.Sprintf
 	text := fmt.Sprintf(format, args...)
 
@@ -63,7 +63,7 @@ func (scr *Screen) Printf(key Key, x, y float32, color [3]float32, scale float64
 	return newKey
 }
 
-func (scr *Screen) AddString(key Key, text string, x, y float32, color [3]float32, scale float64, centered, screenFixed bool) (newKey Key) {
+func (scr *Screen) AddString(key Key, text string, x, y float32, color [3]float32, scale float32, centered, screenFixed bool) (newKey Key) {
 	if key == NEW {
 		key = Key(uuid.New())
 	}
@@ -103,18 +103,18 @@ func (scr *Screen) AddString(key Key, text string, x, y float32, color [3]float3
 			ctx := freetype.NewContext()
 			ctx.SetDPI(72)
 			ctx.SetFont(scr.Font)
-			ctx.SetFontSize(scr.FontSize * scale)
+			ctx.SetFontSize(float64(scr.FontSize * scale))
 			ctx.SetClip(img.Bounds())
 			ctx.SetDst(img)
 			ctx.SetSrc(image.NewUniform(colorlib.RGBA{R: uint8(color[0] * 255), G: uint8(color[1] * 255), B: uint8(color[2] * 255), A: 255}))
-			pt := freetype.Pt(0, int(ctx.PointToFixed(scr.FontSize*scale)>>6))
+			pt := freetype.Pt(0, int(ctx.PointToFixed(float64(scr.FontSize*scale))>>6))
 			_, err := ctx.DrawString(text, pt)
 			if err != nil {
 				fmt.Printf("Error drawing string: %v\n", err)
 			}
 
 			aspect := float32(textureWidth) / float32(textureHeight)
-			width := float32(scr.XMax-scr.XMin) * float32(scale) / 10
+			width := (scr.XMax - scr.XMin) * scale / 10
 			height := width / aspect
 
 			// Calculate proper position and scale
@@ -218,14 +218,14 @@ func (str *String) initializeVBO(scr *Screen, img *image.RGBA, textureWidth, tex
 	// **Setup Vertex Attributes**
 	offset := 0
 
-	// **Position (location = 0)**
+	// **PositionDelta (location = 0)**
 	var stride int32
 	if str.StringType == STRING {
 		stride = 4 * (2 + 2 + 3)
 	} else {
 		stride = 4 * (2 + 2 + 3 + 4)
 	}
-	gl.VertexAttribPointer(0, 2, gl.FLOAT, false, stride, gl.PtrOffset(offset)) // Position (2 floats)
+	gl.VertexAttribPointer(0, 2, gl.FLOAT, false, stride, gl.PtrOffset(offset)) // PositionDelta (2 floats)
 	gl.EnableVertexAttribArray(0)
 	offset += 2 * 4 // Advance by 2 floats = 8 bytes
 
@@ -239,9 +239,9 @@ func (str *String) initializeVBO(scr *Screen, img *image.RGBA, textureWidth, tex
 	gl.EnableVertexAttribArray(2)
 	offset += 3 * 4 // Advance by 3 floats = 12 bytes
 
-	// **Frozen Position (location = 3)**
+	// **Frozen PositionDelta (location = 3)**
 	if str.StringType == FIXEDSTRING {
-		gl.VertexAttribPointer(3, 4, gl.FLOAT, false, stride, gl.PtrOffset(offset)) // Fixed Position (4 floats)
+		gl.VertexAttribPointer(3, 4, gl.FLOAT, false, stride, gl.PtrOffset(offset)) // Fixed PositionDelta (4 floats)
 		gl.EnableVertexAttribArray(3)
 	}
 
