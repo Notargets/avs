@@ -121,12 +121,14 @@ func (scr *Screen) updateProjectionMatrix() {
 
 	// Send the updated projection matrix to all shaders
 	for renderType, shaderProgram := range scr.Shaders {
-		projectionUniform := gl.GetUniformLocation(shaderProgram, gl.Str("projection\x00"))
-		if projectionUniform < 0 {
-			fmt.Printf("Projection uniform not found for RenderType %v\n", renderType)
-		} else {
-			gl.UseProgram(shaderProgram)
-			gl.UniformMatrix4fv(projectionUniform, 1, false, &scr.projectionMatrix[0])
+		if renderType != FIXEDSTRING {
+			projectionUniform := gl.GetUniformLocation(shaderProgram, gl.Str("projection\x00"))
+			if projectionUniform < 0 {
+				fmt.Printf("Projection uniform not found for RenderType %v\n", renderType)
+			} else {
+				gl.UseProgram(shaderProgram)
+				gl.UniformMatrix4fv(projectionUniform, 1, false, &scr.projectionMatrix[0])
+			}
 		}
 	}
 }

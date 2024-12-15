@@ -18,4 +18,35 @@ const (
 	TRIMESHSMOOTH3D
 )
 
+func (r RenderType) String() string {
+	switch r {
+	case LINE:
+		return "LINE"
+	case POLYLINE:
+		return "POLYLINE"
+	case STRING:
+		return "STRING"
+	case FIXEDSTRING:
+		return "FIXEDSTRING"
+	case TRIMESHEDGESUNICOLOR:
+		return "TRIMESHEDGESUNICOLOR"
+	case TRIMESHEDGESUNICOLOR3D:
+		return "TRIMESHEDGESUNICOLOR3D"
+	case TRIMESHCONTOURS:
+		return "TRIMESHCONTOURS"
+	case TRIMESHSMOOTH:
+		return "TRIMESHSMOOTH"
+	case LINE3D:
+		return "LINE3D"
+	case TRIMESHEDGES3D:
+		return "TRIMESHEDGES3D"
+	case TRIMESHCONTOURS3D:
+		return "TRIMESHCONTOURS3D"
+	case TRIMESHSMOOTH3D:
+		return "TRIMESHSMOOTH3D"
+	default:
+		return "Unknown"
+	}
+}
+
 type ShaderPrograms map[RenderType]uint32

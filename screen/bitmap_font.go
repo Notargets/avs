@@ -17,17 +17,14 @@ import (
 )
 
 type String struct {
-	VAO, VBO             uint32
-	Text                 string
-	ShaderProgram        uint32
-	Position             mgl32.Vec2
-	Color                [3]float32
-	Texture              uint32
-	StringType           RenderType
-	FreezePosition       bool
-	FrozenPositions      [4][4]float32 // Text position in projected world coordinates (clip space, vec4) after freezing
-	polygonVertices      [4]mgl32.Vec2
-	frozenPositionOffset int
+	VAO, VBO        uint32
+	Text            string
+	ShaderProgram   uint32
+	Position        mgl32.Vec2
+	Color           [3]float32
+	Texture         uint32
+	StringType      RenderType
+	polygonVertices [4]mgl32.Vec2
 }
 
 func (scr *Screen) LoadFont(filePath string, fontSize float64) error {
@@ -68,10 +65,9 @@ func (scr *Screen) AddString(key Key, text string, x, y float32, color [3]float3
 			str = object.Object.(*String)
 		} else {
 			str = &String{
-				Text:           text,
-				Position:       mgl32.Vec2{x, y},
-				Color:          color,
-				FreezePosition: false,
+				Text:     text,
+				Position: mgl32.Vec2{x, y},
+				Color:    color,
 			}
 			if screenFixed {
 				str.StringType = FIXEDSTRING
@@ -129,7 +125,7 @@ func (scr *Screen) AddString(key Key, text string, x, y float32, color [3]float3
 				{posX + width, posY + height}, // Top-right
 			}
 
-			str.initializeVBO(img, textureWidth, textureHeight, color)
+			str.initializeVBO(scr, img, textureWidth, textureHeight, color)
 
 			scr.Objects[key] = Renderable{
 				Active: true,
@@ -140,7 +136,7 @@ func (scr *Screen) AddString(key Key, text string, x, y float32, color [3]float3
 	return newKey
 }
 
-func (str *String) initializeVBO(img *image.RGBA, textureWidth, textureHeight int32, color [3]float32) {
+func (str *String) initializeVBO(scr *Screen, img *image.RGBA, textureWidth, textureHeight int32, color [3]float32) {
 	var texture uint32
 	gl.GenTextures(1, &texture)
 	gl.BindTexture(gl.TEXTURE_2D, texture)
@@ -150,114 +146,133 @@ func (str *String) initializeVBO(img *image.RGBA, textureWidth, textureHeight in
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
 	gl.BindTexture(gl.TEXTURE_2D, 0)
 	str.Texture = texture
-
-	uvs := [4]mgl32.Vec2{
-		{0.0, 1.0}, {1.0, 1.0}, {0.0, 0.0}, {1.0, 0.0},
+	var uv = [4][2]float32{
+		{0, 1},
+		{1, 1},
+		{0, 0},
+		{1, 0},
+	}
+	var vertices []float32
+	switch str.StringType {
+	case STRING:
+		lenRow := 2 + 2 + 3
+		lenV := 4 * (lenRow)
+		vertices = make([]float32, lenV)
+		for i := 0; i < 4; i++ {
+			vertices[i*lenRow] = str.polygonVertices[i][0]
+			vertices[i*lenRow+1] = str.polygonVertices[i][1]
+			vertices[i*lenRow+2] = uv[i][0]
+			vertices[i*lenRow+3] = uv[i][1]
+			vertices[i*lenRow+4] = color[0]
+			vertices[i*lenRow+5] = color[1]
+			vertices[i*lenRow+6] = color[2]
+		}
+	case FIXEDSTRING:
+		var projected [4]mgl32.Vec4
+		for i := 0; i < 4; i++ {
+			projected[i] = scr.projectionMatrix.Mul4x1(mgl32.Vec4{str.polygonVertices[i].X(), str.polygonVertices[i].Y(), 0.0, 1.0})
+			projected[i] = projected[i].Mul(1.0 / projected[i].W())
+		}
+		lenRow := 2 + 2 + 3 + 4
+		lenV := 4 * (lenRow)
+		vertices = make([]float32, lenV)
+		for i := 0; i < 4; i++ {
+			vertices[i*lenRow] = str.polygonVertices[i][0]
+			vertices[i*lenRow+1] = str.polygonVertices[i][1]
+			vertices[i*lenRow+2] = uv[i][0]
+			vertices[i*lenRow+3] = uv[i][1]
+			vertices[i*lenRow+4] = color[0]
+			vertices[i*lenRow+5] = color[1]
+			vertices[i*lenRow+6] = color[2]
+			for j := 0; j < 4; j++ {
+				vertices[i*lenRow+7+j] = projected[i][j]
+			}
+		}
 	}
 
-	colors := [4][3]float32{
-		color, color, color, color,
-	}
-
-	vertices := make([]float32, 0, 4*11)
-	for i := 0; i < 4; i++ {
-		vertices = append(vertices,
-			str.polygonVertices[i].X(), str.polygonVertices[i].Y(),
-			uvs[i].X(), uvs[i].Y(),
-			colors[i][0], colors[i][1], colors[i][2],
-			0, 0, 0, 1, // Placeholder for frozen position
-		)
-	}
-
+	// Generate VBO and VAO once
 	gl.GenBuffers(1, &str.VBO)
 	gl.GenVertexArrays(1, &str.VAO)
+
+	// Bind VAO
 	gl.BindVertexArray(str.VAO)
+
+	// Bind VBO
 	gl.BindBuffer(gl.ARRAY_BUFFER, str.VBO)
-	gl.BufferData(gl.ARRAY_BUFFER, len(vertices)*4, gl.Ptr(vertices), gl.DYNAMIC_DRAW)
+
+	// Upload vertex data
+	gl.BufferData(gl.ARRAY_BUFFER, len(vertices)*4, gl.Ptr(vertices), gl.STATIC_DRAW)
+	checkGLError("After VBO")
+
+	// **Setup Vertex Attributes**
 	offset := 0
 
 	// **Position (location = 0)**
-	gl.VertexAttribPointer(0, 2, gl.FLOAT, false, 11*4, gl.PtrOffset(offset)) // Position (2 floats)
+	var stride int32
+	if str.StringType == STRING {
+		stride = 4 * (2 + 2 + 3)
+	} else {
+		stride = 4 * (2 + 2 + 3 + 4)
+	}
+	gl.VertexAttribPointer(0, 2, gl.FLOAT, false, stride, gl.PtrOffset(offset)) // Position (2 floats)
 	gl.EnableVertexAttribArray(0)
 	offset += 2 * 4 // Advance by 2 floats = 8 bytes
 
 	// **UV (location = 1)**
-	gl.VertexAttribPointer(1, 2, gl.FLOAT, false, 11*4, gl.PtrOffset(offset)) // UV (2 floats)
+	gl.VertexAttribPointer(1, 2, gl.FLOAT, false, stride, gl.PtrOffset(offset)) // UV (2 floats)
 	gl.EnableVertexAttribArray(1)
 	offset += 2 * 4 // Advance by 2 floats = 8 bytes
 
 	// **Color (location = 2)**
-	gl.VertexAttribPointer(2, 3, gl.FLOAT, false, 11*4, gl.PtrOffset(offset)) // Color (3 floats)
+	gl.VertexAttribPointer(2, 3, gl.FLOAT, false, stride, gl.PtrOffset(offset)) // Color (3 floats)
 	gl.EnableVertexAttribArray(2)
 	offset += 3 * 4 // Advance by 3 floats = 12 bytes
 
 	// **Frozen Position (location = 3)**
-	str.frozenPositionOffset = offset                                         // This is where frozen position begins
-	gl.VertexAttribPointer(3, 4, gl.FLOAT, false, 11*4, gl.PtrOffset(offset)) // Frozen Position (4 floats)
-	gl.EnableVertexAttribArray(3)
-
-}
-
-func (str *String) uploadFrozenPositions(scr *Screen) {
-	for i, v := range str.polygonVertices {
-		projected := scr.projectionMatrix.Mul4x1(mgl32.Vec4{v.X(), v.Y(), 0.0, 1.0})
-		str.FrozenPositions[i] = [4]float32{projected.X(), projected.Y(), projected.Z(), projected.W()}
-	}
-	str.FreezePosition = true
-
-	frozenPositionData := make([]float32, 16)
-	for i := 0; i < 4; i++ {
-		copy(frozenPositionData[i*4:], str.FrozenPositions[i][:])
+	if str.StringType == FIXEDSTRING {
+		gl.VertexAttribPointer(3, 4, gl.FLOAT, false, stride, gl.PtrOffset(offset)) // Fixed Position (4 floats)
+		gl.EnableVertexAttribArray(3)
 	}
 
-	for i := 0; i < 4; i++ {
-		fmt.Printf("Frozen Position Vertex %d: [%.4f, %.4f, %.4f, %.4f]\n", i,
-			str.FrozenPositions[i][0],
-			str.FrozenPositions[i][1],
-			str.FrozenPositions[i][2],
-			str.FrozenPositions[i][3])
-	}
-
-	for i, v := range str.FrozenPositions {
-		if v[3] == 0 {
-			fmt.Printf("[uploadFrozenPositions] Error: w = 0 for vertex %d\n", i)
-		}
-	}
-
-	gl.BindBuffer(gl.ARRAY_BUFFER, str.VBO)
-	gl.BufferSubData(gl.ARRAY_BUFFER, str.frozenPositionOffset, len(frozenPositionData)*4, gl.Ptr(frozenPositionData))
 }
 
 func (str *String) addShader(scr *Screen) (shaderProgram uint32) {
-	if _, present := scr.Shaders[STRING]; !present {
-		vertexShaderSource := `
-		#version 450
-		layout (location = 0) in vec2 position;
-		layout (location = 1) in vec2 uv;
-		layout (location = 2) in vec3 color;
-		layout (location = 3) in vec4 frozenPosition;
-		uniform mat4 projection;
-		uniform bool freezePosition;
+	if _, present := scr.Shaders[str.StringType]; !present {
+		var vertexShaderSource string
+		switch str.StringType {
+		case STRING:
+			vertexShaderSource = `
+				#version 450
+				layout (location = 0) in vec2 position;
+				layout (location = 1) in vec2 uv;
+				layout (location = 2) in vec3 color;
+				uniform mat4 projection; // <-- projection matrix
+				out vec2 fragUV;
+				out vec3 fragColor;
+				void main() {
+    				gl_Position = projection * vec4(position, 0.0, 1.0); // Apply projection matrix here
+    				fragUV = uv;
+    				fragColor = color;
+				}` + "\x00"
+		case FIXEDSTRING:
+			vertexShaderSource = `
+				#version 450
+				layout (location = 0) in vec2 position;
+				layout (location = 1) in vec2 uv;
+				layout (location = 2) in vec3 color;
+				layout (location = 3) in vec4 fixedPosition;
 
-		out vec2 fragUV;
-		out vec3 fragColor;
+				out vec2 fragUV;
+				out vec3 fragColor;
 
-		void main() {
-			vec4 finalPosition;
-			if (freezePosition) {
-    			if (frozenPosition.w != 0.0) {
-        			finalPosition = vec4(frozenPosition.xyz / frozenPosition.w, 1.0);
-    			} else {
-        			finalPosition = frozenPosition;
-    			}
-			} else {
-    			finalPosition = projection * vec4(position, 0.0, 1.0);
-			}
-			gl_Position = finalPosition;
-
-			fragUV = uv;
-			fragColor = color;
-		}` + "\x00"
+				void main() {
+    				gl_Position = fixedPosition; // Use the fixed position directly (clip space)
+    				fragUV = uv;
+    				fragColor = color;
+				}` + "\x00"
+		default:
+			panic(fmt.Errorf("unknown shader type %v", str.StringType))
+		}
 
 		fragmentShaderSource := `
 		#version 450
@@ -271,52 +286,39 @@ func (str *String) addShader(scr *Screen) (shaderProgram uint32) {
 			outColor = texColor * vec4(fragColor, texColor.a);
 		}` + "\x00"
 
-		shaderProgram := compileShaderProgram(vertexShaderSource, fragmentShaderSource)
-		scr.Shaders[STRING] = shaderProgram
+		scr.Shaders[str.StringType] = compileShaderProgram(vertexShaderSource, fragmentShaderSource)
+		checkGLError("After compileShaderProgram")
 	}
-	return scr.Shaders[STRING]
+	return scr.Shaders[str.StringType]
 }
 
 func (str *String) Render(scr *Screen) {
-	gl.UseProgram(scr.Shaders[STRING])
+	gl.UseProgram(scr.Shaders[str.StringType])
 	checkGLError("After UseProgram")
 
 	// Check if the active program matches
 	var activeProgram int32
 	gl.GetIntegerv(gl.CURRENT_PROGRAM, &activeProgram)
-	if uint32(activeProgram) != scr.Shaders[STRING] {
-		fmt.Printf("[Render] Shader program mismatch! Active: %d, Expected: %d\n", activeProgram, scr.Shaders[STRING])
+	if uint32(activeProgram) != scr.Shaders[str.StringType] {
+		fmt.Printf("[Render] Shader program mismatch! Active: %d, Expected: %d\n", activeProgram, scr.Shaders[str.StringType])
 		panic("[Render] Shader program is not active as expected")
 	}
 
-	if scr.Shaders[STRING] == 0 {
+	if scr.Shaders[str.StringType] == 0 {
 		fmt.Println("[Render] Shader program handle is 0. Possible compilation/linking failure.")
 		panic("[Render] Shader program handle is 0")
 	}
 
-	// Set the freezePosition uniform (1 for true, 0 for false)
-	freezeUniform := gl.GetUniformLocation(scr.Shaders[STRING], gl.Str("freezePosition\x00"))
-	if freezeUniform < 0 {
-		fmt.Println("[Render] freezePosition uniform not found!")
-		panic("[Render] freezePosition uniform location returned -1")
-	}
-	gl.Uniform1i(freezeUniform, boolToInt(str.FreezePosition)) // Send 1 if FreezePosition is true, 0 if false
-	checkGLError("After Uniform1i(freezePosition)")
-
 	// Bind the projection matrix to the shader
-	projectionUniform := gl.GetUniformLocation(scr.Shaders[STRING], gl.Str("projection\x00"))
-	checkGLError("After GetUniformLocation")
-	if projectionUniform < 0 {
-		fmt.Println("[Render] Projection uniform not found!")
-		panic("[Render] Projection uniform location returned -1")
-	}
-	gl.UniformMatrix4fv(projectionUniform, 1, false, &scr.projectionMatrix[0])
-	checkGLError("After UniformMatrix4fv")
-
-	// **Call uploadFrozenPositions for FIXEDSTRING if it hasn't been done yet**
-	if str.StringType == FIXEDSTRING && !str.FreezePosition {
-		fmt.Println("[Render] Uploading frozen positions...")
-		str.uploadFrozenPositions(scr)
+	if str.StringType == STRING {
+		projectionUniform := gl.GetUniformLocation(scr.Shaders[str.StringType], gl.Str("projection\x00"))
+		checkGLError("After GetUniformLocation")
+		if projectionUniform < 0 {
+			fmt.Printf("[Render] Projection uniform not found for String Type: %s!", str.StringType.String())
+			panic("[Render] Projection uniform location returned -1")
+		}
+		gl.UniformMatrix4fv(projectionUniform, 1, false, &scr.projectionMatrix[0])
+		checkGLError("After UniformMatrix4fv")
 	}
 
 	// Bind the texture
@@ -341,13 +343,6 @@ func (str *String) Render(scr *Screen) {
 	gl.Disable(gl.BLEND)
 	gl.BindVertexArray(0)
 	gl.BindTexture(gl.TEXTURE_2D, 0)
-}
-
-func boolToInt(b bool) int32 {
-	if b {
-		return 1
-	}
-	return 0
 }
 
 func SaveDebugImage(img *image.RGBA, filename string) {
