@@ -110,6 +110,8 @@ func (chart *Chart2D) AddAxis(color Color) {
 	x = 0.
 	for i := 0; i < nSegs; i++ {
 		X, Y, C = AddSegmentToLine(X, Y, C, x, y, x-ticksize, y, tickColor)
+		chart.Screen.Printf(screen.NEW, x-3*ticksize, y, colorTxt, 0.35, true, false,
+			"%4.1f", y)
 		y = y + inc
 	}
 	chart.Screen.ChangePosition(0.0, 0.0)

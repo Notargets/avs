@@ -152,6 +152,7 @@ func (str *String) initializeVBO(scr *Screen, img *image.RGBA, textureWidth, tex
 	var texture uint32
 	gl.GenTextures(1, &texture)
 	gl.BindTexture(gl.TEXTURE_2D, texture)
+	fmt.Printf("Texture width: %d, Texture height: %d\n", textureWidth, textureHeight)
 	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, textureWidth, textureHeight, 0, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(img.Pix))
 	checkGLError("After TexImage2D")
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
