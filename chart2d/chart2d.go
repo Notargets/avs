@@ -45,43 +45,51 @@ func (chart *Chart2D) GetSingleColorArray(Y []float32, color Color) (colors []fl
 	return
 }
 
-func (chart *Chart2D) AddAxis(color Color) {
+func (chart *Chart2D) AddAxis(color Color, nSegs int) {
 	var (
-		nSegs                = 11
 		xMin, xMax           = chart.XMin, chart.XMax
 		yMin, yMax           = chart.YMin, chart.YMax
 		xScale, yScale       = xMax - xMin, yMax - yMin
 		xInc                 = xScale / float32(nSegs-1)
 		yInc                 = yScale / float32(nSegs-1)
-		xTickSize, yTickSize = 0.05 * xScale, 0.05 * yScale
+		xTickSize, yTickSize = 0.020 * xScale, 0.020 * yScale
 		tickColor            = ScaleColor(color, 0.8)
 		X                    = []float32{}
 		Y                    = []float32{}
 		C                    = []float32{}
 	)
+	if nSegs%2 == 0 {
+		panic("nSegs must be odd")
+	}
 	// Generate color array for 2 vertices per axis (X-axis and Y-axis)
 
 	X, Y, C = AddSegmentToLine(X, Y, C, xMin, 0, xMax, 0, color)
 	X, Y, C = AddSegmentToLine(X, Y, C, 0, yMin, 0, yMax, color)
 
-	if false {
-
-		colorTxt := [3]float32{color[0], color[1], color[2]}
-		// Draw ticks along X axis
-		var x, y = xMin, float32(0) // X axis is always drawn at Y = 0
-		for i := 0; i < nSegs; i++ {
-			X, Y, C = AddSegmentToLine(X, Y, C, x, y, x, y-yTickSize, tickColor)
-			chart.Screen.Printf(screen.NEW, x, y-2*yTickSize, colorTxt, yTickSize, true, false,
-				"%4.1f", x)
+	//colorTxt := [3]float32{color[0], color[1], color[2]}
+	// Draw ticks along X axis
+	var x, y = xMin, float32(0) // X axis is always drawn at Y = 0
+	for i := 0; i < nSegs; i++ {
+		if i == nSegs/2 {
 			x = x + xInc
+			continue
 		}
-		x = xScale / 2.
-		for i := 0; i < nSegs; i++ {
-			X, Y, C = AddSegmentToLine(X, Y, C, x, y, x-xTickSize, y, tickColor)
-			chart.Screen.Printf(screen.NEW, x-3*xTickSize, y, colorTxt, xTickSize, true, false,
-				"%4.1f", y)
+		X, Y, C = AddSegmentToLine(X, Y, C, x, y, x, y-yTickSize, tickColor)
+		//chart.Screen.Printf(screen.NEW, x, y-2*yTickSize, colorTxt, yTickSize, true, false,
+		//	"%4.1f", x)
+		x = x + xInc
+	}
+	x = xMin + xScale/2.
+	y = yMin
+	for i := 0; i < nSegs; i++ {
+		if i == nSegs/2 {
 			y = y + yInc
+			continue
 		}
+		X, Y, C = AddSegmentToLine(X, Y, C, x, y, x-xTickSize, y, tickColor)
+		//chart.Screen.Printf(screen.NEW, x-3*xTickSize, y, colorTxt, xTickSize, true, false,
+		//	"%4.1f", y)
+		y = y + yInc
 	}
 	//chart.Screen.ChangePosition(0.0, 0.0)
 	chart.Screen.AddLine(screen.NEW, X, Y, C) // 2 points, so 2 * 3 = 6 colors
