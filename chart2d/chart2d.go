@@ -23,7 +23,7 @@ func NewChart2D(XMin, XMax, YMin, YMax float32, width, height int) (chart *Chart
 		YMin: YMin,
 		YMax: YMax,
 		//Screen:      screen.NewScreen(width, height, 0, 1, 0, 1),
-		Screen:      screen.NewScreen(width, height, XMin, XMax, YMin, YMax),
+		Screen:      screen.NewScreen(width, height, XMin, XMax, YMin, YMax, 0.95),
 		LineColor:   Color{1, 1, 1, 1},
 		ScreenColor: Color{0.18, 0.18, 0.18, 1.},
 	}
@@ -66,7 +66,7 @@ func (chart *Chart2D) AddAxis(color Color, nSegs int) {
 	X, Y, C = AddSegmentToLine(X, Y, C, xMin, 0, xMax, 0, color)
 	X, Y, C = AddSegmentToLine(X, Y, C, 0, yMin, 0, yMax, color)
 
-	//colorTxt := [3]float32{color[0], color[1], color[2]}
+	colorTxt := [3]float32{color[0], color[1], color[2]}
 	// Draw ticks along X axis
 	var x, y = xMin, float32(0) // X axis is always drawn at Y = 0
 	for i := 0; i < nSegs; i++ {
@@ -75,8 +75,8 @@ func (chart *Chart2D) AddAxis(color Color, nSegs int) {
 			continue
 		}
 		X, Y, C = AddSegmentToLine(X, Y, C, x, y, x, y-yTickSize, tickColor)
-		//chart.Screen.Printf(screen.NEW, x, y-2*yTickSize, colorTxt, yTickSize, true, false,
-		//	"%4.1f", x)
+		chart.Screen.Printf(screen.NEW, x, y-2*yTickSize, colorTxt, xTickSize/2., true, false,
+			"%4.1f", x)
 		x = x + xInc
 	}
 	x = xMin + xScale/2.
@@ -87,8 +87,8 @@ func (chart *Chart2D) AddAxis(color Color, nSegs int) {
 			continue
 		}
 		X, Y, C = AddSegmentToLine(X, Y, C, x, y, x-xTickSize, y, tickColor)
-		//chart.Screen.Printf(screen.NEW, x-3*xTickSize, y, colorTxt, xTickSize, true, false,
-		//	"%4.1f", y)
+		chart.Screen.Printf(screen.NEW, x-3*xTickSize, y, colorTxt, yTickSize/2., true, false,
+			"%4.1f", y)
 		y = y + yInc
 	}
 	//chart.Screen.ChangePosition(0.0, 0.0)

@@ -56,7 +56,7 @@ type Renderable struct {
 	Object interface{} // Any object that has a Render method (e.g., Line, TriMesh)
 }
 
-func NewScreen(width, height int, xmin, xmax, ymin, ymax float32) *Screen {
+func NewScreen(width, height int, xmin, xmax, ymin, ymax, scale float32) *Screen {
 	screen := &Screen{
 		Shaders:       make(ShaderPrograms),
 		Objects:       make(map[Key]Renderable),
@@ -71,7 +71,7 @@ func NewScreen(width, height int, xmin, xmax, ymin, ymax float32) *Screen {
 		PanSpeed:      1.0,
 		ZoomSpeed:     1.0,
 		ZoomFactor:    1.0,
-		Scale:         1.0,
+		Scale:         scale,
 		PositionDelta: [2]float32{0, 0},
 		NeedsRedraw:   true,
 	}
