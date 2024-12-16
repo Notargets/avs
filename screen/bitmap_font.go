@@ -86,42 +86,79 @@ func (scr *Screen) AddString(key Key, text string, x, y float32, color [3]float3
 			}
 			str.ShaderProgram = str.addShader(scr)
 
-			// Calculate text size
-			scaledSize := fixed.Int26_6(scr.FontSize * scale * 64)
+			// Calculate text width and height using FreeType context
+			scaledSize := fixed.Int26_6(scr.FontSize * scale * 64) // Scale font size for 26.6 fixed-point format
 			textWidth := 0
-			for _, ch := range text {
-				glyphIndex := scr.Font.Index(ch)
-				hMetric := scr.Font.HMetric(scaledSize, glyphIndex)
-				textWidth += int(hMetric.AdvanceWidth >> 6)
-			}
 
-			textHeight := int32(scr.FontSize * scale)
-			textureWidth := int32((textWidth + 3) & ^3) // Fixed alignment
-			textureHeight := (textHeight + 3) & ^3
-
-			img := image.NewRGBA(image.Rect(0, 0, int(textureWidth), int(textureHeight)))
+			// Create a FreeType context
+			img := image.NewRGBA(image.Rect(0, 0, 1, 1)) // Dummy image for context
 			ctx := freetype.NewContext()
 			ctx.SetDPI(72)
 			ctx.SetFont(scr.Font)
 			ctx.SetFontSize(float64(scr.FontSize * scale))
 			ctx.SetClip(img.Bounds())
 			ctx.SetDst(img)
+
+			// Calculate total width of the text using HMetric
+			lastCharRightEdge := 0
+			for i, ch := range text {
+				glyphIndex := scr.Font.Index(ch)
+				hMetric := scr.Font.HMetric(scaledSize, glyphIndex)
+				textWidth += int(hMetric.AdvanceWidth >> 6) // Total advance width
+
+				if i == len(text)-1 { // Handle the last character specially
+					bounds := scr.Font.Bounds(scaledSize)
+					rightEdge := textWidth + (bounds.Max.X.Round() >> 6)
+					if rightEdge > textWidth {
+						lastCharRightEdge = rightEdge - textWidth
+					}
+				}
+			}
+
+			// Add the extra width for the last character's overflow
+			textWidth += lastCharRightEdge
+
+			// Calculate font height from font ascent and descent
+			fontMetrics := scr.Font.Bounds(scaledSize)
+			ascent := fontMetrics.Max.Y.Round()
+			descent := -fontMetrics.Min.Y.Round()
+			textHeight := ascent + descent
+
+			// Ensure texture dimensions are aligned to 4-byte boundaries
+			textureWidth := int32((textWidth + 3) & ^3)   // Align width to 4-byte boundary
+			textureHeight := int32((textHeight + 3) & ^3) // Align height to 4-byte boundary
+
+			// Create an image of the proper size to hold the full text
+			img = image.NewRGBA(image.Rect(0, 0, int(textureWidth), int(textureHeight)))
+			ctx = freetype.NewContext()
+			ctx.SetDPI(72)
+			ctx.SetFont(scr.Font)
+			ctx.SetFontSize(float64(scr.FontSize * scale))
+			ctx.SetClip(img.Bounds())
+			ctx.SetDst(img)
 			ctx.SetSrc(image.NewUniform(colorlib.RGBA{R: uint8(color[0] * 255), G: uint8(color[1] * 255), B: uint8(color[2] * 255), A: 255}))
-			pt := freetype.Pt(0, int(ctx.PointToFixed(float64(scr.FontSize*scale))>>6))
+
+			// Draw the string at the proper position (start at the baseline)
+			pt := freetype.Pt(0, ascent) // Baseline is ascent from the top of the image
 			_, err := ctx.DrawString(text, pt)
 			if err != nil {
 				fmt.Printf("Error drawing string: %v\n", err)
 			}
 
-			aspect := float32(textureWidth) / float32(textureHeight)
-			width := (scr.XMax - scr.XMin) * scale / 10
-			height := width / aspect
+			// Calculate quad width and height from texture dimensions
+			xRange := scr.XMax - scr.XMin
+			yRange := scr.YMax - scr.YMin
+			quadWidth := float32(textureWidth) / float32(xRange) * scale
+			quadHeight := float32(textureHeight) / float32(yRange) * scale
+
+			// Apply aspect ratio correction to height
+			quadHeight = quadHeight * (yRange / xRange) // Adjust height to avoid distortion
 
 			// Calculate proper position and scale
 			var posX, posY float32
 			if centered {
-				posX = x - float32(width)/2
-				posY = y - float32(height)/2
+				posX = x - quadWidth/2
+				posY = y - quadHeight/2
 			} else {
 				posX = x
 				posY = y
@@ -129,14 +166,16 @@ func (scr *Screen) AddString(key Key, text string, x, y float32, color [3]float3
 
 			// Initialize polygon vertices for the 4 corners of the quad
 			str.polygonVertices = [4]mgl32.Vec2{
-				{posX, posY},                  // Bottom-left
-				{posX + width, posY},          // Bottom-right
-				{posX, posY + height},         // Top-left
-				{posX + width, posY + height}, // Top-right
+				{posX, posY},                          // Bottom-left
+				{posX + quadWidth, posY},              // Bottom-right
+				{posX, posY + quadHeight},             // Top-left
+				{posX + quadWidth, posY + quadHeight}, // Top-right
 			}
 
+			// Initialize the vertex buffer object (VBO)
 			str.initializeVBO(scr, img, textureWidth, textureHeight, color)
 
+			// Store the string in the screen objects
 			scr.Objects[key] = Renderable{
 				Active: true,
 				Object: str,
