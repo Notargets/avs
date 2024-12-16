@@ -87,7 +87,7 @@ func (scr *Screen) AddString(key Key, text string, x, y float32, color [3]float3
 			}
 			str.ShaderProgram = str.addShader(scr)
 
-			img, textureWidth, textureHeight, quadWidth, quadHeight := scr.calculateFontBitmapSize(text, color, scale, centered)
+			img, textureWidth, textureHeight, quadWidth, quadHeight := scr.renderFontTextureImg(text, color, scale, centered)
 
 			// **Step 4: Calculate proper position and scale**
 			var posX, posY float32
@@ -120,7 +120,7 @@ func (scr *Screen) AddString(key Key, text string, x, y float32, color [3]float3
 	return newKey
 }
 
-func (scr *Screen) calculateFontBitmapSize(text string, color [3]float32, scale float32, centered bool) (img *image.RGBA, textureWidth, textureHeight int32, quadWidth, quadHeight float32) {
+func (scr *Screen) renderFontTextureImg(text string, color [3]float32, scale float32, centered bool) (img *image.RGBA, textureWidth, textureHeight int32, quadWidth, quadHeight float32) {
 	// Calculate text width and height using FreeType context
 	scaledSize := fixed.Int26_6(scr.FontSize * scale * 64) // Scale font size for 26.6 fixed-point format
 	textWidth := 0
