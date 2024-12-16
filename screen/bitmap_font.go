@@ -5,7 +5,6 @@ import (
 	"image"
 	colorlib "image/color"
 	"image/png"
-	"math"
 	"os"
 	"runtime"
 
@@ -185,20 +184,11 @@ func (scr *Screen) renderFontTextureImg(text string, color [3]float32, scale flo
 	yRange := scr.YMax - scr.YMin
 
 	// **Step 1: Calculate initial quad size from raw text dimensions**
-	quadWidth = float32(textureWidth) / float32(xRange) * scale
-	quadHeight = float32(textureHeight) / float32(yRange) * scale
-
-	// **Step 2: Stretch the larger dimension to maintain aspect ratio**
-	if xRange > yRange {
-		quadWidth *= (xRange / yRange) // Stretch width
-	} else {
-		quadHeight *= (yRange / xRange) // Stretch height
-	}
-
-	// **Step 3: Apply inverse scale correction to keep the total size constant**
-	scaleFactor := float32(math.Min(float64(xRange), float64(yRange))) / float32(math.Max(float64(xRange), float64(yRange)))
-	quadWidth *= scaleFactor
-	quadHeight *= scaleFactor
+	ratio := yRange / xRange
+	fmt.Printf("XRange: %v, YRange: %v, Ratio: %v\n", xRange, yRange, ratio)
+	// yRange is the distorted one, use the xRange to compute size and inflate yRange to compensate for stretch
+	quadWidth = scale * float32(textureWidth) / float32(xRange)
+	quadHeight = ratio * scale * float32(textureHeight) / float32(xRange)
 
 	return
 }
