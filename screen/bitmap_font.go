@@ -3,16 +3,14 @@ package screen
 import (
 	"fmt"
 	"image"
-	colorlib "image/color"
 	"image/png"
 	"os"
 	"runtime"
 
-	"golang.org/x/image/math/fixed"
+	"github.com/notargets/avs/assets"
 
 	"github.com/go-gl/gl/v4.5-core/gl"
 	"github.com/go-gl/mathgl/mgl32"
-	"github.com/golang/freetype"
 	"github.com/google/uuid"
 )
 
@@ -27,23 +25,11 @@ type String struct {
 	polygonVertices [4]mgl32.Vec2
 }
 
-func (scr *Screen) LoadFont(filePath string, fontSize float32) error {
-	//fmt.Printf("Loading font from file: %s\n", filePath)
-	//printMemoryStats("Start")
-
-	fontBytes, err := os.ReadFile(filePath)
-	if err != nil {
-		return fmt.Errorf("failed to read font file: %v", err)
-	}
-
-	ft, err := freetype.ParseFont(fontBytes)
-	if err != nil {
-		return fmt.Errorf("failed to parse font: %v", err)
-	}
-
-	scr.Font = ft
-	scr.FontSize = fontSize
-	return nil
+func (scr *Screen) LoadFont(filePath string, fontPitch float32) (err error) {
+	scr.FontPitch = fontPitch
+	scr.FontDPI = assets.CalculateDynamicFontDPI(fontPitch)
+	scr.Font, scr.FontHeight, err = assets.LoadFont(filePath, fontPitch, scr.FontDPI)
+	return
 }
 
 func printMemoryStats(label string) {
@@ -53,17 +39,17 @@ func printMemoryStats(label string) {
 		label, m.Alloc/1024/1024, m.TotalAlloc/1024/1024, m.Sys/1024/1024, m.NumGC)
 }
 
-func (scr *Screen) Printf(key Key, x, y float32, color [3]float32, scale float32, centered, screenFixed bool, format string, args ...interface{}) (newKey Key) {
+func (scr *Screen) Printf(key Key, x, y float32, color [3]float32, centered, screenFixed bool, format string, args ...interface{}) (newKey Key) {
 	// Format the string using fmt.Sprintf
 	text := fmt.Sprintf(format, args...)
 
 	// Call AddString with the formatted text
-	newKey = scr.AddString(key, text, x, y, color, scale, centered, screenFixed)
+	newKey = scr.AddString(key, text, x, y, color, centered, screenFixed)
 
 	return newKey
 }
 
-func (scr *Screen) AddString(key Key, text string, x, y float32, color [3]float32, scale float32, centered, screenFixed bool) (newKey Key) {
+func (scr *Screen) AddString(key Key, text string, x, y float32, color [3]float32, centered, screenFixed bool) (newKey Key) {
 	if key == NEW {
 		key = Key(uuid.New())
 	}
@@ -86,7 +72,7 @@ func (scr *Screen) AddString(key Key, text string, x, y float32, color [3]float3
 			}
 			str.ShaderProgram = str.addShader(scr)
 
-			img, textureWidth, textureHeight, quadWidth, quadHeight := scr.renderFontTextureImg(text, color, scale, centered)
+			img, textureWidth, textureHeight, quadWidth, quadHeight := scr.renderFontTextureImg(text, color)
 
 			// **Step 4: Calculate proper position and scale**
 			var posX, posY float32
@@ -119,86 +105,51 @@ func (scr *Screen) AddString(key Key, text string, x, y float32, color [3]float3
 	return newKey
 }
 
-func (scr *Screen) renderFontTextureImg(text string, color [3]float32, scale float32, centered bool) (img *image.RGBA, textureWidth, textureHeight int32, quadWidth, quadHeight float32) {
+func (scr *Screen) renderFontTextureImg(text string, color [3]float32) (img *image.RGBA, textureWidth, textureHeight int, quadWidth, quadHeight float32) {
+	var (
+		err error
+	)
 	// Calculate text width and height using FreeType context
-	scaledSize := fixed.Int26_6(scr.FontSize * scale * 64) // Scale font size for 26.6 fixed-point format
-	textWidth := 0
-
-	// Create a FreeType context
-	img = image.NewRGBA(image.Rect(0, 0, 1, 1)) // Dummy image for context
-	ctx := freetype.NewContext()
-	ctx.SetDPI(72)
-	ctx.SetFont(scr.Font)
-	ctx.SetFontSize(float64(scr.FontSize * scale))
-	ctx.SetClip(img.Bounds())
-	ctx.SetDst(img)
-
-	// Calculate total width of the text using HMetric
-	lastCharRightEdge := 0
-	for i, ch := range text {
-		glyphIndex := scr.Font.Index(ch)
-		hMetric := scr.Font.HMetric(scaledSize, glyphIndex)
-		textWidth += int(hMetric.AdvanceWidth >> 6) // Total advance width
-
-		if i == len(text)-1 { // Handle the last character specially
-			bounds := scr.Font.Bounds(scaledSize)
-			rightEdge := textWidth + (bounds.Max.X.Round() >> 6)
-			if rightEdge > textWidth {
-				lastCharRightEdge = rightEdge - textWidth
-			}
-		}
-	}
-
-	// Add the extra width for the last character's overflow
-	textWidth += lastCharRightEdge
-
-	// Calculate font height from font ascent and descent
-	fontMetrics := scr.Font.Bounds(scaledSize)
-	ascent := fontMetrics.Max.Y.Round()
-	descent := -fontMetrics.Min.Y.Round()
-	textHeight := ascent + descent
-
-	// Ensure texture dimensions are aligned to 4-byte boundaries
-	textureWidth = int32((textWidth + 3) & ^3)   // Align width to 4-byte boundary
-	textureHeight = int32((textHeight + 3) & ^3) // Align height to 4-byte boundary
-
-	// Create an image of the proper size to hold the full text
-	img = image.NewRGBA(image.Rect(0, 0, int(textureWidth), int(textureHeight)))
-	ctx = freetype.NewContext()
-	ctx.SetDPI(72)
-	ctx.SetFont(scr.Font)
-	ctx.SetFontSize(float64(scr.FontSize * scale))
-	ctx.SetClip(img.Bounds())
-	ctx.SetDst(img)
-	ctx.SetSrc(image.NewUniform(colorlib.RGBA{R: uint8(color[0] * 255), G: uint8(color[1] * 255), B: uint8(color[2] * 255), A: 255}))
-
-	// Draw the string at the proper position (start at the baseline)
-	pt := freetype.Pt(0, ascent) // Baseline is ascent from the top of the image
-	_, err := ctx.DrawString(text, pt)
-	if err != nil {
-		fmt.Printf("Error drawing string: %v\n", err)
-	}
-
-	// Calculate quad width and height from texture dimensions
 	xRange := scr.XMax - scr.XMin
 	yRange := scr.YMax - scr.YMin
+	//pixelSize := fixed.Int26_6(scr.FontPitch * scale * 64) // Scale font size for 26.6 fixed-point format
 
-	// **Step 1: Calculate initial quad size from raw text dimensions**
+	fontColor := [4]float32{color[0], color[1], color[2], 1}
+	bgColor := [4]float32{0, 0, 0, 0}
+	// Create an image of the proper size to hold the full text
+	textureWidth, textureHeight, img, err = assets.DrawText(scr.Font, text, fontColor, bgColor)
+	if err != nil {
+		panic(err)
+	}
+	SaveDebugImage(img, "debug_image.png")
+	fmt.Printf("Text Width: %d, Height %d\n", textureWidth, textureHeight)
+
+	// Calculate the width of the text string in window coordinates based on the fact that the xRange corresponds
+	// with the window width
+	// First, percentage of width covered by the text pixels:
+	windowPercent := float32(textureWidth) / float32(scr.ScreenWidth)
+	bitmapAspectRatio := float32(textureHeight) / float32(textureWidth)
+	// Now how much world space this represents
+	worldSpaceWidth := windowPercent * xRange
+	worldSpaceHeight := bitmapAspectRatio * worldSpaceWidth
+	// Now correct the worldSpaceHeight to remove the stretch factor of the ortho transform
 	ratio := yRange / xRange
-	fmt.Printf("XRange: %v, YRange: %v, Ratio: %v\n", xRange, yRange, ratio)
-	// yRange is the distorted one, use the xRange to compute size and inflate yRange to compensate for stretch
-	quadWidth = scale * float32(textureWidth) / float32(xRange)
-	quadHeight = ratio * scale * float32(textureHeight) / float32(xRange)
+	worldSpaceHeight *= ratio
+	// Implement a scale factor to reduce the polygon size commensurate with the dynamic DPI scaling, relative to the
+	// standard 72 DPI of the Opentype package
+	scaleFromDPI := 72 / float32(scr.FontDPI)
+	quadWidth = scaleFromDPI * worldSpaceWidth
+	quadHeight = scaleFromDPI * worldSpaceHeight
 
 	return
 }
 
-func (str *String) initializeVBO(scr *Screen, img *image.RGBA, textureWidth, textureHeight int32, color [3]float32) {
+func (str *String) initializeVBO(scr *Screen, img *image.RGBA, textureWidth, textureHeight int, color [3]float32) {
 	var texture uint32
 	gl.GenTextures(1, &texture)
 	gl.BindTexture(gl.TEXTURE_2D, texture)
 	//fmt.Printf("Texture width: %d, Texture height: %d\n", textureWidth, textureHeight)
-	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, textureWidth, textureHeight, 0, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(img.Pix))
+	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, int32(textureWidth), int32(textureHeight), 0, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(img.Pix))
 	checkGLError("After TexImage2D")
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
@@ -403,11 +354,14 @@ func (str *String) Render(scr *Screen) {
 	gl.BindTexture(gl.TEXTURE_2D, 0)
 }
 
+// SaveDebugImage saves an image as a PNG file with the specified filename and logs the result
 func SaveDebugImage(img *image.RGBA, filename string) {
 	if img == nil {
 		fmt.Println("[SaveDebugImage] Image is nil, nothing to save.")
 		return
 	}
+
+	// Create the file
 	file, err := os.Create(filename)
 	if err != nil {
 		fmt.Printf("[SaveDebugImage] Failed to create image file: %v\n", err)
@@ -415,10 +369,11 @@ func SaveDebugImage(img *image.RGBA, filename string) {
 	}
 	defer file.Close()
 
+	// Encode the image as PNG
 	err = png.Encode(file, img)
 	if err != nil {
 		fmt.Printf("[SaveDebugImage] Failed to save image as PNG: %v\n", err)
 	} else {
-		fmt.Printf("[SaveDebugImage] Image saved as '%s'.\n", filename)
+		fmt.Printf("[SaveDebugImage] Image successfully saved as %s\n", filename)
 	}
 }

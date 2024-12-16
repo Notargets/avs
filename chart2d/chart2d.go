@@ -75,8 +75,7 @@ func (chart *Chart2D) AddAxis(color Color, nSegs int) {
 			continue
 		}
 		X, Y, C = AddSegmentToLine(X, Y, C, x, y, x, y-yTickSize, tickColor)
-		chart.Screen.Printf(screen.NEW, x, y-2*yTickSize, colorTxt, xTickSize, true, false,
-			"%4.1f", x)
+		chart.Screen.Printf(screen.NEW, x, y-2*yTickSize, colorTxt, true, false, "%4.1f", x)
 		x = x + xInc
 	}
 	x = xMin + xScale/2.
@@ -87,8 +86,7 @@ func (chart *Chart2D) AddAxis(color Color, nSegs int) {
 			continue
 		}
 		X, Y, C = AddSegmentToLine(X, Y, C, x, y, x-xTickSize, y, tickColor)
-		chart.Screen.Printf(screen.NEW, x-3*xTickSize, y, colorTxt, xTickSize, true, false,
-			"%4.1f", y)
+		chart.Screen.Printf(screen.NEW, x-3*xTickSize, y, colorTxt, true, false, "%4.1f", y)
 		y = y + yInc
 	}
 	//chart.Screen.ChangePosition(0.0, 0.0)
