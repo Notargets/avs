@@ -5,6 +5,7 @@ import (
 	"image"
 	colorlib "image/color"
 	"image/png"
+	"math"
 	"os"
 	"runtime"
 
@@ -86,75 +87,9 @@ func (scr *Screen) AddString(key Key, text string, x, y float32, color [3]float3
 			}
 			str.ShaderProgram = str.addShader(scr)
 
-			// Calculate text width and height using FreeType context
-			scaledSize := fixed.Int26_6(scr.FontSize * scale * 64) // Scale font size for 26.6 fixed-point format
-			textWidth := 0
+			img, textureWidth, textureHeight, quadWidth, quadHeight := scr.calculateFontBitmapSize(text, color, scale, centered)
 
-			// Create a FreeType context
-			img := image.NewRGBA(image.Rect(0, 0, 1, 1)) // Dummy image for context
-			ctx := freetype.NewContext()
-			ctx.SetDPI(72)
-			ctx.SetFont(scr.Font)
-			ctx.SetFontSize(float64(scr.FontSize * scale))
-			ctx.SetClip(img.Bounds())
-			ctx.SetDst(img)
-
-			// Calculate total width of the text using HMetric
-			lastCharRightEdge := 0
-			for i, ch := range text {
-				glyphIndex := scr.Font.Index(ch)
-				hMetric := scr.Font.HMetric(scaledSize, glyphIndex)
-				textWidth += int(hMetric.AdvanceWidth >> 6) // Total advance width
-
-				if i == len(text)-1 { // Handle the last character specially
-					bounds := scr.Font.Bounds(scaledSize)
-					rightEdge := textWidth + (bounds.Max.X.Round() >> 6)
-					if rightEdge > textWidth {
-						lastCharRightEdge = rightEdge - textWidth
-					}
-				}
-			}
-
-			// Add the extra width for the last character's overflow
-			textWidth += lastCharRightEdge
-
-			// Calculate font height from font ascent and descent
-			fontMetrics := scr.Font.Bounds(scaledSize)
-			ascent := fontMetrics.Max.Y.Round()
-			descent := -fontMetrics.Min.Y.Round()
-			textHeight := ascent + descent
-
-			// Ensure texture dimensions are aligned to 4-byte boundaries
-			textureWidth := int32((textWidth + 3) & ^3)   // Align width to 4-byte boundary
-			textureHeight := int32((textHeight + 3) & ^3) // Align height to 4-byte boundary
-
-			// Create an image of the proper size to hold the full text
-			img = image.NewRGBA(image.Rect(0, 0, int(textureWidth), int(textureHeight)))
-			ctx = freetype.NewContext()
-			ctx.SetDPI(72)
-			ctx.SetFont(scr.Font)
-			ctx.SetFontSize(float64(scr.FontSize * scale))
-			ctx.SetClip(img.Bounds())
-			ctx.SetDst(img)
-			ctx.SetSrc(image.NewUniform(colorlib.RGBA{R: uint8(color[0] * 255), G: uint8(color[1] * 255), B: uint8(color[2] * 255), A: 255}))
-
-			// Draw the string at the proper position (start at the baseline)
-			pt := freetype.Pt(0, ascent) // Baseline is ascent from the top of the image
-			_, err := ctx.DrawString(text, pt)
-			if err != nil {
-				fmt.Printf("Error drawing string: %v\n", err)
-			}
-
-			// Calculate quad width and height from texture dimensions
-			xRange := scr.XMax - scr.XMin
-			yRange := scr.YMax - scr.YMin
-			quadWidth := float32(textureWidth) / float32(xRange) * scale
-			quadHeight := float32(textureHeight) / float32(yRange) * scale
-
-			// Apply aspect ratio correction to height
-			quadHeight = quadHeight * (yRange / xRange) // Adjust height to avoid distortion
-
-			// Calculate proper position and scale
+			// **Step 4: Calculate proper position and scale**
 			var posX, posY float32
 			if centered {
 				posX = x - quadWidth/2
@@ -164,7 +99,7 @@ func (scr *Screen) AddString(key Key, text string, x, y float32, color [3]float3
 				posY = y
 			}
 
-			// Initialize polygon vertices for the 4 corners of the quad
+			// **Step 5: Initialize polygon vertices for the 4 corners of the quad**
 			str.polygonVertices = [4]mgl32.Vec2{
 				{posX, posY},                          // Bottom-left
 				{posX + quadWidth, posY},              // Bottom-right
@@ -183,6 +118,89 @@ func (scr *Screen) AddString(key Key, text string, x, y float32, color [3]float3
 		}
 	}
 	return newKey
+}
+
+func (scr *Screen) calculateFontBitmapSize(text string, color [3]float32, scale float32, centered bool) (img *image.RGBA, textureWidth, textureHeight int32, quadWidth, quadHeight float32) {
+	// Calculate text width and height using FreeType context
+	scaledSize := fixed.Int26_6(scr.FontSize * scale * 64) // Scale font size for 26.6 fixed-point format
+	textWidth := 0
+
+	// Create a FreeType context
+	img = image.NewRGBA(image.Rect(0, 0, 1, 1)) // Dummy image for context
+	ctx := freetype.NewContext()
+	ctx.SetDPI(72)
+	ctx.SetFont(scr.Font)
+	ctx.SetFontSize(float64(scr.FontSize * scale))
+	ctx.SetClip(img.Bounds())
+	ctx.SetDst(img)
+
+	// Calculate total width of the text using HMetric
+	lastCharRightEdge := 0
+	for i, ch := range text {
+		glyphIndex := scr.Font.Index(ch)
+		hMetric := scr.Font.HMetric(scaledSize, glyphIndex)
+		textWidth += int(hMetric.AdvanceWidth >> 6) // Total advance width
+
+		if i == len(text)-1 { // Handle the last character specially
+			bounds := scr.Font.Bounds(scaledSize)
+			rightEdge := textWidth + (bounds.Max.X.Round() >> 6)
+			if rightEdge > textWidth {
+				lastCharRightEdge = rightEdge - textWidth
+			}
+		}
+	}
+
+	// Add the extra width for the last character's overflow
+	textWidth += lastCharRightEdge
+
+	// Calculate font height from font ascent and descent
+	fontMetrics := scr.Font.Bounds(scaledSize)
+	ascent := fontMetrics.Max.Y.Round()
+	descent := -fontMetrics.Min.Y.Round()
+	textHeight := ascent + descent
+
+	// Ensure texture dimensions are aligned to 4-byte boundaries
+	textureWidth = int32((textWidth + 3) & ^3)   // Align width to 4-byte boundary
+	textureHeight = int32((textHeight + 3) & ^3) // Align height to 4-byte boundary
+
+	// Create an image of the proper size to hold the full text
+	img = image.NewRGBA(image.Rect(0, 0, int(textureWidth), int(textureHeight)))
+	ctx = freetype.NewContext()
+	ctx.SetDPI(72)
+	ctx.SetFont(scr.Font)
+	ctx.SetFontSize(float64(scr.FontSize * scale))
+	ctx.SetClip(img.Bounds())
+	ctx.SetDst(img)
+	ctx.SetSrc(image.NewUniform(colorlib.RGBA{R: uint8(color[0] * 255), G: uint8(color[1] * 255), B: uint8(color[2] * 255), A: 255}))
+
+	// Draw the string at the proper position (start at the baseline)
+	pt := freetype.Pt(0, ascent) // Baseline is ascent from the top of the image
+	_, err := ctx.DrawString(text, pt)
+	if err != nil {
+		fmt.Printf("Error drawing string: %v\n", err)
+	}
+
+	// Calculate quad width and height from texture dimensions
+	xRange := scr.XMax - scr.XMin
+	yRange := scr.YMax - scr.YMin
+
+	// **Step 1: Calculate initial quad size from raw text dimensions**
+	quadWidth = float32(textureWidth) / float32(xRange) * scale
+	quadHeight = float32(textureHeight) / float32(yRange) * scale
+
+	// **Step 2: Stretch the larger dimension to maintain aspect ratio**
+	if xRange > yRange {
+		quadWidth *= (xRange / yRange) // Stretch width
+	} else {
+		quadHeight *= (yRange / xRange) // Stretch height
+	}
+
+	// **Step 3: Apply inverse scale correction to keep the total size constant**
+	scaleFactor := float32(math.Min(float64(xRange), float64(yRange))) / float32(math.Max(float64(xRange), float64(yRange)))
+	quadWidth *= scaleFactor
+	quadHeight *= scaleFactor
+
+	return
 }
 
 func (str *String) initializeVBO(scr *Screen, img *image.RGBA, textureWidth, textureHeight int32, color [3]float32) {
