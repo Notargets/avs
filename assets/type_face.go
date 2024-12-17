@@ -44,8 +44,6 @@ func NewOpenGLTypeFace(fontBaseName, fontOptionName string, fontPitch int, windo
 		panic(err)
 	}
 
-	fmt.Printf("Read font file: %v\n", tf.FontFilePath)
-
 	// Parse the font
 	ttf, err := opentype.Parse(fontBytes)
 	if err != nil {
@@ -95,8 +93,8 @@ func (tf *OpenGLTypeFace) RenderFontTextureImg(text string, fontColor color.Colo
 	if err != nil {
 		panic(err)
 	}
-	SaveDebugImage(img, "debug_image.png")
-	fmt.Printf("Text Width: %d, Height %d\n", textureWidth, textureHeight)
+	//SaveDebugImage(img, "debug_image.png")
+	//fmt.Printf("Text Width: %d, Height %d\n", textureWidth, textureHeight)
 
 	// Calculate the width of the text string in window coordinates based on the fact that the xRange corresponds
 	// with the window width
@@ -196,7 +194,6 @@ func calculateFontHeight(face font.Face) (int, error) {
 }
 
 func calculateStringPixelWidth(fontFace font.Face, text string) int {
-	fmt.Printf("Calling calculateStringPixelWidth %s\n", text)
 	var totalWidth fixed.Int26_6
 	for i, char := range text {
 		advance, ok := fontFace.GlyphAdvance(char)

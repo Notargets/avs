@@ -30,10 +30,6 @@ type Screen struct {
 	Shaders          ShaderPrograms // Stores precompiled shaders for all graphics types
 	Window           *glfw.Window
 	Font             font.Face // Using gltext font instead of raw OpenGL textures
-	FontFilePath     string    // Path to the TTF font
-	FontPitch        float32   // Font size in "Pitch", eg: 12 Pitch font
-	FontHeight       int       // Pixel height of font
-	FontDPI          int
 	Objects          map[Key]Renderable
 	RenderChannel    chan func()
 	Scale            float32

@@ -3,6 +3,7 @@ package screen
 import (
 	"fmt"
 	"image"
+	"image/color"
 	"runtime"
 
 	"github.com/notargets/avs/assets"
@@ -38,6 +39,13 @@ func (scr *Screen) Printf(formatter *assets.TextFormatter, x, y float32, format 
 	newKey = scr.AddString(NEW, formatter, x, y, text)
 
 	return newKey
+}
+
+func (scr *Screen) NewTextFormatter(fontBaseName, fontOptionName string, fontPitch int, fontColor color.Color,
+	centered, screenFixed bool) (tf *assets.TextFormatter) {
+	tf = assets.NewTextFormatter(fontBaseName, fontOptionName, fontPitch, scr.ScreenWidth, fontColor,
+		centered, screenFixed, scr.XMax-scr.XMin, scr.YMax-scr.YMin)
+	return
 }
 
 func (scr *Screen) AddString(key Key, textFormatter *assets.TextFormatter, x, y float32, text string) (newKey Key) {

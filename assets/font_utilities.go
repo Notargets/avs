@@ -1,7 +1,6 @@
 package assets
 
 import (
-	"fmt"
 	"image/color"
 )
 
@@ -19,6 +18,5 @@ func NewTextFormatter(fontBaseName, fontOptionName string, fontPitch, windowWidt
 		ScreenFixed: screenFixed,
 	}
 	tf.TypeFace = NewOpenGLTypeFace(fontBaseName, fontOptionName, fontPitch, windowWidth, xRange, yRange)
-	fmt.Println("Here after NewTypFace")
 	return
 }

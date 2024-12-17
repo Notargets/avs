@@ -21,7 +21,7 @@ type Chart2D struct {
 
 type Color [4]float32 // RGBA
 
-func NewChart2D(XMin, XMax, YMin, YMax float32, width, height int) (chart *Chart2D) {
+func NewChart2D(XMin, XMax, YMin, YMax, scale float32, width, height int) (chart *Chart2D) {
 	chart = &Chart2D{
 		XMin: XMin,
 		XMax: XMax,
@@ -29,7 +29,7 @@ func NewChart2D(XMin, XMax, YMin, YMax float32, width, height int) (chart *Chart
 		YMax: YMax,
 		//Screen:      screen.NewScreen(width, height, 0, 1, 0, 1),
 		WindowWidth: width,
-		Screen:      screen.NewScreen(width, height, XMin, XMax, YMin, YMax, 0.95),
+		Screen:      screen.NewScreen(width, height, XMin, XMax, YMin, YMax, scale),
 		LineColor:   color.RGBA{255, 255, 255, 255},
 		ScreenColor: color.RGBA{46, 46, 46, 255},
 	}
@@ -39,9 +39,12 @@ func NewChart2D(XMin, XMax, YMin, YMax float32, width, height int) (chart *Chart
 
 func (chart *Chart2D) NewTextFormatter(fontBaseName, fontOptionName string, fontPitch int, fontColor color.Color,
 	centered, screenFixed bool) (tf *assets.TextFormatter) {
-	tf = assets.NewTextFormatter(fontBaseName, fontOptionName, fontPitch, chart.WindowWidth, fontColor,
-		centered, screenFixed, chart.XMax-chart.XMin, chart.YMax-chart.YMin)
+	tf = chart.Screen.NewTextFormatter(fontBaseName, fontOptionName, fontPitch, fontColor, centered, screenFixed)
 	return
+}
+
+func (chart *Chart2D) Printf(formatter *assets.TextFormatter, x, y float32, format string, args ...interface{}) {
+	chart.Screen.Printf(formatter, x, y, format, args...)
 }
 
 func (chart *Chart2D) AddLine(X, Y []float32) {
@@ -64,7 +67,7 @@ func (chart *Chart2D) GetSingleColorArray(Y []float32, singleColor color.Color) 
 	return
 }
 
-func (chart *Chart2D) AddAxis(axisColor color.Color, nSegs int) {
+func (chart *Chart2D) AddAxis(axisColor color.Color, yAxisLocation float32, nSegs int) {
 	var (
 		xMin, xMax           = chart.XMin, chart.XMax
 		yMin, yMax           = chart.YMin, chart.YMax
@@ -85,22 +88,21 @@ func (chart *Chart2D) AddAxis(axisColor color.Color, nSegs int) {
 		color.RGBA{255, 255, 255, 255}, true, false)
 
 	// Generate color array for 2 vertices per axis (X-axis and Y-axis)
-	xMid := xMin + (xMax-xMin)/2
 	X, Y, C = AddSegmentToLine(X, Y, C, xMin, 0, xMax, 0, axisColor)
-	X, Y, C = AddSegmentToLine(X, Y, C, xMid, yMin, xMid, yMax, axisColor)
+	X, Y, C = AddSegmentToLine(X, Y, C, yAxisLocation, yMin, yAxisLocation, yMax, axisColor)
 
 	// Draw ticks along X axis
 	var x, y = xMin, float32(0) // X axis is always drawn at Y = 0
 	for i := 0; i < nSegs; i++ {
-		if i == nSegs/2 {
+		if x == yAxisLocation {
 			x = x + xInc
 			continue
 		}
 		X, Y, C = AddSegmentToLine(X, Y, C, x, y, x, y-yTickSize, tickColor)
-		chart.Screen.Printf(tickText, x, y-2*yTickSize, "%4.1f", x)
+		chart.Printf(tickText, x, y-2*yTickSize, "%4.1f", x)
 		x = x + xInc
 	}
-	x = xMin + xScale/2.
+	x = yAxisLocation
 	y = yMin
 	for i := 0; i < nSegs; i++ {
 		if i == nSegs/2 {
@@ -108,7 +110,7 @@ func (chart *Chart2D) AddAxis(axisColor color.Color, nSegs int) {
 			continue
 		}
 		X, Y, C = AddSegmentToLine(X, Y, C, x, y, x-xTickSize, y, tickColor)
-		chart.Screen.Printf(tickText, x-2*xTickSize, y, "%4.1f", y)
+		chart.Printf(tickText, x-2*xTickSize, y, "%4.1f", y)
 		y = y + yInc
 	}
 	//chart.Screen.ChangePosition(0.0, 0.0)
@@ -121,19 +123,6 @@ func AddSegmentToLine(X, Y, C []float32, X1, Y1, X2, Y2 float32, lineColor color
 
 	c := ColorToFloat32(lineColor)
 	CC = append(C, c[0], c[1], c[2], c[0], c[1], c[2])
-	return
-}
-
-func ColorArray(X, Y []float32, color Color) (colorArray []float32) {
-	if len(X) != len(Y) {
-		panic("X and Y must have the same length")
-	}
-	colorArray = make([]float32, 3*len(X))
-	for i := 0; i < len(X); i++ {
-		colorArray[i*3] = color[0]
-		colorArray[i*3+1] = color[1]
-		colorArray[i*3+2] = color[2]
-	}
 	return
 }
 
