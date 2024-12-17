@@ -3,8 +3,6 @@ package screen
 import (
 	"fmt"
 	"image"
-	"image/png"
-	"os"
 	"runtime"
 
 	"github.com/notargets/avs/assets"
@@ -19,17 +17,10 @@ type String struct {
 	Text            string
 	ShaderProgram   uint32
 	Position        mgl32.Vec2
-	Color           [3]float32
 	Texture         uint32
 	StringType      RenderType
 	polygonVertices [4]mgl32.Vec2
-}
-
-func (scr *Screen) LoadFont(filePath string, fontPitch float32) (err error) {
-	scr.FontPitch = fontPitch
-	scr.FontDPI = assets.CalculateDynamicFontDPI(fontPitch)
-	scr.Font, scr.FontHeight, err = assets.LoadFont(filePath, fontPitch, scr.FontDPI)
-	return
+	TextFormatter   *assets.TextFormatter
 }
 
 func printMemoryStats(label string) {
@@ -39,21 +30,25 @@ func printMemoryStats(label string) {
 		label, m.Alloc/1024/1024, m.TotalAlloc/1024/1024, m.Sys/1024/1024, m.NumGC)
 }
 
-func (scr *Screen) Printf(key Key, x, y float32, color [3]float32, centered, screenFixed bool, format string, args ...interface{}) (newKey Key) {
+func (scr *Screen) Printf(formatter *assets.TextFormatter, x, y float32, format string, args ...interface{}) (newKey Key) {
 	// Format the string using fmt.Sprintf
 	text := fmt.Sprintf(format, args...)
 
 	// Call AddString with the formatted text
-	newKey = scr.AddString(key, text, x, y, color, centered, screenFixed)
+	newKey = scr.AddString(NEW, formatter, x, y, text)
 
 	return newKey
 }
 
-func (scr *Screen) AddString(key Key, text string, x, y float32, color [3]float32, centered, screenFixed bool) (newKey Key) {
+func (scr *Screen) AddString(key Key, textFormatter *assets.TextFormatter, x, y float32, text string) (newKey Key) {
 	if key == NEW {
 		key = Key(uuid.New())
 	}
 	newKey = key
+
+	if textFormatter == nil {
+		panic("textFormatter is nil")
+	}
 
 	scr.RenderChannel <- func() {
 		var str *String
@@ -61,22 +56,22 @@ func (scr *Screen) AddString(key Key, text string, x, y float32, color [3]float3
 			str = object.Object.(*String)
 		} else {
 			str = &String{
-				Text:     text,
-				Position: mgl32.Vec2{x, y},
-				Color:    color,
+				Text:          text,
+				Position:      mgl32.Vec2{x, y},
+				TextFormatter: textFormatter,
 			}
-			if screenFixed {
+			if str.TextFormatter.ScreenFixed {
 				str.StringType = FIXEDSTRING
 			} else {
 				str.StringType = STRING
 			}
 			str.ShaderProgram = str.addShader(scr)
 
-			img, textureWidth, textureHeight, quadWidth, quadHeight := scr.renderFontTextureImg(text, color)
+			img, textureWidth, textureHeight, quadWidth, quadHeight := str.TextFormatter.TypeFace.RenderFontTextureImg(text, str.TextFormatter.Color)
 
 			// **Step 4: Calculate proper position and scale**
 			var posX, posY float32
-			if centered {
+			if textFormatter.Centered {
 				posX = x - quadWidth/2
 				posY = y - quadHeight/2
 			} else {
@@ -93,7 +88,8 @@ func (scr *Screen) AddString(key Key, text string, x, y float32, color [3]float3
 			}
 
 			// Initialize the vertex buffer object (VBO)
-			str.initializeVBO(scr, img, textureWidth, textureHeight, color)
+			c := ColorToFloat32(textFormatter.Color)
+			str.initializeVBO(scr, img, textureWidth, textureHeight, c)
 
 			// Store the string in the screen objects
 			scr.Objects[key] = Renderable{
@@ -105,46 +101,7 @@ func (scr *Screen) AddString(key Key, text string, x, y float32, color [3]float3
 	return newKey
 }
 
-func (scr *Screen) renderFontTextureImg(text string, color [3]float32) (img *image.RGBA, textureWidth, textureHeight int, quadWidth, quadHeight float32) {
-	var (
-		err error
-	)
-	// Calculate text width and height using FreeType context
-	xRange := scr.XMax - scr.XMin
-	yRange := scr.YMax - scr.YMin
-	//pixelSize := fixed.Int26_6(scr.FontPitch * scale * 64) // Scale font size for 26.6 fixed-point format
-
-	fontColor := [4]float32{color[0], color[1], color[2], 1}
-	bgColor := [4]float32{0, 0, 0, 0}
-	// Create an image of the proper size to hold the full text
-	textureWidth, textureHeight, img, err = assets.DrawText(scr.Font, text, fontColor, bgColor)
-	if err != nil {
-		panic(err)
-	}
-	SaveDebugImage(img, "debug_image.png")
-	fmt.Printf("Text Width: %d, Height %d\n", textureWidth, textureHeight)
-
-	// Calculate the width of the text string in window coordinates based on the fact that the xRange corresponds
-	// with the window width
-	// First, percentage of width covered by the text pixels:
-	windowPercent := float32(textureWidth) / float32(scr.ScreenWidth)
-	bitmapAspectRatio := float32(textureHeight) / float32(textureWidth)
-	// Now how much world space this represents
-	worldSpaceWidth := windowPercent * xRange
-	worldSpaceHeight := bitmapAspectRatio * worldSpaceWidth
-	// Now correct the worldSpaceHeight to remove the stretch factor of the ortho transform
-	ratio := yRange / xRange
-	worldSpaceHeight *= ratio
-	// Implement a scale factor to reduce the polygon size commensurate with the dynamic DPI scaling, relative to the
-	// standard 72 DPI of the Opentype package
-	scaleFromDPI := 72 / float32(scr.FontDPI)
-	quadWidth = scaleFromDPI * worldSpaceWidth
-	quadHeight = scaleFromDPI * worldSpaceHeight
-
-	return
-}
-
-func (str *String) initializeVBO(scr *Screen, img *image.RGBA, textureWidth, textureHeight int, color [3]float32) {
+func (str *String) initializeVBO(scr *Screen, img *image.RGBA, textureWidth, textureHeight int, color [4]float32) {
 	var texture uint32
 	gl.GenTextures(1, &texture)
 	gl.BindTexture(gl.TEXTURE_2D, texture)
@@ -352,28 +309,4 @@ func (str *String) Render(scr *Screen) {
 	gl.Disable(gl.BLEND)
 	gl.BindVertexArray(0)
 	gl.BindTexture(gl.TEXTURE_2D, 0)
-}
-
-// SaveDebugImage saves an image as a PNG file with the specified filename and logs the result
-func SaveDebugImage(img *image.RGBA, filename string) {
-	if img == nil {
-		fmt.Println("[SaveDebugImage] Image is nil, nothing to save.")
-		return
-	}
-
-	// Create the file
-	file, err := os.Create(filename)
-	if err != nil {
-		fmt.Printf("[SaveDebugImage] Failed to create image file: %v\n", err)
-		return
-	}
-	defer file.Close()
-
-	// Encode the image as PNG
-	err = png.Encode(file, img)
-	if err != nil {
-		fmt.Printf("[SaveDebugImage] Failed to save image as PNG: %v\n", err)
-	} else {
-		fmt.Printf("[SaveDebugImage] Image successfully saved as %s\n", filename)
-	}
 }

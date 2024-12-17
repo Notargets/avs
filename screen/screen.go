@@ -2,6 +2,7 @@ package screen
 
 import (
 	"fmt"
+	"image/color"
 	"log"
 	"runtime"
 	"runtime/cgo"
@@ -28,7 +29,6 @@ var (
 type Screen struct {
 	Shaders          ShaderPrograms // Stores precompiled shaders for all graphics types
 	Window           *glfw.Window
-	FontTextureID    uint32    // Texture ID for the font atlas
 	Font             font.Face // Using gltext font instead of raw OpenGL textures
 	FontFilePath     string    // Path to the TTF font
 	FontPitch        float32   // Font size in "Pitch", eg: 12 Pitch font
@@ -200,10 +200,12 @@ func (scr *Screen) InitGLScreen(width, height int) {
 	return
 }
 
-func (scr *Screen) SetBackgroundColor(color [4]float32) {
+func (scr *Screen) SetBackgroundColor(screenColor color.Color) {
+
 	scr.RenderChannel <- func() {
 		//gl.ClearColor(r, g, b, a)
-		gl.ClearColor(color[0], color[1], color[2], color[3])
+		fc := ColorToFloat32(screenColor)
+		gl.ClearColor(fc[0], fc[1], fc[2], fc[3])
 	}
 }
 
@@ -238,5 +240,16 @@ func checkGLError(message string) {
 			errorMessage = fmt.Sprintf("Unknown OpenGL error code: 0x%X", err)
 		}
 		panic(fmt.Sprintf("OpenGL Error [%s]: %s (0x%X)", message, errorMessage, err))
+	}
+}
+
+// ColorToFloat64 converts a color.Color to a [4]float64 array (R, G, B, A) in the range [0.0, 1.0]
+func ColorToFloat32(c color.Color) [4]float32 {
+	r, g, b, a := c.RGBA()
+	return [4]float32{
+		float32(r) / 65535.0,
+		float32(g) / 65535.0,
+		float32(b) / 65535.0,
+		float32(a) / 65535.0,
 	}
 }

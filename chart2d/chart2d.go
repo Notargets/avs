@@ -1,6 +1,10 @@
 package chart2d
 
 import (
+	"image/color"
+
+	"github.com/notargets/avs/assets"
+
 	"github.com/notargets/avs/screen"
 )
 
@@ -9,9 +13,10 @@ type Chart2D struct {
 	Position    [2]float32
 	XMin, XMax  float32
 	YMin, YMax  float32
+	WindowWidth int
 	Screen      *screen.Screen
-	LineColor   Color
-	ScreenColor Color
+	LineColor   color.Color
+	ScreenColor color.Color
 }
 
 type Color [4]float32 // RGBA
@@ -23,11 +28,19 @@ func NewChart2D(XMin, XMax, YMin, YMax float32, width, height int) (chart *Chart
 		YMin: YMin,
 		YMax: YMax,
 		//Screen:      screen.NewScreen(width, height, 0, 1, 0, 1),
+		WindowWidth: width,
 		Screen:      screen.NewScreen(width, height, XMin, XMax, YMin, YMax, 0.95),
-		LineColor:   Color{1, 1, 1, 1},
-		ScreenColor: Color{0.18, 0.18, 0.18, 1.},
+		LineColor:   color.RGBA{255, 255, 255, 255},
+		ScreenColor: color.RGBA{46, 46, 46, 255},
 	}
 	chart.Screen.SetBackgroundColor(chart.ScreenColor)
+	return
+}
+
+func (chart *Chart2D) NewTextFormatter(fontBaseName, fontOptionName string, fontPitch int, fontColor color.Color,
+	centered, screenFixed bool) (tf *assets.TextFormatter) {
+	tf = assets.NewTextFormatter(fontBaseName, fontOptionName, fontPitch, chart.WindowWidth, fontColor,
+		centered, screenFixed, chart.XMax-chart.XMin, chart.YMax-chart.YMin)
 	return
 }
 
@@ -35,17 +48,23 @@ func (chart *Chart2D) AddLine(X, Y []float32) {
 	chart.Screen.AddPolyLine(screen.NEW, X, Y, chart.GetSingleColorArray(Y, chart.LineColor))
 }
 
-func (chart *Chart2D) GetSingleColorArray(Y []float32, color Color) (colors []float32) {
+func (chart *Chart2D) GetSingleColorArray(Y []float32, singleColor color.Color) (colors []float32) {
 	colors = make([]float32, len(Y)*3)
+	r, g, b, _ := singleColor.RGBA() // Extract RGBA as uint32
+	fc := [3]float32{
+		float32(r) / 65535.0,
+		float32(g) / 65535.0,
+		float32(b) / 65535.0,
+	}
 	for i := range colors {
-		colors[i*3] = color[0]
-		colors[i*3+1] = color[1]
-		colors[i*3+2] = color[2]
+		colors[i*3] = fc[0]
+		colors[i*3+1] = fc[1]
+		colors[i*3+2] = fc[2]
 	}
 	return
 }
 
-func (chart *Chart2D) AddAxis(color Color, nSegs int) {
+func (chart *Chart2D) AddAxis(axisColor color.Color, nSegs int) {
 	var (
 		xMin, xMax           = chart.XMin, chart.XMax
 		yMin, yMax           = chart.YMin, chart.YMax
@@ -53,7 +72,7 @@ func (chart *Chart2D) AddAxis(color Color, nSegs int) {
 		xInc                 = xScale / float32(nSegs-1)
 		yInc                 = yScale / float32(nSegs-1)
 		xTickSize, yTickSize = 0.020 * xScale, 0.020 * yScale
-		tickColor            = ScaleColor(color, 0.8)
+		tickColor            = axisColor
 		X                    = []float32{}
 		Y                    = []float32{}
 		C                    = []float32{}
@@ -61,12 +80,15 @@ func (chart *Chart2D) AddAxis(color Color, nSegs int) {
 	if nSegs%2 == 0 {
 		panic("nSegs must be odd")
 	}
+
+	tickText := chart.NewTextFormatter("NotoSans", "Regular", 16,
+		color.RGBA{255, 255, 255, 255}, true, false)
+
 	// Generate color array for 2 vertices per axis (X-axis and Y-axis)
+	xMid := xMin + (xMax-xMin)/2
+	X, Y, C = AddSegmentToLine(X, Y, C, xMin, 0, xMax, 0, axisColor)
+	X, Y, C = AddSegmentToLine(X, Y, C, xMid, yMin, xMid, yMax, axisColor)
 
-	X, Y, C = AddSegmentToLine(X, Y, C, xMin, 0, xMax, 0, color)
-	X, Y, C = AddSegmentToLine(X, Y, C, 0, yMin, 0, yMax, color)
-
-	colorTxt := [3]float32{color[0], color[1], color[2]}
 	// Draw ticks along X axis
 	var x, y = xMin, float32(0) // X axis is always drawn at Y = 0
 	for i := 0; i < nSegs; i++ {
@@ -75,7 +97,7 @@ func (chart *Chart2D) AddAxis(color Color, nSegs int) {
 			continue
 		}
 		X, Y, C = AddSegmentToLine(X, Y, C, x, y, x, y-yTickSize, tickColor)
-		chart.Screen.Printf(screen.NEW, x, y-2*yTickSize, colorTxt, true, false, "%4.1f", x)
+		chart.Screen.Printf(tickText, x, y-2*yTickSize, "%4.1f", x)
 		x = x + xInc
 	}
 	x = xMin + xScale/2.
@@ -86,27 +108,19 @@ func (chart *Chart2D) AddAxis(color Color, nSegs int) {
 			continue
 		}
 		X, Y, C = AddSegmentToLine(X, Y, C, x, y, x-xTickSize, y, tickColor)
-		chart.Screen.Printf(screen.NEW, x-3*xTickSize, y, colorTxt, true, false, "%4.1f", y)
+		chart.Screen.Printf(tickText, x-2*xTickSize, y, "%4.1f", y)
 		y = y + yInc
 	}
 	//chart.Screen.ChangePosition(0.0, 0.0)
 	chart.Screen.AddLine(screen.NEW, X, Y, C) // 2 points, so 2 * 3 = 6 colors
 }
 
-func ScaleColor(color Color, scale float32) (scaled Color) {
-	for i, f := range color {
-		scaled[i] = f * scale
-		if scaled[i] > 1. {
-			scaled[i] = 1.
-		}
-	}
-	return
-}
-
-func AddSegmentToLine(X, Y, C []float32, X1, Y1, X2, Y2 float32, color Color) (XX, YY, CC []float32) {
+func AddSegmentToLine(X, Y, C []float32, X1, Y1, X2, Y2 float32, lineColor color.Color) (XX, YY, CC []float32) {
 	XX = append(X, X1, X2)
 	YY = append(Y, Y1, Y2)
-	CC = append(C, color[0], color[1], color[2], color[0], color[1], color[2])
+
+	c := ColorToFloat32(lineColor)
+	CC = append(C, c[0], c[1], c[2], c[0], c[1], c[2])
 	return
 }
 
@@ -121,4 +135,13 @@ func ColorArray(X, Y []float32, color Color) (colorArray []float32) {
 		colorArray[i*3+2] = color[2]
 	}
 	return
+}
+
+func ColorToFloat32(c color.Color) [3]float32 {
+	r, g, b, _ := c.RGBA() // Extract RGBA as uint32
+	return [3]float32{
+		float32(r) / 65535.0,
+		float32(g) / 65535.0,
+		float32(b) / 65535.0,
+	}
 }
