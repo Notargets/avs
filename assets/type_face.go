@@ -15,13 +15,11 @@ import (
 )
 
 type OpenGLTypeFace struct {
-	Face           font.Face // Equivalent to a Font object plus metadata like DPI, etc
-	FontFilePath   string    // Path to the TTF font file
-	FontPitch      int       // Font size in "Pitch", eg: 12 Pitch font
-	FontHeight     int       // Pixel height of font, calculated
-	FontDPI        int       // Dynamically calculated to ensure quality at all sizes
-	WindowWidth    int       // Width of the target window in pixels
-	XRange, YRange float32   // Range of world coordinates in an Orthographic projected space
+	Face         font.Face // Equivalent to a Font object plus metadata like DPI, etc
+	FontFilePath string    // Path to the TTF font file
+	FontPitch    int       // Font size in "Pitch", eg: 12 Pitch font
+	FontHeight   int       // Pixel height of font, calculated
+	FontDPI      int       // Dynamically calculated to ensure quality at all sizes
 }
 
 func NewOpenGLTypeFace(fontBaseName, fontOptionName string, fontPitch int, windowWidth int, XRange, YRange float32) (tf *OpenGLTypeFace) {
@@ -29,9 +27,6 @@ func NewOpenGLTypeFace(fontBaseName, fontOptionName string, fontPitch int, windo
 		FontFilePath: FontOptionsMap[fontBaseName][fontOptionName],
 		FontPitch:    fontPitch,
 		FontDPI:      calculateDynamicDPI(fontPitch),
-		WindowWidth:  windowWidth,
-		XRange:       XRange,
-		YRange:       YRange,
 	}
 	if len(tf.FontFilePath) == 0 {
 		panic("font_file_path is empty, check your font basename and option name in the asset map")
@@ -84,40 +79,22 @@ func generateHash(filename string, pitch int) uint64 {
 	return h.Sum64()
 }
 
-func (tf *OpenGLTypeFace) RenderFontTextureImg(text string, fontColor color.Color) (img *image.RGBA, textureWidth, textureHeight int, quadWidth, quadHeight float32) {
+func (tf *OpenGLTypeFace) RenderFontTextureImg(text string, fontColor color.Color) (img *image.RGBA) {
 	var (
 		err error
 	)
 	// Create an image of the proper size to hold the full text
-	textureWidth, textureHeight, img, err = tf.drawText(text, fontColor, color.RGBA{R: 0, G: 0, B: 0, A: 0})
+	img, err = tf.drawText(text, fontColor, color.RGBA{R: 0, G: 0, B: 0, A: 0})
 	if err != nil {
 		panic(err)
 	}
 	//SaveDebugImage(img, "debug_image.png")
 	//fmt.Printf("Text Width: %d, Height %d\n", textureWidth, textureHeight)
-
-	// Calculate the width of the text string in window coordinates based on the fact that the xRange corresponds
-	// with the window width
-	// First, percentage of width covered by the text pixels:
-	windowPercent := float32(textureWidth) / float32(tf.WindowWidth)
-	bitmapAspectRatio := float32(textureHeight) / float32(textureWidth)
-	// Now how much world space this represents
-	worldSpaceWidth := windowPercent * tf.XRange
-	worldSpaceHeight := bitmapAspectRatio * worldSpaceWidth
-	// Now correct the worldSpaceHeight to remove the stretch factor of the ortho transform
-	ratio := tf.YRange / tf.XRange
-	worldSpaceHeight *= ratio
-	// Implement a scale factor to reduce the polygon size commensurate with the dynamic DPI scaling, relative to the
-	// standard 72 DPI of the Opentype package
-	scaleFromDPI := 72 / float32(tf.FontDPI)
-	quadWidth = scaleFromDPI * worldSpaceWidth
-	quadHeight = scaleFromDPI * worldSpaceHeight
-
 	return
 }
 
 // DrawText draws the provided text onto an image using OpenType and returns the dimensions of the image and the image itself
-func (tf *OpenGLTypeFace) drawText(text string, fontColor, bgColor color.Color) (int, int, *image.RGBA, error) {
+func (tf *OpenGLTypeFace) drawText(text string, fontColor, bgColor color.Color) (*image.RGBA, error) {
 
 	// Calculate the pixel dimensions for the text
 	textWidth := calculateStringPixelWidth(tf.Face, text)
@@ -144,7 +121,7 @@ func (tf *OpenGLTypeFace) drawText(text string, fontColor, bgColor color.Color) 
 	// Draw the text
 	drawer.DrawString(text)
 
-	return textWidth, textHeight, img, nil
+	return img, nil
 }
 
 // SaveDebugImage saves an image as a PNG file with the specified filename and logs the result

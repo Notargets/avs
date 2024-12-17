@@ -97,7 +97,7 @@ func (scr *Screen) NewString(key Key, textFormatter *assets.TextFormatter, x, y 
 				Position:      mgl32.Vec2{x, y},
 				TextFormatter: textFormatter,
 			}
-			fmt.Printf("In NewString: ScreenFixed = %v\n", str.TextFormatter.ScreenFixed)
+			//fmt.Printf("In NewString: ScreenFixed = %v\n", str.TextFormatter.ScreenFixed)
 			if str.TextFormatter.ScreenFixed {
 				str.StringType = utils.FIXEDSTRING
 			} else {
@@ -127,7 +127,7 @@ func (scr *Screen) Printf(formatter *assets.TextFormatter, x, y float32, format 
 
 func (scr *Screen) NewTextFormatter(fontBaseName, fontOptionName string, fontPitch int, fontColor color.Color,
 	centered, screenFixed bool) (tf *assets.TextFormatter) {
-	tf = assets.NewTextFormatter(fontBaseName, fontOptionName, fontPitch, scr.ScreenWidth, fontColor,
+	tf = assets.NewTextFormatter(fontBaseName, fontOptionName, fontPitch, scr.WindowWidth, fontColor,
 		centered, screenFixed, scr.XMax-scr.XMin, scr.YMax-scr.YMin)
 	return
 }

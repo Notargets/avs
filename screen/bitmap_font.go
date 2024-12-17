@@ -14,15 +14,17 @@ import (
 )
 
 type String struct {
-	VAO, VBO          uint32
-	Text              string
-	ShaderProgram     uint32
-	Position          mgl32.Vec2
-	Texture           uint32
-	StringType        utils.RenderType
-	polygonVertices   [4]mgl32.Vec2
-	projectedVertices []float32 // if these exist, a FIXEDSTRING type will not recalculate them
-	TextFormatter     *assets.TextFormatter
+	VAO, VBO              uint32
+	Text                  string
+	ShaderProgram         uint32
+	Position              mgl32.Vec2
+	Texture               uint32
+	StringType            utils.RenderType
+	polygonVertices       [4]mgl32.Vec2
+	projectedVertices     []float32 // WRONG? if these exist, a FIXEDSTRING type will not recalculate them
+	quadWidth, quadHeight float32   // In world coordinates, fixed for a FIXEDSTRING
+	textureImg            *image.RGBA
+	TextFormatter         *assets.TextFormatter
 }
 
 func printMemoryStats(label string) {
@@ -34,34 +36,64 @@ func printMemoryStats(label string) {
 
 func (str *String) setupTextureMap(scr *Screen) {
 	var (
-		x = str.Position.X()
-		y = str.Position.Y()
+		x  = str.Position.X()
+		y  = str.Position.Y()
+		tf = str.TextFormatter
 	)
 
-	img, textureWidth, textureHeight, quadWidth, quadHeight := str.TextFormatter.TypeFace.RenderFontTextureImg(str.Text, str.TextFormatter.Color)
-
-	// **Step 4: Calculate proper position and scale**
-	var posX, posY float32
-	if str.TextFormatter.Centered {
-		posX = x - quadWidth/2
-		posY = y - quadHeight/2
-	} else {
-		posX = x
-		posY = y
+	if str.textureImg == nil {
+		var img *image.RGBA
+		img = str.TextFormatter.TypeFace.RenderFontTextureImg(str.Text, str.TextFormatter.Color)
+		str.textureImg = img
 	}
+	textureWidth, textureHeight := str.textureImg.Bounds().Dx(), str.textureImg.Bounds().Dy()
 
-	// **Step 5: Initialize polygon vertices for the 4 corners of the quad**
-	str.polygonVertices = [4]mgl32.Vec2{
-		{posX, posY},                          // Bottom-left
-		{posX + quadWidth, posY},              // Bottom-right
-		{posX, posY + quadHeight},             // Top-left
-		{posX + quadWidth, posY + quadHeight}, // Top-right
+	if str.StringType == utils.STRING || str.quadWidth == 0 {
+		str.quadWidth, str.quadHeight = calculateQuadBounds(textureWidth, textureHeight, scr.WindowWidth, tf.TypeFace.FontDPI,
+			scr.XMax-scr.XMin, scr.YMax-scr.YMin)
+		// **Step 4: Calculate proper position and scale**
+		var posX, posY float32
+		if str.TextFormatter.Centered {
+			posX = x - str.quadWidth/2
+			posY = y - str.quadHeight/2
+		} else {
+			posX = x
+			posY = y
+		}
+
+		// **Step 5: Initialize polygon vertices for the 4 corners of the quad**
+		str.polygonVertices = [4]mgl32.Vec2{
+			{posX, posY},                                  // Bottom-left
+			{posX + str.quadWidth, posY},                  // Bottom-right
+			{posX, posY + str.quadHeight},                 // Top-left
+			{posX + str.quadWidth, posY + str.quadHeight}, // Top-right
+		}
 	}
 
 	// Initialize the vertex buffer object (VBO)
 	c := ColorToFloat32(str.TextFormatter.Color)
 
-	str.initializeVBO(scr, img, textureWidth, textureHeight, c)
+	str.initializeVBO(scr, str.textureImg, textureWidth, textureHeight, c)
+}
+
+func calculateQuadBounds(textureWidth, textureHeight, windowWidth, fontDPI int, xRange, yRange float32) (quadWidth, quadHeight float32) {
+	// Calculate the width of the text string in window coordinates based on the fact that the xRange corresponds
+	// with the window width
+	// First, percentage of width covered by the text pixels:
+	windowPercent := float32(textureWidth) / float32(windowWidth)
+	bitmapAspectRatio := float32(textureHeight) / float32(textureWidth)
+	// Now how much world space this represents
+	worldSpaceWidth := windowPercent * xRange
+	worldSpaceHeight := bitmapAspectRatio * worldSpaceWidth
+	// Now correct the worldSpaceHeight to remove the stretch factor of the ortho transform
+	ratio := yRange / xRange
+	worldSpaceHeight *= ratio
+	// Implement a scale factor to reduce the polygon size commensurate with the dynamic DPI scaling, relative to the
+	// standard 72 DPI of the Opentype package
+	scaleFromDPI := 72 / float32(fontDPI)
+	quadWidth = scaleFromDPI * worldSpaceWidth
+	quadHeight = scaleFromDPI * worldSpaceHeight
+	return
 }
 
 func (str *String) initializeVBO(scr *Screen, img *image.RGBA, textureWidth, textureHeight int, color [4]float32) {
@@ -99,6 +131,7 @@ func (str *String) initializeVBO(scr *Screen, img *image.RGBA, textureWidth, tex
 		}
 	case utils.FIXEDSTRING:
 		if len(str.projectedVertices) == 0 {
+			fmt.Printf("Rendering FIXED STRING...\n")
 			var projected [4]mgl32.Vec4
 			for i := 0; i < 4; i++ {
 				projected[i] = scr.projectionMatrix.Mul4x1(mgl32.Vec4{str.polygonVertices[i].X(), str.polygonVertices[i].Y(), 0.0, 1.0})
@@ -229,7 +262,7 @@ func (str *String) addShader(scr *Screen) (shaderProgram uint32) {
 func (str *String) Render(scr *Screen) {
 	str.setupTextureMap(scr)
 
-	fmt.Printf("Rendering %s\n", str.StringType)
+	//fmt.Printf("Rendering %s\n", str.StringType)
 	gl.UseProgram(scr.Shaders[str.StringType])
 	checkGLError("After UseProgram")
 

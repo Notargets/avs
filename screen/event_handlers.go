@@ -83,7 +83,7 @@ func (scr *Screen) SetCallbacks() {
 
 func (scr *Screen) updateProjectionMatrix() {
 	// Get the aspect ratio of the window
-	aspectRatio := float32(scr.ScreenWidth) / float32(scr.ScreenHeight)
+	aspectRatio := float32(scr.WindowWidth) / float32(scr.WindowHeight)
 
 	// Determine world coordinate range based on zoom and position
 	xRange := (scr.XMax - scr.XMin) / scr.ZoomFactor / scr.Scale
@@ -127,7 +127,7 @@ func (scr *Screen) updateProjectionMatrix() {
 
 func (scr *Screen) updateProjectionMatrixSquare() {
 	// Get the aspect ratio of the window
-	aspectRatio := float32(scr.ScreenWidth) / float32(scr.ScreenHeight)
+	aspectRatio := float32(scr.WindowWidth) / float32(scr.WindowHeight)
 
 	// Determine world coordinate range based on zoom and position
 	xRange := (scr.XMax - scr.XMin) / scr.ZoomFactor / scr.Scale
@@ -237,8 +237,8 @@ func (scr *Screen) scrollCallback(w *glfw.Window, xoff, yoff float64) {
 
 func (scr *Screen) resizeCallback(w *glfw.Window, width, height int) {
 	// Update screen dimensions
-	scr.ScreenWidth = width
-	scr.ScreenHeight = height
+	scr.WindowWidth = width
+	scr.WindowHeight = height
 
 	// Update OpenGL viewport
 	gl.Viewport(0, 0, int32(width), int32(height))
