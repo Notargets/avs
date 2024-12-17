@@ -14,14 +14,15 @@ import (
 )
 
 type String struct {
-	VAO, VBO        uint32
-	Text            string
-	ShaderProgram   uint32
-	Position        mgl32.Vec2
-	Texture         uint32
-	StringType      utils.RenderType
-	polygonVertices [4]mgl32.Vec2
-	TextFormatter   *assets.TextFormatter
+	VAO, VBO          uint32
+	Text              string
+	ShaderProgram     uint32
+	Position          mgl32.Vec2
+	Texture           uint32
+	StringType        utils.RenderType
+	polygonVertices   [4]mgl32.Vec2
+	projectedVertices []float32 // if these exist, a FIXEDSTRING type will not recalculate them
+	TextFormatter     *assets.TextFormatter
 }
 
 func printMemoryStats(label string) {
@@ -59,6 +60,7 @@ func (str *String) setupTextureMap(scr *Screen) {
 
 	// Initialize the vertex buffer object (VBO)
 	c := ColorToFloat32(str.TextFormatter.Color)
+
 	str.initializeVBO(scr, img, textureWidth, textureHeight, c)
 }
 
@@ -79,40 +81,43 @@ func (str *String) initializeVBO(scr *Screen, img *image.RGBA, textureWidth, tex
 		{0, 0},
 		{1, 0},
 	}
-	var vertices []float32
 	switch str.StringType {
 	case utils.STRING:
 		lenRow := 2 + 2 + 3
 		lenV := 4 * (lenRow)
-		vertices = make([]float32, lenV)
+		if len(str.projectedVertices) == 0 {
+			str.projectedVertices = make([]float32, lenV)
+		}
 		for i := 0; i < 4; i++ {
-			vertices[i*lenRow] = str.polygonVertices[i][0]
-			vertices[i*lenRow+1] = str.polygonVertices[i][1]
-			vertices[i*lenRow+2] = uv[i][0]
-			vertices[i*lenRow+3] = uv[i][1]
-			vertices[i*lenRow+4] = color[0]
-			vertices[i*lenRow+5] = color[1]
-			vertices[i*lenRow+6] = color[2]
+			str.projectedVertices[i*lenRow] = str.polygonVertices[i][0]
+			str.projectedVertices[i*lenRow+1] = str.polygonVertices[i][1]
+			str.projectedVertices[i*lenRow+2] = uv[i][0]
+			str.projectedVertices[i*lenRow+3] = uv[i][1]
+			str.projectedVertices[i*lenRow+4] = color[0]
+			str.projectedVertices[i*lenRow+5] = color[1]
+			str.projectedVertices[i*lenRow+6] = color[2]
 		}
 	case utils.FIXEDSTRING:
-		var projected [4]mgl32.Vec4
-		for i := 0; i < 4; i++ {
-			projected[i] = scr.projectionMatrix.Mul4x1(mgl32.Vec4{str.polygonVertices[i].X(), str.polygonVertices[i].Y(), 0.0, 1.0})
-			projected[i] = projected[i].Mul(1.0 / projected[i].W())
-		}
-		lenRow := 2 + 2 + 3 + 4
-		lenV := 4 * (lenRow)
-		vertices = make([]float32, lenV)
-		for i := 0; i < 4; i++ {
-			vertices[i*lenRow] = str.polygonVertices[i][0]
-			vertices[i*lenRow+1] = str.polygonVertices[i][1]
-			vertices[i*lenRow+2] = uv[i][0]
-			vertices[i*lenRow+3] = uv[i][1]
-			vertices[i*lenRow+4] = color[0]
-			vertices[i*lenRow+5] = color[1]
-			vertices[i*lenRow+6] = color[2]
-			for j := 0; j < 4; j++ {
-				vertices[i*lenRow+7+j] = projected[i][j]
+		if len(str.projectedVertices) == 0 {
+			var projected [4]mgl32.Vec4
+			for i := 0; i < 4; i++ {
+				projected[i] = scr.projectionMatrix.Mul4x1(mgl32.Vec4{str.polygonVertices[i].X(), str.polygonVertices[i].Y(), 0.0, 1.0})
+				projected[i] = projected[i].Mul(1.0 / projected[i].W())
+			}
+			lenRow := 2 + 2 + 3 + 4
+			lenV := 4 * (lenRow)
+			str.projectedVertices = make([]float32, lenV)
+			for i := 0; i < 4; i++ {
+				str.projectedVertices[i*lenRow] = str.polygonVertices[i][0]
+				str.projectedVertices[i*lenRow+1] = str.polygonVertices[i][1]
+				str.projectedVertices[i*lenRow+2] = uv[i][0]
+				str.projectedVertices[i*lenRow+3] = uv[i][1]
+				str.projectedVertices[i*lenRow+4] = color[0]
+				str.projectedVertices[i*lenRow+5] = color[1]
+				str.projectedVertices[i*lenRow+6] = color[2]
+				for j := 0; j < 4; j++ {
+					str.projectedVertices[i*lenRow+7+j] = projected[i][j]
+				}
 			}
 		}
 	}
@@ -128,7 +133,7 @@ func (str *String) initializeVBO(scr *Screen, img *image.RGBA, textureWidth, tex
 	gl.BindBuffer(gl.ARRAY_BUFFER, str.VBO)
 
 	// Upload vertex data
-	gl.BufferData(gl.ARRAY_BUFFER, len(vertices)*4, gl.Ptr(vertices), gl.STATIC_DRAW)
+	gl.BufferData(gl.ARRAY_BUFFER, len(str.projectedVertices)*4, gl.Ptr(str.projectedVertices), gl.STATIC_DRAW)
 	checkGLError("After VBO")
 
 	// **Setup Vertex Attributes**
@@ -168,6 +173,7 @@ func (str *String) addShader(scr *Screen) (shaderProgram uint32) {
 		var vertexShaderSource string
 		switch str.StringType {
 		case utils.STRING:
+			fmt.Printf("Adding shader: %s\n", str.StringType)
 			vertexShaderSource = `
 				#version 450
 				layout (location = 0) in vec2 position;
@@ -182,6 +188,7 @@ func (str *String) addShader(scr *Screen) (shaderProgram uint32) {
     				fragColor = color;
 				}` + "\x00"
 		case utils.FIXEDSTRING:
+			fmt.Printf("Adding shader: %s\n", str.StringType)
 			vertexShaderSource = `
 				#version 450
 				layout (location = 0) in vec2 position;
@@ -222,6 +229,7 @@ func (str *String) addShader(scr *Screen) (shaderProgram uint32) {
 func (str *String) Render(scr *Screen) {
 	str.setupTextureMap(scr)
 
+	fmt.Printf("Rendering %s\n", str.StringType)
 	gl.UseProgram(scr.Shaders[str.StringType])
 	checkGLError("After UseProgram")
 

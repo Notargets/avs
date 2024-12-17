@@ -48,3 +48,5 @@ func (r RenderType) String() string {
 		return "Unknown"
 	}
 }
+
+type ShaderPrograms map[RenderType]uint32
