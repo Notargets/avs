@@ -8,6 +8,8 @@ import (
 	"runtime/cgo"
 	"unsafe"
 
+	"github.com/notargets/avs/utils"
+
 	"golang.org/x/image/font"
 
 	"github.com/go-gl/gl/v4.5-core/gl"
@@ -27,7 +29,7 @@ var (
 )
 
 type Screen struct {
-	Shaders          ShaderPrograms // Stores precompiled shaders for all graphics types
+	Shaders          utils.ShaderPrograms // Stores precompiled shaders for all graphics types
 	Window           *glfw.Window
 	Font             font.Face // Using gltext font instead of raw OpenGL textures
 	Objects          map[Key]Renderable
@@ -57,7 +59,7 @@ type Renderable struct {
 
 func NewScreen(width, height int, xmin, xmax, ymin, ymax, scale float32) *Screen {
 	screen := &Screen{
-		Shaders:       make(ShaderPrograms),
+		Shaders:       make(utils.ShaderPrograms),
 		Objects:       make(map[Key]Renderable),
 		RenderChannel: make(chan func(), 100),
 		isDragging:    false,

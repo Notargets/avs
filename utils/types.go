@@ -1,4 +1,4 @@
-package screen
+package utils
 
 type RenderType uint16
 
@@ -48,5 +48,3 @@ func (r RenderType) String() string {
 		return "Unknown"
 	}
 }
-
-type ShaderPrograms map[RenderType]uint32

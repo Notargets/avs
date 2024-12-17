@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/notargets/avs/utils"
+
 	"github.com/go-gl/gl/v4.5-core/gl"
 	"github.com/go-gl/glfw/v3.3/glfw"
 	"github.com/go-gl/mathgl/mgl32"
@@ -45,14 +47,6 @@ func (scr *Screen) fullScreenRender() {
 			renderObj.Render(scr)
 		case *String:
 			renderObj.Render(scr)
-		case *TriMesh:
-			//renderObj.Render(scr)
-		case *TriMeshEdges:
-			//renderObj.Render(scr)
-		case *TriMeshContours:
-			//renderObj.Render(scr)
-		case *TriMeshSmooth:
-			//renderObj.Render(scr)
 		default:
 			fmt.Printf("Unknown object type: %T\n", renderObj)
 		}
@@ -119,7 +113,7 @@ func (scr *Screen) updateProjectionMatrix() {
 
 	// Send the updated projection matrix to all shaders
 	for renderType, shaderProgram := range scr.Shaders {
-		if renderType != FIXEDSTRING {
+		if renderType != utils.FIXEDSTRING {
 			projectionUniform := gl.GetUniformLocation(shaderProgram, gl.Str("projection\x00"))
 			if projectionUniform < 0 {
 				fmt.Printf("Projection uniform not found for RenderType %v\n", renderType)
@@ -163,7 +157,7 @@ func (scr *Screen) updateProjectionMatrixSquare() {
 
 	// Send the updated projection matrix to all shaders
 	for renderType, shaderProgram := range scr.Shaders {
-		if renderType != FIXEDSTRING {
+		if renderType != utils.FIXEDSTRING {
 			projectionUniform := gl.GetUniformLocation(shaderProgram, gl.Str("projection\x00"))
 			if projectionUniform < 0 {
 				fmt.Printf("Projection uniform not found for RenderType %v\n", renderType)

@@ -48,7 +48,7 @@ func (chart *Chart2D) Printf(formatter *assets.TextFormatter, x, y float32, form
 }
 
 func (chart *Chart2D) AddLine(X, Y []float32) {
-	chart.Screen.AddPolyLine(screen.NEW, X, Y, chart.GetSingleColorArray(Y, chart.LineColor))
+	chart.Screen.NewPolyLine(screen.NEW, X, Y, chart.GetSingleColorArray(Y, chart.LineColor))
 }
 
 func (chart *Chart2D) GetSingleColorArray(Y []float32, singleColor color.Color) (colors []float32) {
@@ -114,7 +114,7 @@ func (chart *Chart2D) AddAxis(axisColor color.Color, yAxisLocation float32, nSeg
 		y = y + yInc
 	}
 	//chart.Screen.ChangePosition(0.0, 0.0)
-	chart.Screen.AddLine(screen.NEW, X, Y, C) // 2 points, so 2 * 3 = 6 colors
+	chart.Screen.NewLine(screen.NEW, X, Y, C) // 2 points, so 2 * 3 = 6 colors
 }
 
 func AddSegmentToLine(X, Y, C []float32, X1, Y1, X2, Y2 float32, lineColor color.Color) (XX, YY, CC []float32) {

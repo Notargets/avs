@@ -8,7 +8,7 @@ import (
 
 // TODO: Re-work logic in String to re-calculate polygon vertices every Render, and use Update() method properly
 // TODO: ... Update() should redo image file if text is input to it, then Render() should carry all of the poly
-// TODO: ... calculation logic currently in AddString
+// TODO: ... calculation logic currently in NewString
 // TODO: Implement LINEKEY and TEXTKEY types with function pointers to return their base objects from the map
 // TODO: ... LINEKEY, etc should be returned as object handles to enable UPDATE/DELETE/HIDE, etc
 // TODO: Implement a "Destroy" window to enable multiple screen sessions within an app lifetime

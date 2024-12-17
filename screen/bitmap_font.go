@@ -3,14 +3,14 @@ package screen
 import (
 	"fmt"
 	"image"
-	"image/color"
 	"runtime"
+
+	"github.com/notargets/avs/utils"
 
 	"github.com/notargets/avs/assets"
 
 	"github.com/go-gl/gl/v4.5-core/gl"
 	"github.com/go-gl/mathgl/mgl32"
-	"github.com/google/uuid"
 )
 
 type String struct {
@@ -19,7 +19,7 @@ type String struct {
 	ShaderProgram   uint32
 	Position        mgl32.Vec2
 	Texture         uint32
-	StringType      RenderType
+	StringType      utils.RenderType
 	polygonVertices [4]mgl32.Vec2
 	TextFormatter   *assets.TextFormatter
 }
@@ -29,60 +29,6 @@ func printMemoryStats(label string) {
 	runtime.ReadMemStats(&m)
 	fmt.Printf("[%s] Memory Usage: Alloc = %v MB, TotalAlloc = %v MB, Sys = %v MB, NumGC = %v\n",
 		label, m.Alloc/1024/1024, m.TotalAlloc/1024/1024, m.Sys/1024/1024, m.NumGC)
-}
-
-func (scr *Screen) Printf(formatter *assets.TextFormatter, x, y float32, format string, args ...interface{}) (newKey Key) {
-	// Format the string using fmt.Sprintf
-	text := fmt.Sprintf(format, args...)
-
-	// Call AddString with the formatted text
-	newKey = scr.AddString(NEW, formatter, x, y, text)
-
-	return newKey
-}
-
-func (scr *Screen) NewTextFormatter(fontBaseName, fontOptionName string, fontPitch int, fontColor color.Color,
-	centered, screenFixed bool) (tf *assets.TextFormatter) {
-	tf = assets.NewTextFormatter(fontBaseName, fontOptionName, fontPitch, scr.ScreenWidth, fontColor,
-		centered, screenFixed, scr.XMax-scr.XMin, scr.YMax-scr.YMin)
-	return
-}
-
-func (scr *Screen) AddString(key Key, textFormatter *assets.TextFormatter, x, y float32, text string) (newKey Key) {
-	if key == NEW {
-		key = Key(uuid.New())
-	}
-	newKey = key
-
-	if textFormatter == nil {
-		panic("textFormatter is nil")
-	}
-
-	scr.RenderChannel <- func() {
-		var str *String
-		if object, present := scr.Objects[key]; present {
-			str = object.Object.(*String)
-		} else {
-			str = &String{
-				Text:          text,
-				Position:      mgl32.Vec2{x, y},
-				TextFormatter: textFormatter,
-			}
-			if str.TextFormatter.ScreenFixed {
-				str.StringType = FIXEDSTRING
-			} else {
-				str.StringType = STRING
-			}
-			str.ShaderProgram = str.addShader(scr)
-
-			// Store the string in the screen objects
-			scr.Objects[key] = Renderable{
-				Active: true,
-				Object: str,
-			}
-		}
-	}
-	return newKey
 }
 
 func (str *String) setupTextureMap(scr *Screen) {
@@ -135,7 +81,7 @@ func (str *String) initializeVBO(scr *Screen, img *image.RGBA, textureWidth, tex
 	}
 	var vertices []float32
 	switch str.StringType {
-	case STRING:
+	case utils.STRING:
 		lenRow := 2 + 2 + 3
 		lenV := 4 * (lenRow)
 		vertices = make([]float32, lenV)
@@ -148,7 +94,7 @@ func (str *String) initializeVBO(scr *Screen, img *image.RGBA, textureWidth, tex
 			vertices[i*lenRow+5] = color[1]
 			vertices[i*lenRow+6] = color[2]
 		}
-	case FIXEDSTRING:
+	case utils.FIXEDSTRING:
 		var projected [4]mgl32.Vec4
 		for i := 0; i < 4; i++ {
 			projected[i] = scr.projectionMatrix.Mul4x1(mgl32.Vec4{str.polygonVertices[i].X(), str.polygonVertices[i].Y(), 0.0, 1.0})
@@ -190,7 +136,7 @@ func (str *String) initializeVBO(scr *Screen, img *image.RGBA, textureWidth, tex
 
 	// **PositionDelta (location = 0)**
 	var stride int32
-	if str.StringType == STRING {
+	if str.StringType == utils.STRING {
 		stride = 4 * (2 + 2 + 3)
 	} else {
 		stride = 4 * (2 + 2 + 3 + 4)
@@ -210,7 +156,7 @@ func (str *String) initializeVBO(scr *Screen, img *image.RGBA, textureWidth, tex
 	offset += 3 * 4 // Advance by 3 floats = 12 bytes
 
 	// **Frozen PositionDelta (location = 3)**
-	if str.StringType == FIXEDSTRING {
+	if str.StringType == utils.FIXEDSTRING {
 		gl.VertexAttribPointer(3, 4, gl.FLOAT, false, stride, gl.PtrOffset(offset)) // Fixed PositionDelta (4 floats)
 		gl.EnableVertexAttribArray(3)
 	}
@@ -221,7 +167,7 @@ func (str *String) addShader(scr *Screen) (shaderProgram uint32) {
 	if _, present := scr.Shaders[str.StringType]; !present {
 		var vertexShaderSource string
 		switch str.StringType {
-		case STRING:
+		case utils.STRING:
 			vertexShaderSource = `
 				#version 450
 				layout (location = 0) in vec2 position;
@@ -235,7 +181,7 @@ func (str *String) addShader(scr *Screen) (shaderProgram uint32) {
     				fragUV = uv;
     				fragColor = color;
 				}` + "\x00"
-		case FIXEDSTRING:
+		case utils.FIXEDSTRING:
 			vertexShaderSource = `
 				#version 450
 				layout (location = 0) in vec2 position;
@@ -293,7 +239,7 @@ func (str *String) Render(scr *Screen) {
 	}
 
 	// Bind the projection matrix to the shader
-	if str.StringType == STRING {
+	if str.StringType == utils.STRING {
 		projectionUniform := gl.GetUniformLocation(scr.Shaders[str.StringType], gl.Str("projection\x00"))
 		checkGLError("After GetUniformLocation")
 		if projectionUniform < 0 {
