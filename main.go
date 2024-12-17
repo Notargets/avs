@@ -11,6 +11,7 @@ import (
 // TODO: ... calculation logic currently in AddString
 // TODO: Implement LINEKEY and TEXTKEY types with function pointers to return their base objects from the map
 // TODO: ... LINEKEY, etc should be returned as object handles to enable UPDATE/DELETE/HIDE, etc
+// TODO: Implement a "Destroy" window to enable multiple screen sessions within an app lifetime
 func main() {
 	Test1()
 }

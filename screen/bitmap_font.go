@@ -75,30 +75,6 @@ func (scr *Screen) AddString(key Key, textFormatter *assets.TextFormatter, x, y 
 			}
 			str.ShaderProgram = str.addShader(scr)
 
-			img, textureWidth, textureHeight, quadWidth, quadHeight := str.TextFormatter.TypeFace.RenderFontTextureImg(text, str.TextFormatter.Color)
-
-			// **Step 4: Calculate proper position and scale**
-			var posX, posY float32
-			if textFormatter.Centered {
-				posX = x - quadWidth/2
-				posY = y - quadHeight/2
-			} else {
-				posX = x
-				posY = y
-			}
-
-			// **Step 5: Initialize polygon vertices for the 4 corners of the quad**
-			str.polygonVertices = [4]mgl32.Vec2{
-				{posX, posY},                          // Bottom-left
-				{posX + quadWidth, posY},              // Bottom-right
-				{posX, posY + quadHeight},             // Top-left
-				{posX + quadWidth, posY + quadHeight}, // Top-right
-			}
-
-			// Initialize the vertex buffer object (VBO)
-			c := ColorToFloat32(textFormatter.Color)
-			str.initializeVBO(scr, img, textureWidth, textureHeight, c)
-
 			// Store the string in the screen objects
 			scr.Objects[key] = Renderable{
 				Active: true,
@@ -107,6 +83,37 @@ func (scr *Screen) AddString(key Key, textFormatter *assets.TextFormatter, x, y 
 		}
 	}
 	return newKey
+}
+
+func (str *String) setupTextureMap(scr *Screen) {
+	var (
+		x = str.Position.X()
+		y = str.Position.Y()
+	)
+
+	img, textureWidth, textureHeight, quadWidth, quadHeight := str.TextFormatter.TypeFace.RenderFontTextureImg(str.Text, str.TextFormatter.Color)
+
+	// **Step 4: Calculate proper position and scale**
+	var posX, posY float32
+	if str.TextFormatter.Centered {
+		posX = x - quadWidth/2
+		posY = y - quadHeight/2
+	} else {
+		posX = x
+		posY = y
+	}
+
+	// **Step 5: Initialize polygon vertices for the 4 corners of the quad**
+	str.polygonVertices = [4]mgl32.Vec2{
+		{posX, posY},                          // Bottom-left
+		{posX + quadWidth, posY},              // Bottom-right
+		{posX, posY + quadHeight},             // Top-left
+		{posX + quadWidth, posY + quadHeight}, // Top-right
+	}
+
+	// Initialize the vertex buffer object (VBO)
+	c := ColorToFloat32(str.TextFormatter.Color)
+	str.initializeVBO(scr, img, textureWidth, textureHeight, c)
 }
 
 func (str *String) initializeVBO(scr *Screen, img *image.RGBA, textureWidth, textureHeight int, color [4]float32) {
@@ -267,6 +274,8 @@ func (str *String) addShader(scr *Screen) (shaderProgram uint32) {
 }
 
 func (str *String) Render(scr *Screen) {
+	str.setupTextureMap(scr)
+
 	gl.UseProgram(scr.Shaders[str.StringType])
 	checkGLError("After UseProgram")
 
