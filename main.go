@@ -6,8 +6,11 @@ import (
 	"github.com/notargets/avs/chart2d"
 )
 
-// TODO: Same with the AddString, we need to bury the call inside Chart2D to get the mapping
-// TODO: Should be no direct calls to Screen
+// TODO: Re-work logic in String to re-calculate polygon vertices every Render, and use Update() method properly
+// TODO: ... Update() should redo image file if text is input to it, then Render() should carry all of the poly
+// TODO: ... calculation logic currently in AddString
+// TODO: Implement LINEKEY and TEXTKEY types with function pointers to return their base objects from the map
+// TODO: ... LINEKEY, etc should be returned as object handles to enable UPDATE/DELETE/HIDE, etc
 func main() {
 	Test1()
 }
