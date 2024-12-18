@@ -9,6 +9,11 @@ import (
 // TODO: Implement LINEKEY and TEXTKEY types with function pointers to return their base objects from the map
 // TODO: ... LINEKEY, etc should be returned as object handles to enable UPDATE/DELETE/HIDE, etc
 // TODO: Implement a "Destroy" window to enable multiple screen sessions within an app lifetime
+//
+// TODO: Fix world projection matrix to stretch world coordinates into the world bounds so that the left and right
+// TODO: ... extrema are placed at the left and right boundaries of a windows when scale = 1. Right now, the world
+// TODO: ... minX and maxX and Y coords are appearing well within the window boundaries. This is evident when the
+// TODO: ... window aspect ratio is non unit
 func main() {
 	Test1()
 }
