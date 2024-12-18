@@ -20,11 +20,12 @@ type String struct {
 	Position                    mgl32.Vec2
 	Texture                     uint32
 	StringType                  utils.RenderType
-	polygonVertices             [4]mgl32.Vec2
-	projectedVertices           []float32
+	polygonVertices             [4]mgl32.Vec2 // In world coordinates
+	GPUBuffer                   []float32
 	initializedFIXEDSTRING      bool
+	origWindowSize              mgl32.Vec2
 	textureImg                  *image.RGBA
-	textureWidth, textureHeight int
+	textureWidth, textureHeight uint32
 	TextFormatter               *assets.TextFormatter
 }
 
@@ -45,7 +46,7 @@ func (str *String) setupTextureMap(scr *Screen) {
 		var img *image.RGBA
 		img = str.TextFormatter.TypeFace.RenderFontTextureImg(str.Text, str.TextFormatter.Color)
 		str.textureImg = img
-		str.textureWidth, str.textureHeight = str.textureImg.Bounds().Dx(), str.textureImg.Bounds().Dy()
+		str.textureWidth, str.textureHeight = uint32(str.textureImg.Bounds().Dx()), uint32(str.textureImg.Bounds().Dy())
 	}
 
 	// Update vertex coordinates for STRING, FIXEDSTRING only does this once
@@ -75,56 +76,116 @@ func (str *String) setupTextureMap(scr *Screen) {
 	}
 
 	// Set the color
-	c := ColorToFloat32(str.TextFormatter.Color)
+	textColor := ColorToFloat32(str.TextFormatter.Color)
+
+	str.loadGPUBuffer(scr, textColor)
+
+	str.loadGPUData(str.textureImg, str.textureWidth, str.textureHeight, textColor)
+}
+
+func (str *String) loadGPUBuffer(scr *Screen, textColor [4]float32) {
 	if str.StringType == utils.STRING {
 		lenRow := 2 + 3
 		lenV := 4 * (lenRow)
-		if len(str.projectedVertices) == 0 {
-			str.projectedVertices = make([]float32, lenV)
+		if len(str.GPUBuffer) == 0 {
+			str.GPUBuffer = make([]float32, lenV)
 		}
 		for i := 0; i < 4; i++ {
-			str.projectedVertices[i*lenRow] = str.polygonVertices[i][0]
-			str.projectedVertices[i*lenRow+1] = str.polygonVertices[i][1]
-			str.projectedVertices[i*lenRow+2] = c[0]
-			str.projectedVertices[i*lenRow+3] = c[1]
-			str.projectedVertices[i*lenRow+4] = c[2]
+			str.GPUBuffer[i*lenRow] = str.polygonVertices[i][0]
+			str.GPUBuffer[i*lenRow+1] = str.polygonVertices[i][1]
+			str.GPUBuffer[i*lenRow+2] = textColor[0]
+			str.GPUBuffer[i*lenRow+3] = textColor[1]
+			str.GPUBuffer[i*lenRow+4] = textColor[2]
 		}
 	} else if str.StringType == utils.FIXEDSTRING {
 		// Calculate fixed position in NDC coordinates once, via the initial projection matrix
 		// This puts the location into fixed pixel coordinates mapped to the window via the ortho projection
 		lenRow := 4 + 3
 		lenV := 4 * (lenRow)
+		var NDCVertexCoordinates [4]mgl32.Vec4
 		if !str.initializedFIXEDSTRING {
 			//fmt.Printf("Rendering FIXED STRING...\n")
-			var NDCVertexCoordinates [4]mgl32.Vec4
 			for i := 0; i < 4; i++ {
 				NDCVertexCoordinates[i] = scr.projectionMatrix.Mul4x1(mgl32.Vec4{str.polygonVertices[i].X(), str.polygonVertices[i].Y(), 0.0, 1.0})
 				NDCVertexCoordinates[i] = NDCVertexCoordinates[i].Mul(1.0 / NDCVertexCoordinates[i].W())
 			}
-			if len(str.projectedVertices) == 0 {
-				str.projectedVertices = make([]float32, lenV)
+			if len(str.GPUBuffer) == 0 {
+				str.GPUBuffer = make([]float32, lenV)
 			}
-			// Color is updated below
 			for i := 0; i < 4; i++ {
-				str.projectedVertices[i*lenRow] = NDCVertexCoordinates[i][0]   // Clip space coordinates for fixed position
-				str.projectedVertices[i*lenRow+1] = NDCVertexCoordinates[i][1] // Clip space coordinates for fixed position
-				str.projectedVertices[i*lenRow+2] = NDCVertexCoordinates[i][2] // Clip space coordinates for fixed position
-				str.projectedVertices[i*lenRow+3] = NDCVertexCoordinates[i][3] // Clip space coordinates for fixed position
+				str.GPUBuffer[i*lenRow] = NDCVertexCoordinates[i][0]   // Clip space coordinates for fixed position
+				str.GPUBuffer[i*lenRow+1] = NDCVertexCoordinates[i][1] // Clip space coordinates for fixed position
+				str.GPUBuffer[i*lenRow+2] = NDCVertexCoordinates[i][2] // Clip space coordinates for fixed position
+				str.GPUBuffer[i*lenRow+3] = NDCVertexCoordinates[i][3] // Clip space coordinates for fixed position
 			}
 			str.initializedFIXEDSTRING = true // initialization is finished after this
+			fmt.Println("NDC Vertex Coordinates:", NDCVertexCoordinates)
 		}
-		// Update the color fields every time, in case the color is changed
+		// Transform the NDC coordinates to accomodate potential changing window dimensions, which will keep the text
+		// ... visually the same size
+		// First, retrieve the previous NDC coordinates from the GPU buffer
 		for i := 0; i < 4; i++ {
-			str.projectedVertices[i*lenRow+4] = c[0]
-			str.projectedVertices[i*lenRow+5] = c[1]
-			str.projectedVertices[i*lenRow+6] = c[2]
+			NDCVertexCoordinates[i][0] = str.GPUBuffer[i*lenRow]
+			NDCVertexCoordinates[i][1] = str.GPUBuffer[i*lenRow+1]
+			NDCVertexCoordinates[i][2] = str.GPUBuffer[i*lenRow+2]
+			NDCVertexCoordinates[i][3] = str.GPUBuffer[i*lenRow+3]
+		}
+		tf := str.TextFormatter
+		TransformNDC(&NDCVertexCoordinates, tf.WindowWidth, tf.WindowHeight, scr.WindowWidth, scr.WindowHeight)
+		for i := 0; i < 4; i++ {
+			str.GPUBuffer[i*lenRow] = NDCVertexCoordinates[i][0]
+			str.GPUBuffer[i*lenRow+1] = NDCVertexCoordinates[i][1]
+			str.GPUBuffer[i*lenRow+2] = NDCVertexCoordinates[i][2]
+			str.GPUBuffer[i*lenRow+3] = NDCVertexCoordinates[i][3]
+			// Update the color fields every time, in case the color is changed
+			str.GPUBuffer[i*lenRow+4] = textColor[0]
+			str.GPUBuffer[i*lenRow+5] = textColor[1]
+			str.GPUBuffer[i*lenRow+6] = textColor[2]
 		}
 	}
-
-	str.loadGPUData(scr, str.textureImg, str.textureWidth, str.textureHeight, c)
 }
 
-func (str *String) loadGPUData(scr *Screen, img *image.RGBA, textureWidth, textureHeight int, color [4]float32) {
+// TransformNDC modifies the NDCVertexCoordinates in place to preserve the aspect ratio
+// based on the original and new window dimensions.
+func TransformNDC(ndc *[4]mgl32.Vec4, origWidth, origHeight, newWidth, newHeight uint32) {
+	// Compute the aspect ratio scaling factors for x and y
+	Sx := float32(origWidth) / float32(newWidth)
+	Sy := float32(origHeight) / float32(newHeight)
+	//fmt.Println("Sx:", Sx, "Sy:", Sy)
+	//t := Sx
+	//Sx = Sy
+	//Sy = t
+	Sx = 1.
+	Sy = 1.
+
+	// Calculate the center of the polygon in NDC coordinates
+	var c_r, c_s float32
+	for i := 0; i < 4; i++ {
+		c_r += ndc[i][0] // Sum of all r's
+		c_s += ndc[i][1] // Sum of all s's
+	}
+	c_r /= 4 // Average of r-coordinates (center x)
+	c_s /= 4 // Average of s-coordinates (center y)
+
+	// Apply the transformation to each of the 4 NDC vertices
+	for i := 0; i < 4; i++ {
+		// Extract the vertex
+		r := ndc[i][0] // x-coordinate (r)
+		s := ndc[i][1] // y-coordinate (s)
+		t := ndc[i][2] // z-coordinate (t) - unchanged
+		w := ndc[i][3] // w-coordinate (w) - unchanged
+
+		// Apply the aspect ratio scaling to r and s
+		newR := Sx*(r-c_r) + c_r
+		newS := Sy*(s-c_s) + c_s
+
+		// Store the updated vertex back into the buffer
+		ndc[i] = mgl32.Vec4{newR, newS, t, w}
+	}
+}
+
+func (str *String) loadGPUData(img *image.RGBA, textureWidth, textureHeight uint32, color [4]float32) {
+	// Transmit the texture image into the GPU texture buffer
 	var texture uint32
 	gl.GenTextures(1, &texture)
 	gl.BindTexture(gl.TEXTURE_2D, texture)
@@ -136,22 +197,21 @@ func (str *String) loadGPUData(scr *Screen, img *image.RGBA, textureWidth, textu
 	gl.BindTexture(gl.TEXTURE_2D, 0)
 	str.Texture = texture
 
+	// Transfer the vertex data into the VBO buffer. Use the VBA to identify the layout of the data
 	// Generate VBO and VAO once
 	gl.GenBuffers(1, &str.VBO)
 	gl.GenVertexArrays(1, &str.VAO)
 
 	// Bind VAO
 	gl.BindVertexArray(str.VAO)
-
 	// Bind VBO
 	gl.BindBuffer(gl.ARRAY_BUFFER, str.VBO)
 
-	// Upload vertex data
-	gl.BufferData(gl.ARRAY_BUFFER, len(str.projectedVertices)*4, gl.Ptr(str.projectedVertices), gl.STATIC_DRAW)
+	// Upload vertex data into the VBO as a flat array
+	gl.BufferData(gl.ARRAY_BUFFER, len(str.GPUBuffer)*4, gl.Ptr(str.GPUBuffer), gl.STATIC_DRAW)
 	checkGLError("After VBO")
 
-	// **Setup Vertex Attributes**
-
+	// Load the flat array layout into the VBA
 	// **PositionDelta (location = 0)**
 	var stride int32
 	if str.StringType == utils.STRING {
@@ -172,15 +232,12 @@ func (str *String) loadGPUData(scr *Screen, img *image.RGBA, textureWidth, textu
 		offset += 4 * 4                                                             // Advance by 2 floats = 8 bytes
 	}
 	gl.EnableVertexAttribArray(0)
-
 	// **Color **
 	gl.VertexAttribPointer(1, 3, gl.FLOAT, false, stride, gl.PtrOffset(offset)) // Color (3 floats)
 	gl.EnableVertexAttribArray(1)
-	offset += 3 * 4 // Advance by 3 floats = 12 bytes
-
 }
 
-func calculateQuadBounds(textureWidth, textureHeight, windowWidth, windowHeight, fontDPI int,
+func calculateQuadBounds(textureWidth, textureHeight, windowWidth, windowHeight, fontDPI uint32,
 	xRange, yRange float32) (quadWidth, quadHeight float32) {
 	// Calculate the width of the text string in window coordinates based on the fact that the xRange corresponds
 	// with the window width

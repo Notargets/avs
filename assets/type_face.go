@@ -17,16 +17,16 @@ import (
 type OpenGLTypeFace struct {
 	Face         font.Face // Equivalent to a Font object plus metadata like DPI, etc
 	FontFilePath string    // Path to the TTF font file
-	FontPitch    int       // Font size in "Pitch", eg: 12 Pitch font
-	FontHeight   int       // Pixel height of font, calculated
-	FontDPI      int       // Dynamically calculated to ensure quality at all sizes
+	FontPitch    uint32    // Font size in "Pitch", eg: 12 Pitch font
+	FontHeight   uint32    // Pixel height of font, calculated
+	FontDPI      uint32    // Dynamically calculated to ensure quality at all sizes
 }
 
 func NewOpenGLTypeFace(fontBaseName, fontOptionName string, fontPitch int, windowWidth int, XRange, YRange float32) (tf *OpenGLTypeFace) {
 	tf = &OpenGLTypeFace{
 		FontFilePath: FontOptionsMap[fontBaseName][fontOptionName],
-		FontPitch:    fontPitch,
-		FontDPI:      calculateDynamicDPI(fontPitch),
+		FontPitch:    uint32(fontPitch),
+		FontDPI:      calculateDynamicDPI(uint32(fontPitch)),
 	}
 	if len(tf.FontFilePath) == 0 {
 		panic("font_file_path is empty, check your font basename and option name in the asset map")
@@ -101,7 +101,7 @@ func (tf *OpenGLTypeFace) drawText(text string, fontColor, bgColor color.Color) 
 	textHeight := tf.FontHeight
 
 	// Create an image to draw the text on (width = textWidth, height = textHeight)
-	img := image.NewRGBA(image.Rect(0, 0, textWidth, textHeight))
+	img := image.NewRGBA(image.Rect(0, 0, int(textWidth), int(textHeight)))
 
 	// Fill the image with the background color
 	draw.Draw(img, img.Bounds(), image.NewUniform(bgColor), image.Point{}, draw.Src)
@@ -148,7 +148,7 @@ func SaveDebugImage(img *image.RGBA, filename string) {
 	}
 }
 
-func calculateDynamicDPI(fontPitch int) int {
+func calculateDynamicDPI(fontPitch uint32) uint32 {
 	switch {
 	case fontPitch <= 12:
 		return 512
@@ -162,15 +162,15 @@ func calculateDynamicDPI(fontPitch int) int {
 }
 
 // calculateFontHeight computes the maximum pixel height for the font using face.Metrics()
-func calculateFontHeight(face font.Face) (int, error) {
+func calculateFontHeight(face font.Face) (uint32, error) {
 	metrics := face.Metrics()
 	ascent := metrics.Ascent.Round()
 	descent := metrics.Descent.Round()
 	totalHeight := ascent + descent
-	return totalHeight, nil
+	return uint32(totalHeight), nil
 }
 
-func calculateStringPixelWidth(fontFace font.Face, text string) int {
+func calculateStringPixelWidth(fontFace font.Face, text string) uint32 {
 	var totalWidth fixed.Int26_6
 	for i, char := range text {
 		advance, ok := fontFace.GlyphAdvance(char)
@@ -183,5 +183,5 @@ func calculateStringPixelWidth(fontFace font.Face, text string) int {
 			totalWidth += kern
 		}
 	}
-	return totalWidth.Round() // Convert fixed.Int26_6 to integer pixels
+	return uint32(totalWidth.Round()) // Convert fixed.Int26_6 to integer pixels
 }

@@ -237,8 +237,8 @@ func (scr *Screen) scrollCallback(w *glfw.Window, xoff, yoff float64) {
 
 func (scr *Screen) resizeCallback(w *glfw.Window, width, height int) {
 	// Update screen dimensions
-	scr.WindowWidth = width
-	scr.WindowHeight = height
+	scr.WindowWidth = uint32(width)
+	scr.WindowHeight = uint32(height)
 
 	// Update OpenGL viewport
 	gl.Viewport(0, 0, int32(width), int32(height))

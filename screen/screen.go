@@ -40,8 +40,8 @@ type Screen struct {
 	lastX            float64
 	lastY            float64
 	projectionMatrix mgl32.Mat4
-	WindowWidth      int
-	WindowHeight     int
+	WindowWidth      uint32
+	WindowHeight     uint32
 	XMin, XMax       float32
 	YMin, YMax       float32
 	PanSpeed         float32
@@ -63,8 +63,8 @@ func NewScreen(width, height int, xmin, xmax, ymin, ymax, scale float32) *Screen
 		Objects:       make(map[Key]Renderable),
 		RenderChannel: make(chan func(), 100),
 		isDragging:    false,
-		WindowWidth:   width,
-		WindowHeight:  height,
+		WindowWidth:   uint32(width),
+		WindowHeight:  uint32(height),
 		XMin:          float32(xmin),
 		XMax:          float32(xmax),
 		YMin:          float32(ymin),
