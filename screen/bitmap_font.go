@@ -36,10 +36,6 @@ func printMemoryStats(label string) {
 }
 
 func (str *String) setupTextureMap(scr *Screen) {
-	var (
-		tf = str.TextFormatter
-	)
-
 	// Load our texture map with the drawn text if not done already
 	if str.textureImg == nil {
 		var img *image.RGBA
@@ -48,117 +44,65 @@ func (str *String) setupTextureMap(scr *Screen) {
 		str.textureWidth, str.textureHeight = uint32(str.textureImg.Bounds().Dx()), uint32(str.textureImg.Bounds().Dy())
 	}
 
-	// Update vertex coordinates for STRING, FIXEDSTRING only does this once
-	if str.StringType == utils.STRING || !str.initializedFIXEDSTRING {
-		x := str.Position.X()
-		y := str.Position.Y()
-		quadWidth, quadHeight := calculateQuadBounds(str.textureWidth, str.textureHeight, scr.WindowWidth, scr.WindowHeight,
-			tf.TypeFace.FontDPI, scr.XMax-scr.XMin, scr.YMax-scr.YMin)
-
-		// **Step 4: Calculate proper position and scale**
-		var posX, posY float32
-		if str.TextFormatter.Centered {
-			posX = x - quadWidth/2
-			posY = y - quadHeight/2
-		} else {
-			posX = x
-			posY = y
-		}
-
-		// **Step 5: Initialize polygon vertices for the 4 corners of the quad**
-		str.polygonVertices = [4]mgl32.Vec2{
-			{posX, posY},                          // Bottom-left
-			{posX + quadWidth, posY},              // Bottom-right
-			{posX, posY + quadHeight},             // Top-left
-			{posX + quadWidth, posY + quadHeight}, // Top-right
-		}
-	}
-
 	// Set the color
 	textColor := ColorToFloat32(str.TextFormatter.Color)
+
+	if str.StringType == utils.STRING || !str.initializedFIXEDSTRING {
+		// This is done every time for STRING, only once for FIXEDSTRING
+		// For STRING, this compensates for resize and pan via the projection matrix
+		// For FIXEDSTRING, the projection is applied once to get to Screen / Pixel fixed coordinates
+		str.calculatePolygonVertices(scr)
+	}
 
 	str.loadGPUBuffer(scr, textColor)
 
 	str.loadGPUData(str.textureImg, str.textureWidth, str.textureHeight, textColor)
 }
 
-func (str *String) loadGPUBuffer(scr *Screen, textColor [4]float32) {
-	if str.StringType == utils.STRING {
-		lenRow := 2 + 3
-		lenV := 4 * (lenRow)
-		if len(str.GPUBuffer) == 0 {
-			str.GPUBuffer = make([]float32, lenV)
-		}
-		for i := 0; i < 4; i++ {
-			str.GPUBuffer[i*lenRow] = str.polygonVertices[i][0]
-			str.GPUBuffer[i*lenRow+1] = str.polygonVertices[i][1]
-			str.GPUBuffer[i*lenRow+2] = textColor[0]
-			str.GPUBuffer[i*lenRow+3] = textColor[1]
-			str.GPUBuffer[i*lenRow+4] = textColor[2]
-		}
-	} else if str.StringType == utils.FIXEDSTRING {
-		// Calculate fixed position in NDC coordinates once, via the initial projection matrix
-		// This puts the location into fixed pixel coordinates mapped to the window via the ortho projection
-		lenRow := 4 + 3
-		lenV := 4 * (lenRow)
-		var NDCVertexCoordinates [4]mgl32.Vec4
-		if !str.initializedFIXEDSTRING {
-			//fmt.Printf("Rendering FIXED STRING...\n")
-			for i := 0; i < 4; i++ {
-				NDCVertexCoordinates[i] = scr.projectionMatrix.Mul4x1(mgl32.Vec4{str.polygonVertices[i].X(), str.polygonVertices[i].Y(), 0.0, 1.0})
-				NDCVertexCoordinates[i] = NDCVertexCoordinates[i].Mul(1.0 / NDCVertexCoordinates[i].W())
-			}
-			if len(str.GPUBuffer) == 0 {
-				str.GPUBuffer = make([]float32, lenV)
-			}
-			for i := 0; i < 4; i++ {
-				str.GPUBuffer[i*lenRow] = NDCVertexCoordinates[i][0]   // Clip space coordinates for fixed position
-				str.GPUBuffer[i*lenRow+1] = NDCVertexCoordinates[i][1] // Clip space coordinates for fixed position
-				str.GPUBuffer[i*lenRow+2] = NDCVertexCoordinates[i][2] // Clip space coordinates for fixed position
-				str.GPUBuffer[i*lenRow+3] = NDCVertexCoordinates[i][3] // Clip space coordinates for fixed position
-			}
-			str.initializedFIXEDSTRING = true // initialization is finished after this
-			fmt.Println("NDC Vertex Coordinates:", NDCVertexCoordinates)
-		}
-		// Transform the NDC coordinates to accomodate potential changing window dimensions, which will keep the text
-		// ... visually the same size
-		// First, retrieve the previous NDC coordinates from the GPU buffer
-		for i := 0; i < 4; i++ {
-			NDCVertexCoordinates[i][0] = str.GPUBuffer[i*lenRow]
-			NDCVertexCoordinates[i][1] = str.GPUBuffer[i*lenRow+1]
-			NDCVertexCoordinates[i][2] = str.GPUBuffer[i*lenRow+2]
-			NDCVertexCoordinates[i][3] = str.GPUBuffer[i*lenRow+3]
-		}
-		tf := str.TextFormatter
-		TransformNDC(&NDCVertexCoordinates, tf.WindowWidth, tf.WindowHeight, scr.WindowWidth, scr.WindowHeight)
-		for i := 0; i < 4; i++ {
-			str.GPUBuffer[i*lenRow] = NDCVertexCoordinates[i][0]
-			str.GPUBuffer[i*lenRow+1] = NDCVertexCoordinates[i][1]
-			str.GPUBuffer[i*lenRow+2] = NDCVertexCoordinates[i][2]
-			str.GPUBuffer[i*lenRow+3] = NDCVertexCoordinates[i][3]
-			// Update the color fields every time, in case the color is changed
-			str.GPUBuffer[i*lenRow+4] = textColor[0]
-			str.GPUBuffer[i*lenRow+5] = textColor[1]
-			str.GPUBuffer[i*lenRow+6] = textColor[2]
-		}
-		// Store new Window size in text formatter
-		tf.WindowWidth = scr.WindowWidth
-		tf.WindowHeight = scr.WindowHeight
+func (str *String) calculatePolygonVertices(scr *Screen) {
+	var (
+		tf = str.TextFormatter
+	)
+	// Update vertex coordinates
+	x := str.Position.X()
+	y := str.Position.Y()
+	quadWidth, quadHeight := calculateQuadBounds(str.textureWidth, str.textureHeight,
+		scr.WindowWidth, scr.WindowHeight,
+		tf.TypeFace.FontDPI, scr.XMax-scr.XMin, scr.YMax-scr.YMin)
+
+	// **Step 4: Calculate proper position and scale**
+	var posX, posY float32
+	if str.TextFormatter.Centered {
+		posX = x - quadWidth/2
+		posY = y - quadHeight/2
+	} else {
+		posX = x
+		posY = y
+	}
+
+	// **Step 5: Initialize polygon vertices for the 4 corners of the quad**
+	str.polygonVertices = [4]mgl32.Vec2{
+		{posX, posY},                          // Bottom-left
+		{posX + quadWidth, posY},              // Bottom-right
+		{posX, posY + quadHeight},             // Top-left
+		{posX + quadWidth, posY + quadHeight}, // Top-right
 	}
 }
 
-// TransformNDC modifies the NDCVertexCoordinates in place to preserve the aspect ratio
-// based on the original and new window dimensions.
-func TransformNDC(ndc *[4]mgl32.Vec4, origWidth, origHeight, newWidth, newHeight uint32) {
+func (str *String) fixSTRINGAspectRatio(scr *Screen, ndc *[4]mgl32.Vec4, lenRow int) {
+	// Transform the NDC coordinates to accommodate potential changing window dimensions, which will keep the text
+	// ... visually the same size
+	// First, retrieve the previous NDC coordinates from the GPU buffer
+	for i := 0; i < 4; i++ {
+		ndc[i][0] = str.GPUBuffer[i*lenRow]
+		ndc[i][1] = str.GPUBuffer[i*lenRow+1]
+		ndc[i][2] = str.GPUBuffer[i*lenRow+2]
+		ndc[i][3] = str.GPUBuffer[i*lenRow+3]
+	}
+	tf := str.TextFormatter
 	// Compute the aspect ratio scaling factors for x and y
-	Sx := float32(origWidth) / float32(newWidth)
-	Sy := float32(origHeight) / float32(newHeight)
-	//fmt.Println("Sx:", Sx, "Sy:", Sy)
-	//t := Sx
-	//Sx = Sy
-	//Sy = t
-	//Sx = 1.
-	//Sy = 1.
+	Sx := float32(tf.WindowWidth) / float32(scr.WindowWidth)
+	Sy := float32(tf.WindowHeight) / float32(scr.WindowHeight)
 
 	// Calculate the center of the polygon in NDC coordinates
 	var c_r, c_s float32
@@ -184,6 +128,68 @@ func TransformNDC(ndc *[4]mgl32.Vec4, origWidth, origHeight, newWidth, newHeight
 		// Store the updated vertex back into the buffer
 		ndc[i] = mgl32.Vec4{newR, newS, t, w}
 	}
+	for i := 0; i < 4; i++ {
+		str.GPUBuffer[i*lenRow] = ndc[i][0]
+		str.GPUBuffer[i*lenRow+1] = ndc[i][1]
+		str.GPUBuffer[i*lenRow+2] = ndc[i][2]
+		str.GPUBuffer[i*lenRow+3] = ndc[i][3]
+	}
+}
+
+func (str *String) loadGPUBuffer(scr *Screen, textColor [4]float32) {
+	var (
+		lenRow int
+	)
+
+	if str.StringType == utils.STRING {
+		lenRow = 2 + 3
+		lenV := 4 * (lenRow)
+		if len(str.GPUBuffer) == 0 {
+			str.GPUBuffer = make([]float32, lenV)
+		}
+		for i := 0; i < 4; i++ {
+			str.GPUBuffer[i*lenRow] = str.polygonVertices[i][0]
+			str.GPUBuffer[i*lenRow+1] = str.polygonVertices[i][1]
+			str.GPUBuffer[i*lenRow+2] = textColor[0]
+			str.GPUBuffer[i*lenRow+3] = textColor[1]
+			str.GPUBuffer[i*lenRow+4] = textColor[2]
+		}
+	} else if str.StringType == utils.FIXEDSTRING {
+		// Calculate fixed position in NDC coordinates once, via the initial projection matrix
+		// This puts the location into fixed pixel coordinates mapped to the window via the ortho projection
+		lenRow = 4 + 3
+		lenV := 4 * (lenRow)
+		var NDCVertexCoordinates [4]mgl32.Vec4
+		if !str.initializedFIXEDSTRING {
+			//fmt.Printf("Rendering FIXED STRING...\n")
+			for i := 0; i < 4; i++ {
+				NDCVertexCoordinates[i] = scr.projectionMatrix.Mul4x1(mgl32.Vec4{str.polygonVertices[i].X(), str.polygonVertices[i].Y(), 0.0, 1.0})
+				NDCVertexCoordinates[i] = NDCVertexCoordinates[i].Mul(1.0 / NDCVertexCoordinates[i].W())
+			}
+			if len(str.GPUBuffer) == 0 {
+				str.GPUBuffer = make([]float32, lenV)
+			}
+			for i := 0; i < 4; i++ {
+				str.GPUBuffer[i*lenRow] = NDCVertexCoordinates[i][0]   // Clip space coordinates for fixed position
+				str.GPUBuffer[i*lenRow+1] = NDCVertexCoordinates[i][1] // Clip space coordinates for fixed position
+				str.GPUBuffer[i*lenRow+2] = NDCVertexCoordinates[i][2] // Clip space coordinates for fixed position
+				str.GPUBuffer[i*lenRow+3] = NDCVertexCoordinates[i][3] // Clip space coordinates for fixed position
+			}
+			str.initializedFIXEDSTRING = true // initialization is finished after this
+		}
+		// Load the current color for each vertex
+		for i := 0; i < 4; i++ {
+			str.GPUBuffer[i*lenRow+4] = textColor[0]
+			str.GPUBuffer[i*lenRow+5] = textColor[1]
+			str.GPUBuffer[i*lenRow+6] = textColor[2]
+		}
+		// Correct the vertex coordinates for a FIXEDSTRING if the window size has changed
+		str.fixSTRINGAspectRatio(scr, &NDCVertexCoordinates, lenRow)
+	}
+	// Update string formatter Window dimensions to match the current screen
+	tf := str.TextFormatter
+	tf.WindowWidth = scr.WindowWidth
+	tf.WindowHeight = scr.WindowHeight
 }
 
 func (str *String) loadGPUData(img *image.RGBA, textureWidth, textureHeight uint32, color [4]float32) {
