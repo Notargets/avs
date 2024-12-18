@@ -5,22 +5,18 @@ import (
 )
 
 type TextFormatter struct {
-	Color        color.Color
-	Centered     bool
-	ScreenFixed  bool
-	TypeFace     *OpenGLTypeFace
-	WindowHeight uint32
-	WindowWidth  uint32
+	Color       color.Color
+	Centered    bool
+	ScreenFixed bool
+	TypeFace    *OpenGLTypeFace
 }
 
-func NewTextFormatter(fontBaseName, fontOptionName string, fontPitch, windowWidth, windowHeight int,
+func NewTextFormatter(fontBaseName, fontOptionName string, fontPitch, windowWidth int,
 	color color.Color, centered, screenFixed bool, xRange, yRange float32) (tf *TextFormatter) {
 	tf = &TextFormatter{
-		Color:        color,
-		Centered:     centered,
-		ScreenFixed:  screenFixed,
-		WindowWidth:  uint32(windowWidth),
-		WindowHeight: uint32(windowHeight),
+		Color:       color,
+		Centered:    centered,
+		ScreenFixed: screenFixed,
 	}
 	tf.TypeFace = NewOpenGLTypeFace(fontBaseName, fontOptionName, fontPitch, windowWidth, xRange, yRange)
 	return

@@ -17,6 +17,7 @@ type String struct {
 	Text                        string
 	ShaderProgram               uint32
 	Position                    mgl32.Vec2
+	WindowWidth, WindowHeight   uint32
 	Texture                     uint32
 	StringType                  utils.RenderType
 	polygonVertices             [4]mgl32.Vec2 // In world coordinates
@@ -91,10 +92,9 @@ func (str *String) fixSTRINGAspectRatio(scr *Screen, ndc *[4]mgl32.Vec4, lenRow 
 		ndc[i][2] = str.GPUBuffer[i*lenRow+2]
 		ndc[i][3] = str.GPUBuffer[i*lenRow+3]
 	}
-	tf := str.TextFormatter
 	// Compute the aspect ratio scaling factors for x and y
-	Sx := float32(tf.WindowWidth) / float32(scr.WindowWidth)
-	Sy := float32(tf.WindowHeight) / float32(scr.WindowHeight)
+	Sx := float32(str.WindowWidth) / float32(scr.WindowWidth)
+	Sy := float32(str.WindowHeight) / float32(scr.WindowHeight)
 
 	// Calculate the center of the polygon in NDC coordinates
 	var c_r, c_s float32
@@ -179,9 +179,8 @@ func (str *String) loadGPUBuffer(scr *Screen, textColor [4]float32) {
 		str.fixSTRINGAspectRatio(scr, &NDCVertexCoordinates, lenRow)
 	}
 	// Update string formatter Window dimensions to match the current screen
-	tf := str.TextFormatter
-	tf.WindowWidth = scr.WindowWidth
-	tf.WindowHeight = scr.WindowHeight
+	str.WindowWidth = scr.WindowWidth
+	str.WindowHeight = scr.WindowHeight
 }
 
 func (str *String) loadGPUData(img *image.RGBA, textureWidth, textureHeight uint32, color [4]float32) {
