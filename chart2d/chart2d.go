@@ -2,6 +2,7 @@ package chart2d
 
 import (
 	"image/color"
+	"math"
 
 	"github.com/notargets/avs/assets"
 
@@ -81,7 +82,7 @@ func (chart *Chart2D) AddAxis(axisColor color.Color, yAxisLocation float32, nSeg
 		panic("nSegs must be odd")
 	}
 
-	tickText := chart.NewTextFormatter("NotoSans", "Regular", 16,
+	tickText := chart.NewTextFormatter("NotoSans", "Bold", 16,
 		color.RGBA{255, 255, 255, 255}, true, false)
 
 	// Generate color array for 2 vertices per axis (X-axis and Y-axis)
@@ -96,6 +97,7 @@ func (chart *Chart2D) AddAxis(axisColor color.Color, yAxisLocation float32, nSeg
 			continue
 		}
 		X, Y, C = AddSegmentToLine(X, Y, C, x, y, x, y-yTickSize, tickColor)
+		x = clampNearZero(x, xScale/1000.)
 		chart.Printf(tickText, x, y-2*yTickSize, "%4.1f", x)
 		x = x + xInc
 	}
@@ -107,11 +109,19 @@ func (chart *Chart2D) AddAxis(axisColor color.Color, yAxisLocation float32, nSeg
 			continue
 		}
 		X, Y, C = AddSegmentToLine(X, Y, C, x, y, x-xTickSize, y, tickColor)
+		y = clampNearZero(y, yScale/1000.)
 		chart.Printf(tickText, x-2*xTickSize, y, "%4.1f", y)
 		y = y + yInc
 	}
 	//chart.Screen.ChangePosition(0.0, 0.0)
 	chart.Screen.NewLine(screen.NEW, X, Y, C) // 2 points, so 2 * 3 = 6 colors
+}
+
+func clampNearZero(x, epsilon float32) float32 {
+	if float32(math.Abs(float64(x))) < epsilon {
+		return 0
+	}
+	return x
 }
 
 func AddSegmentToLine(X, Y, C []float32, X1, Y1, X2, Y2 float32, lineColor color.Color) (XX, YY, CC []float32) {

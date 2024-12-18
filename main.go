@@ -12,13 +12,12 @@ import (
 // TODO: Implement LINEKEY and TEXTKEY types with function pointers to return their base objects from the map
 // TODO: ... LINEKEY, etc should be returned as object handles to enable UPDATE/DELETE/HIDE, etc
 // TODO: Implement a "Destroy" window to enable multiple screen sessions within an app lifetime
+// TODO: Correct the stretch of FIXEDSTRING on resize by recalculating fixed NDC coordinates (if it matters)
 func main() {
 	Test1()
 }
 
 func Test1() {
-
-	//TODO: Re-calculate the stretch ratio for FIXEDSTRING text types to make Resize not stretch the text poly
 	var XMin, XMax, YMin, YMax float32
 	style := 4
 	switch style {
@@ -41,7 +40,7 @@ func Test1() {
 	chart.AddAxis(color.RGBA{R: 255, G: 255, B: 255, A: 255}, -1, 11)
 
 	titleText1 := chart.NewTextFormatter("NotoSans", "Regular", 24,
-		color.RGBA{255, 0, 255, 255}, true, false)
+		color.RGBA{255, 0, 255, 255}, false, false)
 	titleText2 := chart.NewTextFormatter("NotoSans", "Bold", 36,
 		color.RGBA{0, 255, 0, 255}, true, true)
 

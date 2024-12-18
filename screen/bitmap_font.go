@@ -52,8 +52,8 @@ func (str *String) setupTextureMap(scr *Screen) {
 	if str.StringType == utils.STRING || !str.initializedFIXEDSTRING {
 		x := str.Position.X()
 		y := str.Position.Y()
-		quadWidth, quadHeight := calculateQuadBounds(str.textureWidth, str.textureHeight, scr.WindowWidth,
-			tf.TypeFace.FontDPI, scr.XMax-scr.XMin, scr.YMax-scr.YMin, str.StringType == utils.FIXEDSTRING)
+		quadWidth, quadHeight := calculateQuadBounds(str.textureWidth, str.textureHeight, scr.WindowWidth, scr.WindowHeight,
+			tf.TypeFace.FontDPI, scr.XMax-scr.XMin, scr.YMax-scr.YMin)
 
 		// **Step 4: Calculate proper position and scale**
 		var posX, posY float32
@@ -134,7 +134,8 @@ func (str *String) setupTextureMap(scr *Screen) {
 	str.loadGPUData(scr, str.textureImg, str.textureWidth, str.textureHeight, c)
 }
 
-func calculateQuadBounds(textureWidth, textureHeight, windowWidth, fontDPI int, xRange, yRange float32, fixed bool) (quadWidth, quadHeight float32) {
+func calculateQuadBounds(textureWidth, textureHeight, windowWidth, windowHeight, fontDPI int,
+	xRange, yRange float32) (quadWidth, quadHeight float32) {
 	// Calculate the width of the text string in window coordinates based on the fact that the xRange corresponds
 	// with the window width
 	// First, percentage of width covered by the text pixels:
@@ -145,17 +146,18 @@ func calculateQuadBounds(textureWidth, textureHeight, windowWidth, fontDPI int, 
 	worldSpaceHeight := bitmapAspectRatio * worldSpaceWidth
 	// Now correct the worldSpaceHeight to remove the stretch factor of the ortho transform
 	var ratio float32
-	if fixed {
-		ratio = 1.
-	} else {
-		ratio = yRange / xRange
-	}
+	ratio = yRange / xRange
 	worldSpaceHeight *= ratio
 	// Implement a scale factor to reduce the polygon size commensurate with the dynamic DPI scaling, relative to the
 	// standard 72 DPI of the Opentype package
 	scaleFromDPI := 72 / float32(fontDPI)
-	quadWidth = scaleFromDPI * worldSpaceWidth
-	quadHeight = scaleFromDPI * worldSpaceHeight
+	winRatio := float32(1.)
+	// Correct for image scaling when window is resized and width is < height
+	if windowWidth < windowHeight {
+		winRatio = float32(windowWidth) / float32(windowHeight)
+	}
+	quadWidth = winRatio * scaleFromDPI * worldSpaceWidth
+	quadHeight = winRatio * scaleFromDPI * worldSpaceHeight
 	return
 }
 
@@ -224,7 +226,7 @@ func (str *String) addShader(scr *Screen) (shaderProgram uint32) {
 		var vertexShaderSource string
 		switch str.StringType {
 		case utils.STRING:
-			fmt.Printf("Adding shader: %s\n", str.StringType)
+			//fmt.Printf("Adding shader: %s\n", str.StringType)
 			vertexShaderSource = `
 				#version 450
 				layout (location = 0) in vec2 position;
@@ -239,7 +241,7 @@ func (str *String) addShader(scr *Screen) (shaderProgram uint32) {
     				fragColor = color;
 				}` + "\x00"
 		case utils.FIXEDSTRING:
-			fmt.Printf("Adding shader: %s\n", str.StringType)
+			//fmt.Printf("Adding shader: %s\n", str.StringType)
 			vertexShaderSource = `
 				#version 450
 				layout (location = 0) in vec4 fixedPosition;
