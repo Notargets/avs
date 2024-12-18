@@ -158,7 +158,7 @@ func (scr *Screen) InitGLScreen(width, height int) {
 	// Check OpenGL version (optional, but useful for debugging)
 	version := gl.GoStr(gl.GetString(gl.VERSION))
 	if version == "" {
-		log.Fatalln("OpenGL context not properly initialized")
+		log.Fatalln("OpenGL context not properly initializedFIXEDSTRING")
 	}
 	fmt.Println("OpenGL version:", version)
 

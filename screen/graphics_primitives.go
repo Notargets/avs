@@ -93,10 +93,10 @@ func (scr *Screen) NewString(key Key, textFormatter *assets.TextFormatter, x, y 
 			str = object.Object.(*String)
 		} else {
 			str = &String{
-				Text:          text,
-				Position:      mgl32.Vec2{x, y},
-				TextFormatter: textFormatter,
-				initialized:   false, // used for FIXEDSTRING
+				Text:                   text,
+				Position:               mgl32.Vec2{x, y},
+				TextFormatter:          textFormatter,
+				initializedFIXEDSTRING: false,
 			}
 			//fmt.Printf("In NewString: ScreenFixed = %v\n", str.TextFormatter.ScreenFixed)
 			if str.TextFormatter.ScreenFixed {

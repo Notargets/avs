@@ -21,9 +21,8 @@ type String struct {
 	Texture                     uint32
 	StringType                  utils.RenderType
 	polygonVertices             [4]mgl32.Vec2
-	fixedPolygonVertices        [4]mgl32.Vec2
 	projectedVertices           []float32
-	initialized                 bool
+	initializedFIXEDSTRING      bool
 	textureImg                  *image.RGBA
 	textureWidth, textureHeight int
 	TextFormatter               *assets.TextFormatter
@@ -50,10 +49,10 @@ func (str *String) setupTextureMap(scr *Screen) {
 		str.textureWidth, str.textureHeight = str.textureImg.Bounds().Dx(), str.textureImg.Bounds().Dy()
 	}
 
-	if str.StringType == utils.STRING || !str.initialized {
-		str.initialized = true
+	// Update vertex coordinates for STRING, FIXEDSTRING only does this once
+	if str.StringType == utils.STRING || !str.initializedFIXEDSTRING {
 		quadWidth, quadHeight := calculateQuadBounds(str.textureWidth, str.textureHeight, scr.WindowWidth,
-			tf.TypeFace.FontDPI, scr.XMax-scr.XMin, scr.YMax-scr.YMin)
+			tf.TypeFace.FontDPI, scr.XMax-scr.XMin, scr.YMax-scr.YMin, str.StringType == utils.FIXEDSTRING)
 
 		// **Step 4: Calculate proper position and scale**
 		var posX, posY float32
@@ -73,14 +72,70 @@ func (str *String) setupTextureMap(scr *Screen) {
 			{posX + quadWidth, posY + quadHeight}, // Top-right
 		}
 	}
-
-	// Initialize the vertex buffer object (VBO)
+	var uv = [4][2]float32{
+		{0, 1},
+		{1, 1},
+		{0, 0},
+		{1, 0},
+	}
+	// Set the color
 	c := ColorToFloat32(str.TextFormatter.Color)
+	switch str.StringType {
+	case utils.STRING:
+		lenRow := 2 + 2 + 3
+		lenV := 4 * (lenRow)
+		if len(str.projectedVertices) == 0 {
+			str.projectedVertices = make([]float32, lenV)
+		}
+		for i := 0; i < 4; i++ {
+			str.projectedVertices[i*lenRow] = str.polygonVertices[i][0]
+			str.projectedVertices[i*lenRow+1] = str.polygonVertices[i][1]
+			str.projectedVertices[i*lenRow+2] = uv[i][0]
+			str.projectedVertices[i*lenRow+3] = uv[i][1]
+			str.projectedVertices[i*lenRow+4] = c[0]
+			str.projectedVertices[i*lenRow+5] = c[1]
+			str.projectedVertices[i*lenRow+6] = c[2]
+		}
+	case utils.FIXEDSTRING:
+		//if true {
+		// Calculate fixed position in NDC coordinates once, via the initial projection matrix
+		// This puts the location into fixed pixel coordinates mapped to the window via the ortho projection
+		lenRow := 2 + 2 + 3 + 4
+		lenV := 4 * (lenRow)
+		if !str.initializedFIXEDSTRING {
+			str.initializedFIXEDSTRING = true
+			fmt.Printf("Rendering FIXED STRING...\n")
+			var fixedNDCProjected [4]mgl32.Vec4
+			for i := 0; i < 4; i++ {
+				fixedNDCProjected[i] = scr.projectionMatrix.Mul4x1(mgl32.Vec4{str.polygonVertices[i].X(), str.polygonVertices[i].Y(), 0.0, 1.0})
+				fixedNDCProjected[i] = fixedNDCProjected[i].Mul(1.0 / fixedNDCProjected[i].W())
+			}
+			if len(str.projectedVertices) == 0 {
+				str.projectedVertices = make([]float32, lenV)
+			}
+			for i := 0; i < 4; i++ {
+				str.projectedVertices[i*lenRow] = 0 // Doesn't matter - Vertices use NDC coordinates in the vertex shader
+				str.projectedVertices[i*lenRow+1] = 0
+				str.projectedVertices[i*lenRow+2] = uv[i][0]
+				str.projectedVertices[i*lenRow+3] = uv[i][1]
+				// Color is updated below
+				for j := 0; j < 4; j++ {
+					str.projectedVertices[i*lenRow+7+j] = fixedNDCProjected[i][j] // Clip space coordinates for fixed position
+				}
+			}
+			// Update the color fields every time, in case the color is changed
+			for i := 0; i < 4; i++ {
+				str.projectedVertices[i*lenRow+4] = c[0]
+				str.projectedVertices[i*lenRow+5] = c[1]
+				str.projectedVertices[i*lenRow+6] = c[2]
+			}
+		}
+	}
 
 	str.initializeVBO(scr, str.textureImg, str.textureWidth, str.textureHeight, c)
 }
 
-func calculateQuadBounds(textureWidth, textureHeight, windowWidth, fontDPI int, xRange, yRange float32) (quadWidth, quadHeight float32) {
+func calculateQuadBounds(textureWidth, textureHeight, windowWidth, fontDPI int, xRange, yRange float32, fixed bool) (quadWidth, quadHeight float32) {
 	// Calculate the width of the text string in window coordinates based on the fact that the xRange corresponds
 	// with the window width
 	// First, percentage of width covered by the text pixels:
@@ -90,7 +145,12 @@ func calculateQuadBounds(textureWidth, textureHeight, windowWidth, fontDPI int, 
 	worldSpaceWidth := windowPercent * xRange
 	worldSpaceHeight := bitmapAspectRatio * worldSpaceWidth
 	// Now correct the worldSpaceHeight to remove the stretch factor of the ortho transform
-	ratio := yRange / xRange
+	var ratio float32
+	if fixed {
+		ratio = 1.
+	} else {
+		ratio = yRange / xRange
+	}
 	worldSpaceHeight *= ratio
 	// Implement a scale factor to reduce the polygon size commensurate with the dynamic DPI scaling, relative to the
 	// standard 72 DPI of the Opentype package
@@ -111,54 +171,6 @@ func (str *String) initializeVBO(scr *Screen, img *image.RGBA, textureWidth, tex
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
 	gl.BindTexture(gl.TEXTURE_2D, 0)
 	str.Texture = texture
-	var uv = [4][2]float32{
-		{0, 1},
-		{1, 1},
-		{0, 0},
-		{1, 0},
-	}
-	switch str.StringType {
-	case utils.STRING:
-		lenRow := 2 + 2 + 3
-		lenV := 4 * (lenRow)
-		if len(str.projectedVertices) == 0 {
-			str.projectedVertices = make([]float32, lenV)
-		}
-		for i := 0; i < 4; i++ {
-			str.projectedVertices[i*lenRow] = str.polygonVertices[i][0]
-			str.projectedVertices[i*lenRow+1] = str.polygonVertices[i][1]
-			str.projectedVertices[i*lenRow+2] = uv[i][0]
-			str.projectedVertices[i*lenRow+3] = uv[i][1]
-			str.projectedVertices[i*lenRow+4] = color[0]
-			str.projectedVertices[i*lenRow+5] = color[1]
-			str.projectedVertices[i*lenRow+6] = color[2]
-		}
-	case utils.FIXEDSTRING:
-		//if true {
-		if len(str.projectedVertices) == 0 {
-			fmt.Printf("Rendering FIXED STRING...\n")
-			var projected [4]mgl32.Vec4
-			for i := 0; i < 4; i++ {
-				projected[i] = scr.projectionMatrix.Mul4x1(mgl32.Vec4{str.polygonVertices[i].X(), str.polygonVertices[i].Y(), 0.0, 1.0})
-				projected[i] = projected[i].Mul(1.0 / projected[i].W())
-			}
-			lenRow := 2 + 2 + 3 + 4
-			lenV := 4 * (lenRow)
-			str.projectedVertices = make([]float32, lenV)
-			for i := 0; i < 4; i++ {
-				str.projectedVertices[i*lenRow] = str.polygonVertices[i][0]
-				str.projectedVertices[i*lenRow+1] = str.polygonVertices[i][1]
-				str.projectedVertices[i*lenRow+2] = uv[i][0]
-				str.projectedVertices[i*lenRow+3] = uv[i][1]
-				str.projectedVertices[i*lenRow+4] = color[0]
-				str.projectedVertices[i*lenRow+5] = color[1]
-				str.projectedVertices[i*lenRow+6] = color[2]
-				for j := 0; j < 4; j++ {
-					str.projectedVertices[i*lenRow+7+j] = projected[i][j] // Clip space coordinates for fixed position
-				}
-			}
-		}
-	}
 
 	// Generate VBO and VAO once
 	gl.GenBuffers(1, &str.VBO)
@@ -229,7 +241,7 @@ func (str *String) addShader(scr *Screen) (shaderProgram uint32) {
 			fmt.Printf("Adding shader: %s\n", str.StringType)
 			vertexShaderSource = `
 				#version 450
-				layout (location = 0) in vec2 position;
+				layout (location = 0) in vec2 position; // Not used
 				layout (location = 1) in vec2 uv;
 				layout (location = 2) in vec3 color;
 				layout (location = 3) in vec4 fixedPosition;
