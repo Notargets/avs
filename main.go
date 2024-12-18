@@ -47,9 +47,17 @@ func Test_Text() {
 	TitleText := chart.NewTextFormatter("NotoSans", "Bold", 64,
 		color.RGBA{0, 255, 0, 255}, true, true)
 
-	chart.Printf(DynamicText, 0.0, 0.5, "This is text that moves with the screen objects")
-	chart.Printf(DynamicText, 0.0, 0.4, "Pan and zoom with right mouse and scroll wheel")
-	chart.Printf(TitleText, 0., 1.090, "This is an example of a title text string")
-	chart.Printf(TitleText, 0.0, 0.985, "Title text doesn't move with pan and zoom and remains the same size when window is resized")
+	xRange := chart.XMax - chart.XMin
+	_ = xRange
+	yRange := chart.YMax - chart.YMin
+	xpos := float32(0)
+	ypos := chart.YMin + 0.5*yRange
+	chart.Printf(DynamicText, xpos, ypos, "This is text that moves with the screen objects")
+	ypos = chart.YMin + 0.4*yRange
+	chart.Printf(DynamicText, xpos, ypos, "Pan and zoom with right mouse and scroll wheel")
+	ypos = chart.YMin + 1.05*yRange
+	chart.Printf(TitleText, xpos, ypos, "This is an example of a title text string")
+	ypos = chart.YMin + 1.00*yRange
+	chart.Printf(TitleText, xpos, ypos, "Title text doesn't move with pan and zoom and remains the same size when window is resized")
 	select {}
 }
