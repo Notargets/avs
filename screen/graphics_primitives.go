@@ -127,6 +127,18 @@ func (scr *Screen) Printf(formatter *assets.TextFormatter, x, y float32, format 
 
 	return newKey
 }
+func (scr *Screen) GetWorldSpaceCharHeight(tf *assets.TextFormatter) (charHeight float32) {
+	// Implement a scale factor to reduce the polygon size commensurate with the dynamic DPI scaling, relative to the
+	// standard 72 DPI of the Opentype package
+	yRange := scr.YMax - scr.YMin
+	worldPerPixel := yRange / float32(scr.WindowHeight)
+	pixelHeight := tf.TypeFace.FontHeight
+	//fmt.Printf("pitch: %v, pixelHeight: %v, DPI: %v\n", tf.TypeFace.FontPitch,
+	//	pixelHeight, tf.TypeFace.FontDPI)
+	// Height includes the inter-line height, so divide by 2.5
+	charHeight = float32(worldPerPixel) * float32(pixelHeight) * float32(72) / float32(tf.TypeFace.FontDPI) / 2.5
+	return
+}
 
 func (scr *Screen) NewTextFormatter(fontBaseName, fontOptionName string, fontPitch int, fontColor color.Color,
 	centered, screenFixed bool) (tf *assets.TextFormatter) {

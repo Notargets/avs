@@ -1,6 +1,7 @@
 package chart2d
 
 import (
+	"fmt"
 	"image/color"
 	"math"
 
@@ -43,6 +44,10 @@ func (chart *Chart2D) NewTextFormatter(fontBaseName, fontOptionName string, font
 
 func (chart *Chart2D) Printf(formatter *assets.TextFormatter, x, y float32, format string, args ...interface{}) {
 	chart.Screen.Printf(formatter, x, y, format, args...)
+}
+
+func (chart *Chart2D) GetWorldSpaceCharHeight(tf *assets.TextFormatter) (height float32) {
+	return chart.Screen.GetWorldSpaceCharHeight(tf)
 }
 
 func (chart *Chart2D) AddLine(X, Y []float32) {
@@ -95,11 +100,15 @@ func (chart *Chart2D) AddAxis(axisColor color.Color, tf *assets.TextFormatter, y
 		}
 		X, Y, C = AddSegmentToLine(X, Y, C, x, y, x, y-yTickSize, tickColor)
 		x = clampNearZero(x, xScale/1000.)
-		chart.Printf(tf, x, y-2*yTickSize, "%4.1f", x)
+		chart.Printf(tf, x, y-(chart.GetWorldSpaceCharHeight(tf)+yTickSize), "%4.1f", x)
 		x = x + xInc
 	}
+	ptfY := *tf
+	tfY := &ptfY
+	tfY.Centered = false
 	x = yAxisLocation
 	y = yMin
+	yTextDelta := calculateYTickTextOffset(yMin, chart.GetWorldSpaceCharHeight(tfY))
 	for i := 0; i < nSegs; i++ {
 		if i == nSegs/2 {
 			y = y + yInc
@@ -107,11 +116,21 @@ func (chart *Chart2D) AddAxis(axisColor color.Color, tf *assets.TextFormatter, y
 		}
 		X, Y, C = AddSegmentToLine(X, Y, C, x, y, x-xTickSize, y, tickColor)
 		y = clampNearZero(y, yScale/1000.)
-		chart.Printf(tf, x-2*xTickSize, y, "%4.1f", y)
+		chart.Printf(tfY, x-yTextDelta, y, "%4.1f", y)
 		y = y + yInc
 	}
 	//chart.Screen.ChangePosition(0.0, 0.0)
 	chart.Screen.NewLine(screen.NEW, X, Y, C) // 2 points, so 2 * 3 = 6 colors
+}
+
+func calculateYTickTextOffset(y float32, charWidth float32) (delta float32) {
+	if y < 0 {
+		delta = charWidth * .5 // Minus sign is about 1/2 char
+	}
+	d := float32(math.Ceil(math.Log10(math.Abs(float64(y))))) + 1.1 // Add some for the decimal and the trailing zero
+	fmt.Printf("y: %v, CharWidth: %v, d: %v\n", y, charWidth, d)
+	delta += d * charWidth
+	return
 }
 
 func clampNearZero(x, epsilon float32) float32 {

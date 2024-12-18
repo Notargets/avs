@@ -40,7 +40,7 @@ func Test_Text() {
 	chart := chart2d.NewChart2D(XMin, XMax, YMin, YMax, 0.50, 1920, 1080)
 	tickText := chart.NewTextFormatter("NotoSans", "Regular", 24,
 		color.RGBA{255, 255, 255, 255}, true, false)
-	chart.AddAxis(color.RGBA{R: 255, G: 255, B: 255, A: 255}, tickText, -1, 11)
+	chart.AddAxis(color.RGBA{R: 255, G: 255, B: 255, A: 255}, tickText, 0, 11)
 
 	DynamicText := chart.NewTextFormatter("NotoSans", "Regular", 36,
 		color.RGBA{255, 0, 255, 255}, false, false)

@@ -97,7 +97,7 @@ func (tf *OpenGLTypeFace) RenderFontTextureImg(text string, fontColor color.Colo
 func (tf *OpenGLTypeFace) drawText(text string, fontColor, bgColor color.Color) (*image.RGBA, error) {
 
 	// Calculate the pixel dimensions for the text
-	textWidth := calculateStringPixelWidth(tf.Face, text)
+	textWidth := CalculateStringPixelWidth(tf.Face, text)
 	textHeight := tf.FontHeight
 
 	// Create an image to draw the text on (width = textWidth, height = textHeight)
@@ -172,7 +172,7 @@ func calculateFontHeight(face font.Face) (uint32, error) {
 	return uint32(totalHeight), nil
 }
 
-func calculateStringPixelWidth(fontFace font.Face, text string) uint32 {
+func CalculateStringPixelWidth(fontFace font.Face, text string) uint32 {
 	var totalWidth fixed.Int26_6
 	for i, char := range text {
 		advance, ok := fontFace.GlyphAdvance(char)
