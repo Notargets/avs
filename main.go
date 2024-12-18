@@ -15,10 +15,10 @@ import (
 // TODO: ... minX and maxX and Y coords are appearing well within the window boundaries. This is evident when the
 // TODO: ... window aspect ratio is non unit
 func main() {
-	Test1()
+	Test_Text()
 }
 
-func Test1() {
+func Test_Text() {
 	var XMin, XMax, YMin, YMax float32
 	style := 4
 	switch style {
@@ -42,13 +42,14 @@ func Test1() {
 		color.RGBA{255, 255, 255, 255}, true, false)
 	chart.AddAxis(color.RGBA{R: 255, G: 255, B: 255, A: 255}, tickText, -1, 11)
 
-	titleText1 := chart.NewTextFormatter("NotoSans", "Regular", 36,
+	DynamicText := chart.NewTextFormatter("NotoSans", "Regular", 36,
 		color.RGBA{255, 0, 255, 255}, false, false)
-	titleText2 := chart.NewTextFormatter("NotoSans", "Bold", 64,
+	TitleText := chart.NewTextFormatter("NotoSans", "Bold", 64,
 		color.RGBA{0, 255, 0, 255}, true, true)
 
-	chart.Printf(titleText1, 0.0, 0.5, "This is text that moves with the screen objects")
-	chart.Printf(titleText1, 0.0, 0.4, "Pan and zoom with right mouse and scroll wheel")
-	chart.Printf(titleText2, 0., 1.090, "This is an example of a title text string")
+	chart.Printf(DynamicText, 0.0, 0.5, "This is text that moves with the screen objects")
+	chart.Printf(DynamicText, 0.0, 0.4, "Pan and zoom with right mouse and scroll wheel")
+	chart.Printf(TitleText, 0., 1.090, "This is an example of a title text string")
+	chart.Printf(TitleText, 0.0, 0.985, "Title text doesn't move with pan and zoom and remains the same size when window is resized")
 	select {}
 }
