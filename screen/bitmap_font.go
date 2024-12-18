@@ -37,11 +37,10 @@ func printMemoryStats(label string) {
 
 func (str *String) setupTextureMap(scr *Screen) {
 	var (
-		x  = str.Position.X()
-		y  = str.Position.Y()
 		tf = str.TextFormatter
 	)
 
+	// Load our texture map with the drawn text if not done already
 	if str.textureImg == nil {
 		var img *image.RGBA
 		img = str.TextFormatter.TypeFace.RenderFontTextureImg(str.Text, str.TextFormatter.Color)
@@ -51,6 +50,8 @@ func (str *String) setupTextureMap(scr *Screen) {
 
 	// Update vertex coordinates for STRING, FIXEDSTRING only does this once
 	if str.StringType == utils.STRING || !str.initializedFIXEDSTRING {
+		x := str.Position.X()
+		y := str.Position.Y()
 		quadWidth, quadHeight := calculateQuadBounds(str.textureWidth, str.textureHeight, scr.WindowWidth,
 			tf.TypeFace.FontDPI, scr.XMax-scr.XMin, scr.YMax-scr.YMin, str.StringType == utils.FIXEDSTRING)
 
@@ -81,8 +82,7 @@ func (str *String) setupTextureMap(scr *Screen) {
 	}
 	// Set the color
 	c := ColorToFloat32(str.TextFormatter.Color)
-	switch str.StringType {
-	case utils.STRING:
+	if str.StringType == utils.STRING {
 		lenRow := 2 + 2 + 3
 		lenV := 4 * (lenRow)
 		if len(str.projectedVertices) == 0 {
@@ -97,13 +97,12 @@ func (str *String) setupTextureMap(scr *Screen) {
 			str.projectedVertices[i*lenRow+5] = c[1]
 			str.projectedVertices[i*lenRow+6] = c[2]
 		}
-	case utils.FIXEDSTRING:
+	} else if str.StringType == utils.FIXEDSTRING {
 		// Calculate fixed position in NDC coordinates once, via the initial projection matrix
 		// This puts the location into fixed pixel coordinates mapped to the window via the ortho projection
-		lenRow := 2 + 3 + 4
+		lenRow := 4 + 2 + 3
 		lenV := 4 * (lenRow)
 		if !str.initializedFIXEDSTRING {
-			str.initializedFIXEDSTRING = true
 			//fmt.Printf("Rendering FIXED STRING...\n")
 			var fixedNDCProjected [4]mgl32.Vec4
 			for i := 0; i < 4; i++ {
@@ -115,23 +114,24 @@ func (str *String) setupTextureMap(scr *Screen) {
 			}
 			// Color is updated below
 			for i := 0; i < 4; i++ {
-				str.projectedVertices[i*lenRow] = uv[i][0]
-				str.projectedVertices[i*lenRow+1] = uv[i][1]
-				str.projectedVertices[i*lenRow+5] = fixedNDCProjected[i][0] // Clip space coordinates for fixed position
-				str.projectedVertices[i*lenRow+6] = fixedNDCProjected[i][1] // Clip space coordinates for fixed position
-				str.projectedVertices[i*lenRow+7] = fixedNDCProjected[i][2] // Clip space coordinates for fixed position
-				str.projectedVertices[i*lenRow+8] = fixedNDCProjected[i][3] // Clip space coordinates for fixed position
+				str.projectedVertices[i*lenRow] = fixedNDCProjected[i][0]   // Clip space coordinates for fixed position
+				str.projectedVertices[i*lenRow+1] = fixedNDCProjected[i][1] // Clip space coordinates for fixed position
+				str.projectedVertices[i*lenRow+2] = fixedNDCProjected[i][2] // Clip space coordinates for fixed position
+				str.projectedVertices[i*lenRow+3] = fixedNDCProjected[i][3] // Clip space coordinates for fixed position
+				str.projectedVertices[i*lenRow+4] = uv[i][0]
+				str.projectedVertices[i*lenRow+5] = uv[i][1]
 			}
+			str.initializedFIXEDSTRING = true // initialization is finished after this
 		}
 		// Update the color fields every time, in case the color is changed
 		for i := 0; i < 4; i++ {
-			str.projectedVertices[i*lenRow+2] = c[0]
-			str.projectedVertices[i*lenRow+3] = c[1]
-			str.projectedVertices[i*lenRow+4] = c[2]
+			str.projectedVertices[i*lenRow+6] = c[0]
+			str.projectedVertices[i*lenRow+7] = c[1]
+			str.projectedVertices[i*lenRow+8] = c[2]
 		}
 	}
 
-	str.initializeVBO(scr, str.textureImg, str.textureWidth, str.textureHeight, c)
+	str.loadGPUData(scr, str.textureImg, str.textureWidth, str.textureHeight, c)
 }
 
 func calculateQuadBounds(textureWidth, textureHeight, windowWidth, fontDPI int, xRange, yRange float32, fixed bool) (quadWidth, quadHeight float32) {
@@ -159,7 +159,7 @@ func calculateQuadBounds(textureWidth, textureHeight, windowWidth, fontDPI int, 
 	return
 }
 
-func (str *String) initializeVBO(scr *Screen, img *image.RGBA, textureWidth, textureHeight int, color [4]float32) {
+func (str *String) loadGPUData(scr *Screen, img *image.RGBA, textureWidth, textureHeight int, color [4]float32) {
 	var texture uint32
 	gl.GenTextures(1, &texture)
 	gl.BindTexture(gl.TEXTURE_2D, texture)
@@ -186,43 +186,36 @@ func (str *String) initializeVBO(scr *Screen, img *image.RGBA, textureWidth, tex
 	checkGLError("After VBO")
 
 	// **Setup Vertex Attributes**
-	offset := 0
 
 	// **PositionDelta (location = 0)**
 	var stride int32
 	if str.StringType == utils.STRING {
 		stride = 4 * (2 + 2 + 3)
 	} else {
-		//stride = 4 * (2 + 2 + 3 + 4)
-		stride = 4 * (2 + 3 + 4)
+		stride = 4 * (4 + 2 + 3)
 	}
-	indexPos := uint32(0)
+	offset := 0
 	if str.StringType == utils.STRING {
 		// Load the transformed vertex coordinates
-		gl.VertexAttribPointer(indexPos, 2, gl.FLOAT, false, stride, gl.PtrOffset(offset)) // PositionDelta (2 floats)
-		gl.EnableVertexAttribArray(indexPos)
-		offset += 2 * 4 // Advance by 2 floats = 8 bytes
-		indexPos++
+		gl.VertexAttribPointer(0, 2, gl.FLOAT, false, stride, gl.PtrOffset(offset)) // PositionDelta (2 floats)
+		offset += 2 * 4                                                             // Advance by 2 floats = 8 bytes
+	} else if str.StringType == utils.FIXEDSTRING {
+		// **Frozen PositionDelta **
+		// Load the NDC fixed vertex coordinates
+		gl.VertexAttribPointer(0, 4, gl.FLOAT, false, stride, gl.PtrOffset(offset)) // Fixed PositionDelta (4 floats)
+		offset += 4 * 4                                                             // Advance by 2 floats = 8 bytes
 	}
+	gl.EnableVertexAttribArray(0)
 
 	// **UV **
-	gl.VertexAttribPointer(indexPos, 2, gl.FLOAT, false, stride, gl.PtrOffset(offset)) // UV (2 floats)
-	gl.EnableVertexAttribArray(indexPos)
+	gl.VertexAttribPointer(1, 2, gl.FLOAT, false, stride, gl.PtrOffset(offset)) // UV (2 floats)
+	gl.EnableVertexAttribArray(1)
 	offset += 2 * 4 // Advance by 2 floats = 8 bytes
-	indexPos++
 
 	// **Color **
-	gl.VertexAttribPointer(indexPos, 3, gl.FLOAT, false, stride, gl.PtrOffset(offset)) // Color (3 floats)
-	gl.EnableVertexAttribArray(indexPos)
+	gl.VertexAttribPointer(2, 3, gl.FLOAT, false, stride, gl.PtrOffset(offset)) // Color (3 floats)
+	gl.EnableVertexAttribArray(2)
 	offset += 3 * 4 // Advance by 3 floats = 12 bytes
-	indexPos++
-
-	// **Frozen PositionDelta **
-	if str.StringType == utils.FIXEDSTRING {
-		// Load the NDC fixed vertex coordinates
-		gl.VertexAttribPointer(indexPos, 4, gl.FLOAT, false, stride, gl.PtrOffset(offset)) // Fixed PositionDelta (4 floats)
-		gl.EnableVertexAttribArray(indexPos)
-	}
 
 }
 
@@ -249,9 +242,9 @@ func (str *String) addShader(scr *Screen) (shaderProgram uint32) {
 			fmt.Printf("Adding shader: %s\n", str.StringType)
 			vertexShaderSource = `
 				#version 450
-				layout (location = 0) in vec2 uv;
-				layout (location = 1) in vec3 color;
-				layout (location = 2) in vec4 fixedPosition;
+				layout (location = 0) in vec4 fixedPosition;
+				layout (location = 1) in vec2 uv;
+				layout (location = 2) in vec3 color;
 
 				out vec2 fragUV;
 				out vec3 fragColor;
