@@ -14,17 +14,19 @@ import (
 )
 
 type String struct {
-	VAO, VBO              uint32
-	Text                  string
-	ShaderProgram         uint32
-	Position              mgl32.Vec2
-	Texture               uint32
-	StringType            utils.RenderType
-	polygonVertices       [4]mgl32.Vec2
-	projectedVertices     []float32 // WRONG? if these exist, a FIXEDSTRING type will not recalculate them
-	quadWidth, quadHeight float32   // In world coordinates, fixed for a FIXEDSTRING
-	textureImg            *image.RGBA
-	TextFormatter         *assets.TextFormatter
+	VAO, VBO                    uint32
+	Text                        string
+	ShaderProgram               uint32
+	Position                    mgl32.Vec2
+	Texture                     uint32
+	StringType                  utils.RenderType
+	polygonVertices             [4]mgl32.Vec2
+	fixedPolygonVertices        [4]mgl32.Vec2
+	projectedVertices           []float32
+	initialized                 bool
+	textureImg                  *image.RGBA
+	textureWidth, textureHeight int
+	TextFormatter               *assets.TextFormatter
 }
 
 func printMemoryStats(label string) {
@@ -45,17 +47,19 @@ func (str *String) setupTextureMap(scr *Screen) {
 		var img *image.RGBA
 		img = str.TextFormatter.TypeFace.RenderFontTextureImg(str.Text, str.TextFormatter.Color)
 		str.textureImg = img
+		str.textureWidth, str.textureHeight = str.textureImg.Bounds().Dx(), str.textureImg.Bounds().Dy()
 	}
-	textureWidth, textureHeight := str.textureImg.Bounds().Dx(), str.textureImg.Bounds().Dy()
 
-	if str.StringType == utils.STRING || str.quadWidth == 0 {
-		str.quadWidth, str.quadHeight = calculateQuadBounds(textureWidth, textureHeight, scr.WindowWidth, tf.TypeFace.FontDPI,
-			scr.XMax-scr.XMin, scr.YMax-scr.YMin)
+	if str.StringType == utils.STRING || !str.initialized {
+		str.initialized = true
+		quadWidth, quadHeight := calculateQuadBounds(str.textureWidth, str.textureHeight, scr.WindowWidth,
+			tf.TypeFace.FontDPI, scr.XMax-scr.XMin, scr.YMax-scr.YMin)
+
 		// **Step 4: Calculate proper position and scale**
 		var posX, posY float32
 		if str.TextFormatter.Centered {
-			posX = x - str.quadWidth/2
-			posY = y - str.quadHeight/2
+			posX = x - quadWidth/2
+			posY = y - quadHeight/2
 		} else {
 			posX = x
 			posY = y
@@ -63,17 +67,17 @@ func (str *String) setupTextureMap(scr *Screen) {
 
 		// **Step 5: Initialize polygon vertices for the 4 corners of the quad**
 		str.polygonVertices = [4]mgl32.Vec2{
-			{posX, posY},                                  // Bottom-left
-			{posX + str.quadWidth, posY},                  // Bottom-right
-			{posX, posY + str.quadHeight},                 // Top-left
-			{posX + str.quadWidth, posY + str.quadHeight}, // Top-right
+			{posX, posY},                          // Bottom-left
+			{posX + quadWidth, posY},              // Bottom-right
+			{posX, posY + quadHeight},             // Top-left
+			{posX + quadWidth, posY + quadHeight}, // Top-right
 		}
 	}
 
 	// Initialize the vertex buffer object (VBO)
 	c := ColorToFloat32(str.TextFormatter.Color)
 
-	str.initializeVBO(scr, str.textureImg, textureWidth, textureHeight, c)
+	str.initializeVBO(scr, str.textureImg, str.textureWidth, str.textureHeight, c)
 }
 
 func calculateQuadBounds(textureWidth, textureHeight, windowWidth, fontDPI int, xRange, yRange float32) (quadWidth, quadHeight float32) {
@@ -130,6 +134,7 @@ func (str *String) initializeVBO(scr *Screen, img *image.RGBA, textureWidth, tex
 			str.projectedVertices[i*lenRow+6] = color[2]
 		}
 	case utils.FIXEDSTRING:
+		//if true {
 		if len(str.projectedVertices) == 0 {
 			fmt.Printf("Rendering FIXED STRING...\n")
 			var projected [4]mgl32.Vec4
@@ -149,7 +154,7 @@ func (str *String) initializeVBO(scr *Screen, img *image.RGBA, textureWidth, tex
 				str.projectedVertices[i*lenRow+5] = color[1]
 				str.projectedVertices[i*lenRow+6] = color[2]
 				for j := 0; j < 4; j++ {
-					str.projectedVertices[i*lenRow+7+j] = projected[i][j]
+					str.projectedVertices[i*lenRow+7+j] = projected[i][j] // Clip space coordinates for fixed position
 				}
 			}
 		}
