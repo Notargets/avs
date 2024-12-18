@@ -6,13 +6,9 @@ import (
 	"github.com/notargets/avs/chart2d"
 )
 
-// TODO: Re-work logic in String to re-calculate polygon vertices every Render, and use Update() method properly
-// TODO: ... Update() should redo image file if text is input to it, then Render() should carry all of the poly
-// TODO: ... calculation logic currently in NewString
 // TODO: Implement LINEKEY and TEXTKEY types with function pointers to return their base objects from the map
 // TODO: ... LINEKEY, etc should be returned as object handles to enable UPDATE/DELETE/HIDE, etc
 // TODO: Implement a "Destroy" window to enable multiple screen sessions within an app lifetime
-// TODO: Correct the stretch of FIXEDSTRING on resize by recalculating fixed NDC coordinates (if it matters)
 func main() {
 	Test1()
 }
@@ -36,15 +32,18 @@ func Test1() {
 	default:
 		panic("No option here")
 	}
-	chart := chart2d.NewChart2D(XMin, XMax, YMin, YMax, 0.87, 1000, 1000)
-	chart.AddAxis(color.RGBA{R: 255, G: 255, B: 255, A: 255}, -1, 11)
+	chart := chart2d.NewChart2D(XMin, XMax, YMin, YMax, 0.50, 1920, 1080)
+	tickText := chart.NewTextFormatter("NotoSans", "Regular", 24,
+		color.RGBA{255, 255, 255, 255}, true, false)
+	chart.AddAxis(color.RGBA{R: 255, G: 255, B: 255, A: 255}, tickText, -1, 11)
 
-	titleText1 := chart.NewTextFormatter("NotoSans", "Regular", 24,
+	titleText1 := chart.NewTextFormatter("NotoSans", "Regular", 36,
 		color.RGBA{255, 0, 255, 255}, false, false)
-	titleText2 := chart.NewTextFormatter("NotoSans", "Bold", 36,
+	titleText2 := chart.NewTextFormatter("NotoSans", "Bold", 64,
 		color.RGBA{0, 255, 0, 255}, true, true)
 
-	chart.Printf(titleText1, 0.5, 0.5, "This is text that moves")
-	chart.Printf(titleText2, 0., 1.075, "This is an example of a title text string")
+	chart.Printf(titleText1, 0.0, 0.5, "This is text that moves with the screen objects")
+	chart.Printf(titleText1, 0.0, 0.4, "Pan and zoom with right mouse and scroll wheel")
+	chart.Printf(titleText2, 0., 1.090, "This is an example of a title text string")
 	select {}
 }

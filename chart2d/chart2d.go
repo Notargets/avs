@@ -65,7 +65,7 @@ func (chart *Chart2D) GetSingleColorArray(Y []float32, singleColor color.Color) 
 	return
 }
 
-func (chart *Chart2D) AddAxis(axisColor color.Color, yAxisLocation float32, nSegs int) {
+func (chart *Chart2D) AddAxis(axisColor color.Color, tf *assets.TextFormatter, yAxisLocation float32, nSegs int) {
 	var (
 		xMin, xMax           = chart.XMin, chart.XMax
 		yMin, yMax           = chart.YMin, chart.YMax
@@ -82,9 +82,6 @@ func (chart *Chart2D) AddAxis(axisColor color.Color, yAxisLocation float32, nSeg
 		panic("nSegs must be odd")
 	}
 
-	tickText := chart.NewTextFormatter("NotoSans", "Bold", 16,
-		color.RGBA{255, 255, 255, 255}, true, false)
-
 	// Generate color array for 2 vertices per axis (X-axis and Y-axis)
 	X, Y, C = AddSegmentToLine(X, Y, C, xMin, 0, xMax, 0, axisColor)
 	X, Y, C = AddSegmentToLine(X, Y, C, yAxisLocation, yMin, yAxisLocation, yMax, axisColor)
@@ -98,7 +95,7 @@ func (chart *Chart2D) AddAxis(axisColor color.Color, yAxisLocation float32, nSeg
 		}
 		X, Y, C = AddSegmentToLine(X, Y, C, x, y, x, y-yTickSize, tickColor)
 		x = clampNearZero(x, xScale/1000.)
-		chart.Printf(tickText, x, y-2*yTickSize, "%4.1f", x)
+		chart.Printf(tf, x, y-2*yTickSize, "%4.1f", x)
 		x = x + xInc
 	}
 	x = yAxisLocation
@@ -110,7 +107,7 @@ func (chart *Chart2D) AddAxis(axisColor color.Color, yAxisLocation float32, nSeg
 		}
 		X, Y, C = AddSegmentToLine(X, Y, C, x, y, x-xTickSize, y, tickColor)
 		y = clampNearZero(y, yScale/1000.)
-		chart.Printf(tickText, x-2*xTickSize, y, "%4.1f", y)
+		chart.Printf(tf, x-2*xTickSize, y, "%4.1f", y)
 		y = y + yInc
 	}
 	//chart.Screen.ChangePosition(0.0, 0.0)

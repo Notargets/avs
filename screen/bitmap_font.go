@@ -3,7 +3,6 @@ package screen
 import (
 	"fmt"
 	"image"
-	"runtime"
 
 	"github.com/notargets/avs/utils"
 
@@ -26,13 +25,6 @@ type String struct {
 	textureImg                  *image.RGBA
 	textureWidth, textureHeight uint32
 	TextFormatter               *assets.TextFormatter
-}
-
-func printMemoryStats(label string) {
-	var m runtime.MemStats
-	runtime.ReadMemStats(&m)
-	fmt.Printf("[%s] Memory Usage: Alloc = %v MB, TotalAlloc = %v MB, Sys = %v MB, NumGC = %v\n",
-		label, m.Alloc/1024/1024, m.TotalAlloc/1024/1024, m.Sys/1024/1024, m.NumGC)
 }
 
 func (str *String) setupTextureMap(scr *Screen) {

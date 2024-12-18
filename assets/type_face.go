@@ -153,11 +153,13 @@ func calculateDynamicDPI(fontPitch uint32) uint32 {
 	case fontPitch <= 12:
 		return 512
 	case fontPitch <= 24: // No need for fontPitch > 12 because fontPitch > 12 is implied
-		return 256
+		return 384
 	case fontPitch <= 36: // No need for fontPitch > 24 because fontPitch > 24 is implied
-		return 128
+		return 256
+	case fontPitch >= 48:
+		return 192 // If none of the above conditions are met, fallback to 96 DPI
 	default:
-		return 96 // If none of the above conditions are met, fallback to 96 DPI
+		return 0
 	}
 }
 
