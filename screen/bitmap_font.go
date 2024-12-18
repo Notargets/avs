@@ -74,16 +74,10 @@ func (str *String) setupTextureMap(scr *Screen) {
 		}
 	}
 
-	var uv = [4][2]float32{
-		{0, 1},
-		{1, 1},
-		{0, 0},
-		{1, 0},
-	}
 	// Set the color
 	c := ColorToFloat32(str.TextFormatter.Color)
 	if str.StringType == utils.STRING {
-		lenRow := 2 + 2 + 3
+		lenRow := 2 + 3
 		lenV := 4 * (lenRow)
 		if len(str.projectedVertices) == 0 {
 			str.projectedVertices = make([]float32, lenV)
@@ -91,74 +85,43 @@ func (str *String) setupTextureMap(scr *Screen) {
 		for i := 0; i < 4; i++ {
 			str.projectedVertices[i*lenRow] = str.polygonVertices[i][0]
 			str.projectedVertices[i*lenRow+1] = str.polygonVertices[i][1]
-			str.projectedVertices[i*lenRow+2] = uv[i][0]
-			str.projectedVertices[i*lenRow+3] = uv[i][1]
-			str.projectedVertices[i*lenRow+4] = c[0]
-			str.projectedVertices[i*lenRow+5] = c[1]
-			str.projectedVertices[i*lenRow+6] = c[2]
+			str.projectedVertices[i*lenRow+2] = c[0]
+			str.projectedVertices[i*lenRow+3] = c[1]
+			str.projectedVertices[i*lenRow+4] = c[2]
 		}
 	} else if str.StringType == utils.FIXEDSTRING {
 		// Calculate fixed position in NDC coordinates once, via the initial projection matrix
 		// This puts the location into fixed pixel coordinates mapped to the window via the ortho projection
-		lenRow := 4 + 2 + 3
+		lenRow := 4 + 3
 		lenV := 4 * (lenRow)
 		if !str.initializedFIXEDSTRING {
 			//fmt.Printf("Rendering FIXED STRING...\n")
-			var fixedNDCProjected [4]mgl32.Vec4
+			var NDCVertexCoordinates [4]mgl32.Vec4
 			for i := 0; i < 4; i++ {
-				fixedNDCProjected[i] = scr.projectionMatrix.Mul4x1(mgl32.Vec4{str.polygonVertices[i].X(), str.polygonVertices[i].Y(), 0.0, 1.0})
-				fixedNDCProjected[i] = fixedNDCProjected[i].Mul(1.0 / fixedNDCProjected[i].W())
+				NDCVertexCoordinates[i] = scr.projectionMatrix.Mul4x1(mgl32.Vec4{str.polygonVertices[i].X(), str.polygonVertices[i].Y(), 0.0, 1.0})
+				NDCVertexCoordinates[i] = NDCVertexCoordinates[i].Mul(1.0 / NDCVertexCoordinates[i].W())
 			}
 			if len(str.projectedVertices) == 0 {
 				str.projectedVertices = make([]float32, lenV)
 			}
 			// Color is updated below
 			for i := 0; i < 4; i++ {
-				str.projectedVertices[i*lenRow] = fixedNDCProjected[i][0]   // Clip space coordinates for fixed position
-				str.projectedVertices[i*lenRow+1] = fixedNDCProjected[i][1] // Clip space coordinates for fixed position
-				str.projectedVertices[i*lenRow+2] = fixedNDCProjected[i][2] // Clip space coordinates for fixed position
-				str.projectedVertices[i*lenRow+3] = fixedNDCProjected[i][3] // Clip space coordinates for fixed position
-				str.projectedVertices[i*lenRow+4] = uv[i][0]
-				str.projectedVertices[i*lenRow+5] = uv[i][1]
+				str.projectedVertices[i*lenRow] = NDCVertexCoordinates[i][0]   // Clip space coordinates for fixed position
+				str.projectedVertices[i*lenRow+1] = NDCVertexCoordinates[i][1] // Clip space coordinates for fixed position
+				str.projectedVertices[i*lenRow+2] = NDCVertexCoordinates[i][2] // Clip space coordinates for fixed position
+				str.projectedVertices[i*lenRow+3] = NDCVertexCoordinates[i][3] // Clip space coordinates for fixed position
 			}
 			str.initializedFIXEDSTRING = true // initialization is finished after this
 		}
 		// Update the color fields every time, in case the color is changed
 		for i := 0; i < 4; i++ {
-			str.projectedVertices[i*lenRow+6] = c[0]
-			str.projectedVertices[i*lenRow+7] = c[1]
-			str.projectedVertices[i*lenRow+8] = c[2]
+			str.projectedVertices[i*lenRow+4] = c[0]
+			str.projectedVertices[i*lenRow+5] = c[1]
+			str.projectedVertices[i*lenRow+6] = c[2]
 		}
 	}
 
 	str.loadGPUData(scr, str.textureImg, str.textureWidth, str.textureHeight, c)
-}
-
-func calculateQuadBounds(textureWidth, textureHeight, windowWidth, windowHeight, fontDPI int,
-	xRange, yRange float32) (quadWidth, quadHeight float32) {
-	// Calculate the width of the text string in window coordinates based on the fact that the xRange corresponds
-	// with the window width
-	// First, percentage of width covered by the text pixels:
-	windowPercent := float32(textureWidth) / float32(windowWidth)
-	bitmapAspectRatio := float32(textureHeight) / float32(textureWidth)
-	// Now how much world space this represents
-	worldSpaceWidth := windowPercent * xRange
-	worldSpaceHeight := bitmapAspectRatio * worldSpaceWidth
-	// Now correct the worldSpaceHeight to remove the stretch factor of the ortho transform
-	var ratio float32
-	ratio = yRange / xRange
-	worldSpaceHeight *= ratio
-	// Implement a scale factor to reduce the polygon size commensurate with the dynamic DPI scaling, relative to the
-	// standard 72 DPI of the Opentype package
-	scaleFromDPI := 72 / float32(fontDPI)
-	winRatio := float32(1.)
-	// Correct for image scaling when window is resized and width is < height
-	if windowWidth < windowHeight {
-		winRatio = float32(windowWidth) / float32(windowHeight)
-	}
-	quadWidth = winRatio * scaleFromDPI * worldSpaceWidth
-	quadHeight = winRatio * scaleFromDPI * worldSpaceHeight
-	return
 }
 
 func (str *String) loadGPUData(scr *Screen, img *image.RGBA, textureWidth, textureHeight int, color [4]float32) {
@@ -192,9 +155,10 @@ func (str *String) loadGPUData(scr *Screen, img *image.RGBA, textureWidth, textu
 	// **PositionDelta (location = 0)**
 	var stride int32
 	if str.StringType == utils.STRING {
-		stride = 4 * (2 + 2 + 3)
+		//stride = 4 * (2 + 2 + 3)
+		stride = 4 * (2 + 3)
 	} else {
-		stride = 4 * (4 + 2 + 3)
+		stride = 4 * (4 + 3)
 	}
 	offset := 0
 	if str.StringType == utils.STRING {
@@ -209,16 +173,38 @@ func (str *String) loadGPUData(scr *Screen, img *image.RGBA, textureWidth, textu
 	}
 	gl.EnableVertexAttribArray(0)
 
-	// **UV **
-	gl.VertexAttribPointer(1, 2, gl.FLOAT, false, stride, gl.PtrOffset(offset)) // UV (2 floats)
-	gl.EnableVertexAttribArray(1)
-	offset += 2 * 4 // Advance by 2 floats = 8 bytes
-
 	// **Color **
-	gl.VertexAttribPointer(2, 3, gl.FLOAT, false, stride, gl.PtrOffset(offset)) // Color (3 floats)
-	gl.EnableVertexAttribArray(2)
+	gl.VertexAttribPointer(1, 3, gl.FLOAT, false, stride, gl.PtrOffset(offset)) // Color (3 floats)
+	gl.EnableVertexAttribArray(1)
 	offset += 3 * 4 // Advance by 3 floats = 12 bytes
 
+}
+
+func calculateQuadBounds(textureWidth, textureHeight, windowWidth, windowHeight, fontDPI int,
+	xRange, yRange float32) (quadWidth, quadHeight float32) {
+	// Calculate the width of the text string in window coordinates based on the fact that the xRange corresponds
+	// with the window width
+	// First, percentage of width covered by the text pixels:
+	windowPercent := float32(textureWidth) / float32(windowWidth)
+	bitmapAspectRatio := float32(textureHeight) / float32(textureWidth)
+	// Now how much world space this represents
+	worldSpaceWidth := windowPercent * xRange
+	worldSpaceHeight := bitmapAspectRatio * worldSpaceWidth
+	// Now correct the worldSpaceHeight to remove the stretch factor of the ortho transform
+	var ratio float32
+	ratio = yRange / xRange
+	worldSpaceHeight *= ratio
+	// Implement a scale factor to reduce the polygon size commensurate with the dynamic DPI scaling, relative to the
+	// standard 72 DPI of the Opentype package
+	scaleFromDPI := 72 / float32(fontDPI)
+	winRatio := float32(1.)
+	// Correct for image scaling when window is resized and width is < height
+	if windowWidth < windowHeight {
+		winRatio = float32(windowWidth) / float32(windowHeight)
+	}
+	quadWidth = winRatio * scaleFromDPI * worldSpaceWidth
+	quadHeight = winRatio * scaleFromDPI * worldSpaceHeight
+	return
 }
 
 func (str *String) addShader(scr *Screen) (shaderProgram uint32) {
@@ -228,32 +214,50 @@ func (str *String) addShader(scr *Screen) (shaderProgram uint32) {
 		case utils.STRING:
 			//fmt.Printf("Adding shader: %s\n", str.StringType)
 			vertexShaderSource = `
-				#version 450
-				layout (location = 0) in vec2 position;
-				layout (location = 1) in vec2 uv;
-				layout (location = 2) in vec3 color;
-				uniform mat4 projection; // <-- projection matrix
-				out vec2 fragUV;
-				out vec3 fragColor;
-				void main() {
-    				gl_Position = projection * vec4(position, 0.0, 1.0); // Apply projection matrix here
-    				fragUV = uv;
-    				fragColor = color;
-				}` + "\x00"
+			#version 450
+
+			layout (location = 0) in vec2 position; // Position input from the vertex buffer
+			layout (location = 1) in vec3 color;    // Color input from the vertex buffer
+
+			uniform mat4 projection; // Projection matrix
+
+			// Constant array of vec2 representing the UV coordinates for 4 vertices
+			const vec2 uv[4] = vec2[4](
+    			vec2(0.0, 1.0), // Top-left
+    			vec2(1.0, 1.0), // Top-right
+    			vec2(0.0, 0.0), // Bottom-left
+    			vec2(1.0, 0.0)  // Bottom-right
+			);
+
+			out vec2 fragUV;
+			out vec3 fragColor;
+
+			void main() {
+    			gl_Position = projection * vec4(position, 0.0, 1.0); // Apply projection matrix
+    			fragUV = uv[gl_VertexID % 4]; // Select UV coordinate based on gl_VertexID (assumes quads)
+    			fragColor = color;
+			}` + "\x00"
 		case utils.FIXEDSTRING:
 			//fmt.Printf("Adding shader: %s\n", str.StringType)
 			vertexShaderSource = `
 				#version 450
-				layout (location = 0) in vec4 fixedPosition;
-				layout (location = 1) in vec2 uv;
-				layout (location = 2) in vec3 color;
+				layout (location = 0) in vec4 NDCposition;
+				layout (location = 1) in vec3 color;
+
+			    // Constant array of vec2 representing the UV coordinates for 4 vertices
+			    const vec2 uv[4] = vec2[4](
+    			    vec2(0.0, 1.0), // Top-left
+    			    vec2(1.0, 1.0), // Top-right
+    			    vec2(0.0, 0.0), // Bottom-left
+    			    vec2(1.0, 0.0)  // Bottom-right
+			    );
 
 				out vec2 fragUV;
 				out vec3 fragColor;
 
 				void main() {
-    				gl_Position = fixedPosition; // Use the fixed position directly (clip space)
-    				fragUV = uv;
+    				gl_Position = NDCposition; // Use the NDS position directly (clip space)
+    			    fragUV = uv[gl_VertexID % 4]; // Select UV coordinate based on gl_VertexID (assumes quads)
     				fragColor = color;
 				}` + "\x00"
 		default:
