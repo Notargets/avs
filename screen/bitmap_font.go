@@ -23,7 +23,6 @@ type String struct {
 	polygonVertices             [4]mgl32.Vec2 // In world coordinates
 	GPUBuffer                   []float32
 	initializedFIXEDSTRING      bool
-	origWindowSize              mgl32.Vec2
 	textureImg                  *image.RGBA
 	textureWidth, textureHeight uint32
 	TextFormatter               *assets.TextFormatter
@@ -142,6 +141,9 @@ func (str *String) loadGPUBuffer(scr *Screen, textColor [4]float32) {
 			str.GPUBuffer[i*lenRow+5] = textColor[1]
 			str.GPUBuffer[i*lenRow+6] = textColor[2]
 		}
+		// Store new Window size in text formatter
+		tf.WindowWidth = scr.WindowWidth
+		tf.WindowHeight = scr.WindowHeight
 	}
 }
 
@@ -155,8 +157,8 @@ func TransformNDC(ndc *[4]mgl32.Vec4, origWidth, origHeight, newWidth, newHeight
 	//t := Sx
 	//Sx = Sy
 	//Sy = t
-	Sx = 1.
-	Sy = 1.
+	//Sx = 1.
+	//Sy = 1.
 
 	// Calculate the center of the polygon in NDC coordinates
 	var c_r, c_s float32
