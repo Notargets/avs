@@ -20,20 +20,20 @@ func main() {
 
 func Test_Text() {
 	var XMin, XMax, YMin, YMax float32
-	style := 4
+	style := 2
 	switch style {
-	case 5:
-		XMin, XMax, YMin, YMax = -100.0, 100.0, -100.0, 100.0
-	case 4:
-		XMin, XMax, YMin, YMax = -1.0, 1.0, -1.0, 1.0
-	case 3:
-		XMin, XMax, YMin, YMax = -5.0, -1.0, -1.0, 1.0
 	case 0:
 		XMin, XMax, YMin, YMax = -10.0, 10.0, -10.0, 10.0
 	case 1:
-		XMin, XMax, YMin, YMax = -10.0, 10.0, -20.0, 20.0
-	case 2:
 		XMin, XMax, YMin, YMax = -20.0, 20.0, -10.0, 10.0
+	case 2:
+		XMin, XMax, YMin, YMax = -100.0, 100.0, -100.0, 100.0
+	case 3:
+		XMin, XMax, YMin, YMax = -5.0, -1.0, -1.0, 1.0
+	case 4:
+		XMin, XMax, YMin, YMax = -1.0, 1.0, -1.0, 1.0
+	case 5:
+		XMin, XMax, YMin, YMax = -10.0, 10.0, -20.0, 20.0
 	default:
 		panic("No option here")
 	}
