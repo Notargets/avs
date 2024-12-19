@@ -127,6 +127,7 @@ func (scr *Screen) Printf(formatter *assets.TextFormatter, x, y float32, format 
 
 	return newKey
 }
+
 func (scr *Screen) GetWorldSpaceCharHeight(tf *assets.TextFormatter) (charHeight float32) {
 	// Implement a scale factor to reduce the polygon size commensurate with the dynamic DPI scaling, relative to the
 	// standard 72 DPI of the Opentype package
@@ -140,6 +141,7 @@ func (scr *Screen) GetWorldSpaceCharHeight(tf *assets.TextFormatter) (charHeight
 	charHeight = (worldPerPixel) * float32(pixelHeight) * float32(72) / float32(tf.TypeFace.FontDPI) * screenRatio / 1.5
 	return
 }
+
 func (scr *Screen) GetWorldSpaceCharWidth(tf *assets.TextFormatter) (charWidth float32) {
 	charHeight := scr.GetWorldSpaceCharHeight(tf)
 	// Scale the height by the world aspect ratio to get the width

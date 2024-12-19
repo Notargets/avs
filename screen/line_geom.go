@@ -16,17 +16,6 @@ type Line struct {
 	ShaderProgram uint32 // Shader program specific to this Line object
 }
 
-func NewLine(scr *Screen, vertices []float32, colors []float32, lineType utils.RenderType) (line *Line, shaderProgram uint32) {
-	shaderProgram = line.addShader(scr)
-	line = &Line{
-		Vertices:      vertices,
-		Colors:        colors,
-		LineType:      lineType,
-		ShaderProgram: shaderProgram,
-	}
-	return
-}
-
 func (line *Line) Update(X, Y, Colors []float32, defaultColor ...[3]float32) {
 	// Error check: Ensure X and Y are of the same length
 	if len(X) > 0 && len(Y) > 0 && len(X) != len(Y) {
