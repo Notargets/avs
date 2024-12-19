@@ -110,12 +110,12 @@ func (line *Line) Render(projectionMatrix mgl32.Mat4) {
 	// Draw the line segments
 	if line.LineType == utils.LINE {
 		gl.DrawArrays(gl.LINES, 0, int32(len(line.Vertices)/2))
-		checkGLError("After draw")
+		CheckGLError("After draw")
 	} else if line.LineType == utils.POLYLINE {
 		gl.DrawArrays(gl.LINE_STRIP, 0, int32(len(line.Vertices)/2))
 	}
 	gl.BindVertexArray(0)
-	checkGLError("After render")
+	CheckGLError("After render")
 }
 
 func (line *Line) AddShader() (shaderProgram uint32) {
@@ -142,31 +142,4 @@ void main() {
 ` + "\x00"
 	shaderProgram = compileShaderProgram(vertexShaderSource, fragmentShaderSource)
 	return
-}
-
-// checkGLError decodes OpenGL error codes into human-readable form and panics if an error occurs
-func checkGLError(message string) {
-	err := gl.GetError()
-	if err != gl.NO_ERROR {
-		var errorMessage string
-		switch err {
-		case gl.INVALID_ENUM:
-			errorMessage = "GL_INVALID_ENUM: An unacceptable value is specified for an enumerated argument."
-		case gl.INVALID_VALUE:
-			errorMessage = "GL_INVALID_VALUE: A numeric argument is out of range."
-		case gl.INVALID_OPERATION:
-			errorMessage = "GL_INVALID_OPERATION: The specified operation is not allowed in the current state."
-		case gl.INVALID_FRAMEBUFFER_OPERATION:
-			errorMessage = "GL_INVALID_FRAMEBUFFER_OPERATION: The framebuffer object is not complete."
-		case gl.OUT_OF_MEMORY:
-			errorMessage = "GL_OUT_OF_MEMORY: There is not enough memory left to execute the command."
-		case gl.STACK_UNDERFLOW:
-			errorMessage = "GL_STACK_UNDERFLOW: An attempt has been made to perform an operation that would cause an internal stack to underflow."
-		case gl.STACK_OVERFLOW:
-			errorMessage = "GL_STACK_OVERFLOW: An attempt has been made to perform an operation that would cause an internal stack to overflow."
-		default:
-			errorMessage = fmt.Sprintf("Unknown OpenGL error code: 0x%X", err)
-		}
-		panic(fmt.Sprintf("OpenGL Error [%s]: %s (0x%X)", message, errorMessage, err))
-	}
 }

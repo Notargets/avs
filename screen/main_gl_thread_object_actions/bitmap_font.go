@@ -1,4 +1,4 @@
-package screen
+package main_gl_thread_object_actions
 
 import (
 	"fmt"
@@ -22,13 +22,14 @@ type String struct {
 	StringType                  utils.RenderType
 	polygonVertices             [4]mgl32.Vec2 // In world coordinates
 	GPUBuffer                   []float32
-	initializedFIXEDSTRING      bool
+	InitializedFIXEDSTRING      bool
 	textureImg                  *image.RGBA
 	textureWidth, textureHeight uint32
 	TextFormatter               *assets.TextFormatter
 }
 
-func (str *String) setupTextureMap(scr *Screen) {
+func (str *String) setupTextureMap(projectionMatrix mgl32.Mat4, currentWidth, currentHeight uint32,
+	xMin, xMax, yMin, yMax float32) {
 	// Load our texture map with the drawn text if not done already
 	if str.textureImg == nil {
 		var img *image.RGBA
@@ -38,21 +39,21 @@ func (str *String) setupTextureMap(scr *Screen) {
 	}
 
 	// Set the color
-	textColor := ColorToFloat32(str.TextFormatter.Color)
+	textColor := utils.ColorToFloat32(str.TextFormatter.Color)
 
-	if str.StringType == utils.STRING || !str.initializedFIXEDSTRING {
+	if str.StringType == utils.STRING || !str.InitializedFIXEDSTRING {
 		// This is done every time for STRING, only once for FIXEDSTRING
 		// For STRING, this compensates for resize and pan via the projection matrix
 		// For FIXEDSTRING, the projection is applied once to get to Screen / Pixel fixed coordinates
-		str.calculatePolygonVertices(scr)
+		str.calculatePolygonVertices(xMin, xMax, yMin, yMax)
 	}
 
-	str.loadGPUBuffer(scr, textColor)
+	str.loadGPUBuffer(textColor, projectionMatrix, currentWidth, currentHeight)
 
-	str.loadGPUData(str.textureImg, str.textureWidth, str.textureHeight, textColor)
+	str.loadGPUData()
 }
 
-func (str *String) calculatePolygonVertices(scr *Screen) {
+func (str *String) calculatePolygonVertices(xMin, xMax, yMin, yMax float32) {
 	var (
 		tf = str.TextFormatter
 	)
@@ -60,8 +61,8 @@ func (str *String) calculatePolygonVertices(scr *Screen) {
 	x := str.Position.X()
 	y := str.Position.Y()
 	quadWidth, quadHeight := calculateQuadBounds(str.textureWidth, str.textureHeight,
-		scr.WindowWidth, scr.WindowHeight,
-		tf.TypeFace.FontDPI, scr.XMax-scr.XMin, scr.YMax-scr.YMin)
+		str.WindowWidth, str.WindowHeight,
+		tf.TypeFace.FontDPI, xMax-xMin, yMax-yMin)
 
 	// **Step 4: Calculate proper position and scale**
 	var posX, posY float32
@@ -82,7 +83,7 @@ func (str *String) calculatePolygonVertices(scr *Screen) {
 	}
 }
 
-func (str *String) fixSTRINGAspectRatio(scr *Screen, ndc *[4]mgl32.Vec4, lenRow int) {
+func (str *String) fixSTRINGAspectRatio(windowWidth, windowHeight uint32, ndc *[4]mgl32.Vec4, lenRow int) {
 	// Transform the NDC coordinates to accommodate potential changing window dimensions, which will keep the text
 	// ... visually the same size
 	// First, retrieve the previous NDC coordinates from the GPU buffer
@@ -93,8 +94,8 @@ func (str *String) fixSTRINGAspectRatio(scr *Screen, ndc *[4]mgl32.Vec4, lenRow 
 		ndc[i][3] = str.GPUBuffer[i*lenRow+3]
 	}
 	// Compute the aspect ratio scaling factors for x and y
-	Sx := float32(str.WindowWidth) / float32(scr.WindowWidth)
-	Sy := float32(str.WindowHeight) / float32(scr.WindowHeight)
+	Sx := float32(str.WindowWidth) / float32(windowWidth)
+	Sy := float32(str.WindowHeight) / float32(windowHeight)
 
 	// Calculate the center of the polygon in NDC coordinates
 	var c_r, c_s float32
@@ -128,7 +129,7 @@ func (str *String) fixSTRINGAspectRatio(scr *Screen, ndc *[4]mgl32.Vec4, lenRow 
 	}
 }
 
-func (str *String) loadGPUBuffer(scr *Screen, textColor [4]float32) {
+func (str *String) loadGPUBuffer(textColor [4]float32, projectionMatrix mgl32.Mat4, currentWidth, currentHeight uint32) {
 	var (
 		lenRow int
 	)
@@ -152,10 +153,10 @@ func (str *String) loadGPUBuffer(scr *Screen, textColor [4]float32) {
 		lenRow = 4 + 3
 		lenV := 4 * (lenRow)
 		var NDCVertexCoordinates [4]mgl32.Vec4
-		if !str.initializedFIXEDSTRING {
+		if !str.InitializedFIXEDSTRING {
 			//fmt.Printf("Rendering FIXED STRING...\n")
 			for i := 0; i < 4; i++ {
-				NDCVertexCoordinates[i] = scr.projectionMatrix.Mul4x1(mgl32.Vec4{str.polygonVertices[i].X(), str.polygonVertices[i].Y(), 0.0, 1.0})
+				NDCVertexCoordinates[i] = projectionMatrix.Mul4x1(mgl32.Vec4{str.polygonVertices[i].X(), str.polygonVertices[i].Y(), 0.0, 1.0})
 				NDCVertexCoordinates[i] = NDCVertexCoordinates[i].Mul(1.0 / NDCVertexCoordinates[i].W())
 			}
 			if len(str.GPUBuffer) == 0 {
@@ -167,7 +168,7 @@ func (str *String) loadGPUBuffer(scr *Screen, textColor [4]float32) {
 				str.GPUBuffer[i*lenRow+2] = NDCVertexCoordinates[i][2] // Clip space coordinates for fixed position
 				str.GPUBuffer[i*lenRow+3] = NDCVertexCoordinates[i][3] // Clip space coordinates for fixed position
 			}
-			str.initializedFIXEDSTRING = true // initialization is finished after this
+			str.InitializedFIXEDSTRING = true // initialization is finished after this
 		}
 		// Load the current color for each vertex
 		for i := 0; i < 4; i++ {
@@ -176,21 +177,22 @@ func (str *String) loadGPUBuffer(scr *Screen, textColor [4]float32) {
 			str.GPUBuffer[i*lenRow+6] = textColor[2]
 		}
 		// Correct the vertex coordinates for a FIXEDSTRING if the window size has changed
-		str.fixSTRINGAspectRatio(scr, &NDCVertexCoordinates, lenRow)
+		str.fixSTRINGAspectRatio(currentWidth, currentHeight, &NDCVertexCoordinates, lenRow)
 	}
 	// Update string formatter Window dimensions to match the current screen
-	str.WindowWidth = scr.WindowWidth
-	str.WindowHeight = scr.WindowHeight
+	str.WindowWidth = currentWidth
+	str.WindowHeight = currentHeight
 }
 
-func (str *String) loadGPUData(img *image.RGBA, textureWidth, textureHeight uint32, color [4]float32) {
+func (str *String) loadGPUData() {
 	// Transmit the texture image into the GPU texture buffer
 	var texture uint32
 	gl.GenTextures(1, &texture)
 	gl.BindTexture(gl.TEXTURE_2D, texture)
-	//fmt.Printf("Texture width: %d, Texture height: %d\n", textureWidth, textureHeight)
-	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, int32(textureWidth), int32(textureHeight), 0, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(img.Pix))
-	checkGLError("After TexImage2D")
+	//fmt.Printf("Texture width: %d, Texture height: %d\n", str.textureWidth, str.textureHeight)
+	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, int32(str.textureWidth), int32(str.textureHeight),
+		0, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(str.textureImg.Pix))
+	CheckGLError("After TexImage2D")
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
 	gl.BindTexture(gl.TEXTURE_2D, 0)
@@ -208,7 +210,7 @@ func (str *String) loadGPUData(img *image.RGBA, textureWidth, textureHeight uint
 
 	// Upload vertex data into the VBO as a flat array
 	gl.BufferData(gl.ARRAY_BUFFER, len(str.GPUBuffer)*4, gl.Ptr(str.GPUBuffer), gl.STATIC_DRAW)
-	checkGLError("After VBO")
+	CheckGLError("After VBO")
 
 	// Load the flat array layout into the VBA
 	// **PositionDelta (location = 0)**
@@ -263,13 +265,12 @@ func calculateQuadBounds(textureWidth, textureHeight, windowWidth, windowHeight,
 	return
 }
 
-func (str *String) addShader(scr *Screen) (shaderProgram uint32) {
-	if _, present := scr.Shaders[str.StringType]; !present {
-		var vertexShaderSource string
-		switch str.StringType {
-		case utils.STRING:
-			//fmt.Printf("Adding shader: %s\n", str.StringType)
-			vertexShaderSource = `
+func (str *String) AddShader() (shaderProgram uint32) {
+	var vertexShaderSource string
+	switch str.StringType {
+	case utils.STRING:
+		//fmt.Printf("Adding shader: %s\n", str.StringType)
+		vertexShaderSource = `
 			#version 450
 
 			layout (location = 0) in vec2 position; // Position input from the vertex buffer
@@ -293,9 +294,9 @@ func (str *String) addShader(scr *Screen) (shaderProgram uint32) {
     			fragUV = uv[gl_VertexID % 4]; // Select UV coordinate based on gl_VertexID (assumes quads)
     			fragColor = color;
 			}` + "\x00"
-		case utils.FIXEDSTRING:
-			//fmt.Printf("Adding shader: %s\n", str.StringType)
-			vertexShaderSource = `
+	case utils.FIXEDSTRING:
+		//fmt.Printf("Adding shader: %s\n", str.StringType)
+		vertexShaderSource = `
 				#version 450
 				layout (location = 0) in vec4 NDCposition;
 				layout (location = 1) in vec3 color;
@@ -316,11 +317,11 @@ func (str *String) addShader(scr *Screen) (shaderProgram uint32) {
     			    fragUV = uv[gl_VertexID % 4]; // Select UV coordinate based on gl_VertexID (assumes quads)
     				fragColor = color;
 				}` + "\x00"
-		default:
-			panic(fmt.Errorf("unknown shader type %v", str.StringType))
-		}
+	default:
+		panic(fmt.Errorf("unknown shader type %v", str.StringType))
+	}
 
-		fragmentShaderSource := `
+	fragmentShaderSource := `
 		#version 450
 		in vec2 fragUV;
 		in vec3 fragColor;
@@ -332,61 +333,61 @@ func (str *String) addShader(scr *Screen) (shaderProgram uint32) {
 			outColor = texColor * vec4(fragColor, texColor.a);
 		}` + "\x00"
 
-		scr.Shaders[str.StringType] = compileShaderProgram(vertexShaderSource, fragmentShaderSource)
-		checkGLError("After compileShaderProgram")
-	}
-	return scr.Shaders[str.StringType]
+	shaderProgram = compileShaderProgram(vertexShaderSource, fragmentShaderSource)
+	CheckGLError("After compileShaderProgram")
+	return
 }
 
-func (str *String) Render(scr *Screen) {
-	str.setupTextureMap(scr)
+func (str *String) Render(projectionMatrix mgl32.Mat4, windowWidth, windowHeight uint32, xMin, xMax, yMin, yMax float32) {
+	str.setupTextureMap(projectionMatrix, windowWidth, windowHeight, xMin, xMax, yMin, yMax)
+	CheckGLError("After Setup TextureMap")
 
 	//fmt.Printf("Rendering %s\n", str.StringType)
-	gl.UseProgram(scr.Shaders[str.StringType])
-	checkGLError("After UseProgram")
+	gl.UseProgram(str.ShaderProgram)
+	CheckGLError("After UseProgram")
 
 	// Check if the active program matches
 	var activeProgram int32
 	gl.GetIntegerv(gl.CURRENT_PROGRAM, &activeProgram)
-	if uint32(activeProgram) != scr.Shaders[str.StringType] {
-		fmt.Printf("[Render] Shader program mismatch! Active: %d, Expected: %d\n", activeProgram, scr.Shaders[str.StringType])
+	if uint32(activeProgram) != str.ShaderProgram {
+		fmt.Printf("[Render] Shader program mismatch! Active: %d, Expected: %d\n", activeProgram, str.ShaderProgram)
 		panic("[Render] Shader program is not active as expected")
 	}
 
-	if scr.Shaders[str.StringType] == 0 {
+	if str.ShaderProgram == 0 {
 		fmt.Println("[Render] Shader program handle is 0. Possible compilation/linking failure.")
 		panic("[Render] Shader program handle is 0")
 	}
 
 	// Bind the projection matrix to the shader
 	if str.StringType == utils.STRING {
-		projectionUniform := gl.GetUniformLocation(scr.Shaders[str.StringType], gl.Str("projection\x00"))
-		checkGLError("After GetUniformLocation")
+		projectionUniform := gl.GetUniformLocation(str.ShaderProgram, gl.Str("projection\x00"))
+		CheckGLError("After GetUniformLocation")
 		if projectionUniform < 0 {
 			fmt.Printf("[Render] Projection uniform not found for String Type: %s!", str.StringType.String())
 			panic("[Render] Projection uniform location returned -1")
 		}
-		gl.UniformMatrix4fv(projectionUniform, 1, false, &scr.projectionMatrix[0])
-		checkGLError("After UniformMatrix4fv")
+		gl.UniformMatrix4fv(projectionUniform, 1, false, &projectionMatrix[0])
+		CheckGLError("After UniformMatrix4fv")
 	}
 
 	// Bind the texture
 	gl.ActiveTexture(gl.TEXTURE0)
 	gl.BindTexture(gl.TEXTURE_2D, str.Texture)
-	checkGLError("After BindTexture")
+	CheckGLError("After BindTexture")
 
 	// Bind the VAO and draw the polygon
 	gl.BindVertexArray(str.VAO)
-	checkGLError("After BindVertexArray")
+	CheckGLError("After BindVertexArray")
 
 	// Enable Blending
 	gl.Enable(gl.BLEND)
 	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
-	checkGLError("After BlendFunc")
+	CheckGLError("After BlendFunc")
 
 	// Draw the quad (TRIANGLE_STRIP for simplicity)
 	gl.DrawArrays(gl.TRIANGLE_STRIP, 0, 4)
-	checkGLError("After DrawArrays")
+	CheckGLError("After DrawArrays")
 
 	// Clean up
 	gl.Disable(gl.BLEND)

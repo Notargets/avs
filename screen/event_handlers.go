@@ -47,8 +47,8 @@ func (scr *Screen) fullScreenRender() {
 		switch renderObj := obj.Object.(type) {
 		case *main_gl_thread_object_actions.Line:
 			renderObj.Render(scr.projectionMatrix)
-		case *String:
-			renderObj.Render(scr)
+		case *main_gl_thread_object_actions.String:
+			renderObj.Render(scr.projectionMatrix, scr.WindowWidth, scr.WindowHeight, scr.XMin, scr.XMax, scr.YMin, scr.YMax)
 		default:
 			fmt.Printf("Unknown object type: %T\n", renderObj)
 		}

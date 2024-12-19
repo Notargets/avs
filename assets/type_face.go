@@ -22,11 +22,11 @@ type OpenGLTypeFace struct {
 	FontDPI      uint32    // Dynamically calculated to ensure quality at all sizes
 }
 
-func NewOpenGLTypeFace(fontBaseName, fontOptionName string, fontPitch int, windowWidth int, XRange, YRange float32) (tf *OpenGLTypeFace) {
+func NewOpenGLTypeFace(fontBaseName, fontOptionName string, fontPitch uint32) (tf *OpenGLTypeFace) {
 	tf = &OpenGLTypeFace{
 		FontFilePath: FontOptionsMap[fontBaseName][fontOptionName],
-		FontPitch:    uint32(fontPitch),
-		FontDPI:      calculateDynamicDPI(uint32(fontPitch)),
+		FontPitch:    fontPitch,
+		FontDPI:      calculateDynamicDPI(fontPitch),
 	}
 	if len(tf.FontFilePath) == 0 {
 		panic("font_file_path is empty, check your font basename and option name in the asset map")

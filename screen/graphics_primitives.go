@@ -2,8 +2,9 @@ package screen
 
 import (
 	"fmt"
-	"image/color"
-	"strings"
+	"math"
+
+	"github.com/go-gl/glfw/v3.3/glfw"
 
 	"github.com/notargets/avs/screen/main_gl_thread_object_actions"
 
@@ -16,11 +17,11 @@ import (
 	"github.com/go-gl/gl/v4.5-core/gl"
 )
 
-func (scr *Screen) SetObjectActive(key Key, active bool) {
+func (scr *Screen) SetObjectActive(key Key, active bool, window *glfw.Window) {
 	scr.RenderChannel <- func() {
 		if renderable, exists := scr.Objects[key]; exists {
 			renderable.Active = active
-			scr.Objects[key] = renderable
+			renderable.Window = window
 		}
 	}
 }
@@ -95,17 +96,18 @@ func (scr *Screen) NewString(key Key, textFormatter *assets.TextFormatter, x, y 
 	}
 
 	scr.RenderChannel <- func() {
-		var str *String
+		var str *main_gl_thread_object_actions.String
 		if object, present := scr.Objects[key]; present {
-			str = object.Object.(*String)
+			str = object.Object.(*main_gl_thread_object_actions.String)
 		} else {
-			str = &String{
+			str = &main_gl_thread_object_actions.String{
 				Text:                   text,
 				Position:               mgl32.Vec2{x, y},
 				TextFormatter:          textFormatter,
-				initializedFIXEDSTRING: false,
+				InitializedFIXEDSTRING: false,
 				WindowWidth:            scr.WindowWidth,
 				WindowHeight:           scr.WindowHeight,
+				ShaderProgram:          math.MaxUint32,
 			}
 			//fmt.Printf("In NewString: ScreenFixed = %v\n", str.TextFormatter.ScreenFixed)
 			if str.TextFormatter.ScreenFixed {
@@ -113,12 +115,18 @@ func (scr *Screen) NewString(key Key, textFormatter *assets.TextFormatter, x, y 
 			} else {
 				str.StringType = utils.STRING
 			}
-			str.ShaderProgram = str.addShader(scr)
+
+			if shader, present1 := scr.Shaders[str.StringType]; !present1 {
+				str.ShaderProgram = str.AddShader()
+			} else {
+				str.ShaderProgram = shader
+			}
 
 			// Store the string in the screen objects
 			scr.Objects[key] = Renderable{
 				Active: true,
 				Object: str,
+				Window: scr.Window,
 			}
 		}
 	}
@@ -133,92 +141,4 @@ func (scr *Screen) Printf(formatter *assets.TextFormatter, x, y float32, format 
 	newKey = scr.NewString(NEW, formatter, x, y, text)
 
 	return newKey
-}
-
-func (scr *Screen) GetWorldSpaceCharHeight(tf *assets.TextFormatter) (charHeight float32) {
-	// Implement a scale factor to reduce the polygon size commensurate with the dynamic DPI scaling, relative to the
-	// standard 72 DPI of the Opentype package
-	//worldPerPixel := (scr.YMax - scr.YMin) / float32(scr.WindowHeight)
-	worldPerPixel := (scr.YMax - scr.YMin) / float32(scr.WindowHeight)
-	screenRatio := float32(scr.WindowHeight) / float32(scr.WindowWidth)
-	pixelHeight := tf.TypeFace.FontHeight
-	//fmt.Printf("pitch: %v, pixelHeight: %v, DPI: %v\n", tf.TypeFace.FontPitch,
-	//	pixelHeight, tf.TypeFace.FontDPI)
-	// Height includes the inter-line height, so divide by 1.5
-	charHeight = (worldPerPixel) * float32(pixelHeight) * float32(72) / float32(tf.TypeFace.FontDPI) * screenRatio / 1.5
-	return
-}
-
-func (scr *Screen) GetWorldSpaceCharWidth(tf *assets.TextFormatter) (charWidth float32) {
-	charHeight := scr.GetWorldSpaceCharHeight(tf)
-	// Scale the height by the world aspect ratio to get the width
-	charWidth = charHeight * (scr.XMax - scr.XMin) / (scr.YMax - scr.YMin)
-	return
-}
-
-func (scr *Screen) NewTextFormatter(fontBaseName, fontOptionName string, fontPitch int, fontColor color.Color,
-	centered, screenFixed bool) (tf *assets.TextFormatter) {
-	tf = assets.NewTextFormatter(fontBaseName, fontOptionName, fontPitch,
-		int(scr.WindowWidth),
-		fontColor, centered, screenFixed, scr.XMax-scr.XMin, scr.YMax-scr.YMin)
-	return
-}
-
-func compileShaderProgram(vertexSource, fragmentSource string) uint32 {
-	// Compile vertex shader
-	vertexShader := gl.CreateShader(gl.VERTEX_SHADER)
-	csource, free := gl.Strs(vertexSource) // Unpack both pointer and cleanup function
-	gl.ShaderSource(vertexShader, 1, csource, nil)
-	defer free() // Defer cleanup to release the C string memory
-	gl.CompileShader(vertexShader)
-
-	// Check for vertex shader compile errors
-	var status int32
-	gl.GetShaderiv(vertexShader, gl.COMPILE_STATUS, &status)
-	if status == gl.FALSE {
-		var logLength int32
-		gl.GetShaderiv(vertexShader, gl.INFO_LOG_LENGTH, &logLength)
-		log := strings.Repeat("\x00", int(logLength+1))
-		gl.GetShaderInfoLog(vertexShader, logLength, nil, gl.Str(log))
-		fmt.Printf("Vertex Shader Compile Error: %s\n", log)
-	}
-
-	// Compile fragment shader
-	fragmentShader := gl.CreateShader(gl.FRAGMENT_SHADER)
-	csource, free = gl.Strs(fragmentSource) // Unpack again for fragment shader
-	gl.ShaderSource(fragmentShader, 1, csource, nil)
-	defer free() // Defer cleanup to release the C string memory
-	gl.CompileShader(fragmentShader)
-
-	// Check for fragment shader compile errors
-	gl.GetShaderiv(fragmentShader, gl.COMPILE_STATUS, &status)
-	if status == gl.FALSE {
-		var logLength int32
-		gl.GetShaderiv(fragmentShader, gl.INFO_LOG_LENGTH, &logLength)
-		log := strings.Repeat("\x00", int(logLength+1))
-		gl.GetShaderInfoLog(fragmentShader, logLength, nil, gl.Str(log))
-		fmt.Printf("Fragment Shader Compile Error: %s\n", log)
-	}
-
-	// Link the shader program
-	shaderProgram := gl.CreateProgram()
-	gl.AttachShader(shaderProgram, vertexShader)
-	gl.AttachShader(shaderProgram, fragmentShader)
-	gl.LinkProgram(shaderProgram)
-
-	// Check for linking errors
-	gl.GetProgramiv(shaderProgram, gl.LINK_STATUS, &status)
-	if status == gl.FALSE {
-		var logLength int32
-		gl.GetProgramiv(shaderProgram, gl.INFO_LOG_LENGTH, &logLength)
-		log := strings.Repeat("\x00", int(logLength+1))
-		gl.GetProgramInfoLog(shaderProgram, logLength, nil, gl.Str(log))
-		fmt.Printf("Shader Link Error: %s\n", log)
-	}
-
-	// Clean up the compiled shaders after linking
-	gl.DeleteShader(vertexShader)
-	gl.DeleteShader(fragmentShader)
-
-	return shaderProgram
 }

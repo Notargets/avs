@@ -8,6 +8,8 @@ import (
 	"runtime/cgo"
 	"unsafe"
 
+	"github.com/notargets/avs/screen/main_gl_thread_object_actions"
+
 	"github.com/notargets/avs/utils"
 
 	"golang.org/x/image/font"
@@ -54,17 +56,18 @@ type Screen struct {
 
 type Renderable struct {
 	Active bool
-	Object interface{} // Any object that has a Render method (e.g., Line, TriMesh)
+	Object interface{}  // Any object that has a Render method (e.g., Line, TriMesh)
+	Window *glfw.Window // The target window for rendering
 }
 
-func NewScreen(width, height int, xmin, xmax, ymin, ymax, scale float32) *Screen {
+func NewScreen(width, height uint32, xmin, xmax, ymin, ymax, scale float32) *Screen {
 	screen := &Screen{
 		Shaders:       make(utils.ShaderPrograms),
 		Objects:       make(map[Key]Renderable),
 		RenderChannel: make(chan func(), 100),
 		isDragging:    false,
-		WindowWidth:   uint32(width),
-		WindowHeight:  uint32(height),
+		WindowWidth:   width,
+		WindowHeight:  height,
 		XMin:          float32(xmin),
 		XMax:          float32(xmax),
 		YMin:          float32(ymin),
@@ -85,7 +88,7 @@ func NewScreen(width, height int, xmin, xmax, ymin, ymax, scale float32) *Screen
 			log.Fatalln("Failed to initialize glfw:", err)
 		}
 
-		window, err := glfw.CreateWindow(width, height, "Chart2D", nil, nil)
+		window, err := glfw.CreateWindow(int(width), int(height), "Chart2D", nil, nil)
 		if err != nil {
 			panic(err)
 		}
@@ -96,8 +99,8 @@ func NewScreen(width, height int, xmin, xmax, ymin, ymax, scale float32) *Screen
 		// Calculate the position to center the window
 		screenWidth := videoMode.Width
 		screenHeight := videoMode.Height
-		windowX := (screenWidth - width) / 2
-		windowY := (screenHeight - height) / 2
+		windowX := (screenWidth - int(width)) / 2
+		windowY := (screenHeight - int(height)) / 2
 
 		// Set the window position to the calculated coordinates
 		window.SetPos(windowX, windowY)
@@ -163,7 +166,7 @@ func (scr *Screen) InitGLScreen(width, height int) {
 	fmt.Println("OpenGL version:", version)
 
 	// Check for OpenGL errors
-	checkGLError("glfw MakeContextCurrent")
+	main_gl_thread_object_actions.CheckGLError("glfw MakeContextCurrent")
 
 	// Enable VSync (limit frame rate to refresh rate)
 	glfw.SwapInterval(1)
@@ -202,7 +205,7 @@ func (scr *Screen) SetBackgroundColor(screenColor color.Color) {
 
 	scr.RenderChannel <- func() {
 		//gl.ClearColor(r, g, b, a)
-		fc := ColorToFloat32(screenColor)
+		fc := utils.ColorToFloat32(screenColor)
 		gl.ClearColor(fc[0], fc[1], fc[2], fc[3])
 	}
 }
@@ -238,16 +241,5 @@ func checkGLError(message string) {
 			errorMessage = fmt.Sprintf("Unknown OpenGL error code: 0x%X", err)
 		}
 		panic(fmt.Sprintf("OpenGL Error [%s]: %s (0x%X)", message, errorMessage, err))
-	}
-}
-
-// ColorToFloat64 converts a color.Color to a [4]float64 array (R, G, B, A) in the range [0.0, 1.0]
-func ColorToFloat32(c color.Color) [4]float32 {
-	r, g, b, a := c.RGBA()
-	return [4]float32{
-		float32(r) / 65535.0,
-		float32(g) / 65535.0,
-		float32(b) / 65535.0,
-		float32(a) / 65535.0,
 	}
 }

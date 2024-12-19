@@ -3,6 +3,8 @@ package main
 import (
 	"image/color"
 
+	"github.com/notargets/avs/assets"
+
 	"github.com/notargets/avs/chart2d"
 )
 
@@ -42,13 +44,13 @@ func Test_Text() {
 		panic("No option here")
 	}
 	chart := chart2d.NewChart2D(XMin, XMax, YMin, YMax, width, height)
-	tickText := chart.NewTextFormatter("NotoSans", "Regular", 24,
+	tickText := assets.NewTextFormatter("NotoSans", "Regular", 24,
 		color.RGBA{255, 255, 255, 255}, true, false)
 	chart.AddAxis(color.RGBA{R: 255, G: 255, B: 255, A: 255}, tickText, 0, 11)
 
-	DynamicText := chart.NewTextFormatter("NotoSans", "Regular", 36,
+	DynamicText := assets.NewTextFormatter("NotoSans", "Regular", 36,
 		color.RGBA{255, 0, 255, 255}, false, false)
-	TitleText := chart.NewTextFormatter("NotoSans", "Bold", 64,
+	TitleText := assets.NewTextFormatter("NotoSans", "Bold", 64,
 		color.RGBA{0, 255, 0, 255}, true, true)
 
 	titleHeight := chart.GetWorldSpaceCharHeight(TitleText)
