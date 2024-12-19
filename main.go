@@ -14,14 +14,18 @@ import (
 	"github.com/notargets/avs/chart2d"
 )
 
-// TODO: Implement LINEKEY and TEXTKEY types with function pointers to return their base objects from the map
-// TODO: ... LINEKEY, etc should be returned as object handles to enable UPDATE/DELETE/HIDE, etc
-// TODO: Implement a "Destroy" window to enable multiple screen sessions within an app lifetime
-//
-// TODO: Fix world projection matrix to stretch world coordinates into the world bounds so that the left and right
-// TODO: ... extrema are placed at the left and right boundaries of a windows when scale = 1. Right now, the world
-// TODO: ... minX and maxX and Y coords are appearing well within the window boundaries. This is evident when the
-// TODO: ... window aspect ratio is non unit
+// TODO: Alter the object management to add a top level map[WindowKey]map[ObjectKey]Renderable, where the Renderable is
+// TODO: ... an Interface{} with the Methods: Add, Delete, Update, Show, Hide. The Add() will incorporate the ObjectKey
+// TODO: ... into the object struct so that the Show/Hide functions can toggle the Visible in the Renderable
+// TODO: ... implementation. This allows the event loop to query whether to draw or not before introspecting the object.
+// TODO: ... The Delete() should cleanup any internal references, then delete the ObjectKey from the top level object
+// TODO: ... map for the Window.
+// TODO: Implement a map[WindowKey]Window such that windows can be created and separately managed. Create a "Default"
+// TODO: ... Window at Scene creation time so that any Add() calls are put into the Default window context. If new
+// TODO: ... windows are added to the Scene, the context within Scene's struct can be switched to a keyed windows and
+// TODO: ... new Add() calls will be scoped to the "current" window. At some point, objects could be moved among
+// TODO: ... windows.
+// 012345678901234567890123456789012345678901234567890123456789012345678901234567
 func main() {
 	Test_Text()
 }

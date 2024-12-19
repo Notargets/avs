@@ -1,0 +1,3 @@
+<component name="DependencyValidationManager">
+  <scope name="Go Source Files" pattern="file[avs]:*.go/" />
+</component>
