@@ -19,6 +19,9 @@ func main() {
 }
 
 func Test_Text() {
+	width, height := 1920, 1080
+	//width, height := 1000, 1000
+	scale := float32(1.0)
 	var XMin, XMax, YMin, YMax float32
 	style := 2
 	switch style {
@@ -34,10 +37,12 @@ func Test_Text() {
 		XMin, XMax, YMin, YMax = -1.0, 1.0, -1.0, 1.0
 	case 5:
 		XMin, XMax, YMin, YMax = -10.0, 10.0, -20.0, 20.0
+	case 6:
+		XMin, XMax, YMin, YMax = -10.0, 10.0, -100.0, 100.0
 	default:
 		panic("No option here")
 	}
-	chart := chart2d.NewChart2D(XMin, XMax, YMin, YMax, 0.50, 1920, 1080)
+	chart := chart2d.NewChart2D(XMin, XMax, YMin, YMax, scale, width, height)
 	tickText := chart.NewTextFormatter("NotoSans", "Regular", 24,
 		color.RGBA{255, 255, 255, 255}, true, false)
 	chart.AddAxis(color.RGBA{R: 255, G: 255, B: 255, A: 255}, tickText, 0, 11)

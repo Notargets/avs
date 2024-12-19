@@ -130,13 +130,20 @@ func (scr *Screen) Printf(formatter *assets.TextFormatter, x, y float32, format 
 func (scr *Screen) GetWorldSpaceCharHeight(tf *assets.TextFormatter) (charHeight float32) {
 	// Implement a scale factor to reduce the polygon size commensurate with the dynamic DPI scaling, relative to the
 	// standard 72 DPI of the Opentype package
-	yRange := scr.YMax - scr.YMin
-	worldPerPixel := yRange / float32(scr.WindowHeight)
+	//worldPerPixel := (scr.YMax - scr.YMin) / float32(scr.WindowHeight)
+	worldPerPixel := (scr.YMax - scr.YMin) / float32(scr.WindowHeight)
+	screenRatio := float32(scr.WindowHeight) / float32(scr.WindowWidth)
 	pixelHeight := tf.TypeFace.FontHeight
 	//fmt.Printf("pitch: %v, pixelHeight: %v, DPI: %v\n", tf.TypeFace.FontPitch,
 	//	pixelHeight, tf.TypeFace.FontDPI)
-	// Height includes the inter-line height, so divide by 2.5
-	charHeight = float32(worldPerPixel) * float32(pixelHeight) * float32(72) / float32(tf.TypeFace.FontDPI) / 2.5
+	// Height includes the inter-line height, so divide by 1.5
+	charHeight = (worldPerPixel) * float32(pixelHeight) * float32(72) / float32(tf.TypeFace.FontDPI) * screenRatio / 1.5
+	return
+}
+func (scr *Screen) GetWorldSpaceCharWidth(tf *assets.TextFormatter) (charWidth float32) {
+	charHeight := scr.GetWorldSpaceCharHeight(tf)
+	// Scale the height by the world aspect ratio to get the width
+	charWidth = charHeight * (scr.XMax - scr.XMin) / (scr.YMax - scr.YMin)
 	return
 }
 

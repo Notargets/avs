@@ -50,6 +50,10 @@ func (chart *Chart2D) GetWorldSpaceCharHeight(tf *assets.TextFormatter) (height 
 	return chart.Screen.GetWorldSpaceCharHeight(tf)
 }
 
+func (chart *Chart2D) GetWorldSpaceCharWidth(tf *assets.TextFormatter) (height float32) {
+	return chart.Screen.GetWorldSpaceCharWidth(tf)
+}
+
 func (chart *Chart2D) AddLine(X, Y []float32) {
 	chart.Screen.NewPolyLine(screen.NEW, X, Y, chart.GetSingleColorArray(Y, chart.LineColor))
 }
@@ -108,7 +112,7 @@ func (chart *Chart2D) AddAxis(axisColor color.Color, tf *assets.TextFormatter, y
 	tfY.Centered = false
 	x = yAxisLocation
 	y = yMin
-	yTextDelta := calculateYTickTextOffset(yMin, chart.GetWorldSpaceCharHeight(tfY))
+	yTextDelta := calculateYTickTextOffset(yMin, chart.GetWorldSpaceCharWidth(tfY))
 	for i := 0; i < nSegs; i++ {
 		if i == nSegs/2 {
 			y = y + yInc
