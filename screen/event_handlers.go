@@ -1,16 +1,14 @@
+/*
+ * // This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0.
+ * // If a copy of the MPL was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ * // 2024
+ */
+
 package screen
 
 import (
-	"fmt"
-	"log"
-
-	"github.com/notargets/avs/screen/main_gl_thread_object_actions"
-
-	"github.com/notargets/avs/utils"
-
 	"github.com/go-gl/gl/v4.5-core/gl"
 	"github.com/go-gl/glfw/v3.3/glfw"
-	"github.com/go-gl/mathgl/mgl32"
 )
 
 func (scr *Screen) EventLoop() {
@@ -40,135 +38,12 @@ func (scr *Screen) EventLoop() {
 	}
 }
 
-func (scr *Screen) fullScreenRender() {
-	// Clear the screen before rendering
-	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
-	for _, obj := range scr.Objects {
-		switch renderObj := obj.Object.(type) {
-		case *main_gl_thread_object_actions.Line:
-			renderObj.Render(scr.projectionMatrix)
-		case *main_gl_thread_object_actions.String:
-			renderObj.Render(scr.projectionMatrix, scr.WindowWidth, scr.WindowHeight, scr.XMin, scr.XMax, scr.YMin, scr.YMax)
-		default:
-			fmt.Printf("Unknown object type: %T\n", renderObj)
-		}
-	}
-	// Swap buffers to present the frame
-	scr.Window.SwapBuffers()
-}
-
-func (scr *Screen) SetZoomSpeed(speed float32) {
-	if speed <= 0 {
-		log.Println("Zoom speed must be positive, defaulting to 1.0")
-		scr.ZoomSpeed = 1.0
-		return
-	}
-	scr.ZoomSpeed = speed
-}
-
-func (scr *Screen) SetPanSpeed(speed float32) {
-	if speed <= 0 {
-		log.Println("Pan speed must be positive, defaulting to 1.0")
-		scr.PanSpeed = 1.0
-		return
-	}
-	scr.PanSpeed = speed
-}
-
 func (scr *Screen) SetCallbacks() {
 	scr.Window.SetMouseButtonCallback(scr.mouseButtonCallback)
 	scr.Window.SetCursorPosCallback(scr.cursorPositionCallback)
 	scr.Window.SetScrollCallback(scr.scrollCallback)
 	scr.Window.SetSizeCallback(scr.resizeCallback)
 
-}
-
-func (scr *Screen) updateProjectionMatrix() {
-	// Get the aspect ratio of the window
-	aspectRatio := float32(scr.WindowWidth) / float32(scr.WindowHeight)
-
-	// Determine world coordinate range based on zoom and position
-	xRange := (scr.XMax - scr.XMin) / scr.ZoomFactor / scr.Scale
-	yRange := (scr.YMax - scr.YMin) / scr.ZoomFactor / scr.Scale
-
-	// Calculate the current center of the view
-	centerX := (scr.XMin + scr.XMax) / 2.0
-	centerY := (scr.YMin + scr.YMax) / 2.0
-
-	// ** Key Change ** - Proper "squish" logic for X and Y
-	if aspectRatio > 1.0 {
-		// The screen is wider than it is tall, so "stretch" Y relative to X
-		yRange = yRange / aspectRatio
-	} else {
-		// The screen is taller than it is wide, so "stretch" X relative to Y
-		xRange = xRange * aspectRatio
-	}
-
-	// Use PositionDelta to adjust the camera's "pan" position in world space
-	xmin := centerX - xRange/2.0 + scr.PositionDelta[0]
-	xmax := centerX + xRange/2.0 + scr.PositionDelta[0]
-	ymin := centerY - yRange/2.0 + scr.PositionDelta[1]
-	ymax := centerY + yRange/2.0 + scr.PositionDelta[1]
-
-	// Update the orthographic projection matrix
-	scr.projectionMatrix = mgl32.Ortho2D(xmin, xmax, ymin, ymax)
-
-	// Send the updated projection matrix to all shaders
-	for renderType, shaderProgram := range scr.Shaders {
-		if renderType != utils.FIXEDSTRING {
-			projectionUniform := gl.GetUniformLocation(shaderProgram, gl.Str("projection\x00"))
-			if projectionUniform < 0 {
-				fmt.Printf("Projection uniform not found for RenderType %v\n", renderType)
-			} else {
-				gl.UseProgram(shaderProgram)
-				gl.UniformMatrix4fv(projectionUniform, 1, false, &scr.projectionMatrix[0])
-			}
-		}
-	}
-}
-
-func (scr *Screen) updateProjectionMatrixSquare() {
-	// Get the aspect ratio of the window
-	aspectRatio := float32(scr.WindowWidth) / float32(scr.WindowHeight)
-
-	// Determine world coordinate range based on zoom and position
-	xRange := (scr.XMax - scr.XMin) / scr.ZoomFactor / scr.Scale
-	yRange := (scr.YMax - scr.YMin) / scr.ZoomFactor / scr.Scale
-
-	// Calculate the current center of the view
-	centerX := (scr.XMin + scr.XMax) / 2.0
-	centerY := (scr.YMin + scr.YMax) / 2.0
-
-	// Adjust for the aspect ratio, but keep the world coordinates intact
-	if aspectRatio > 1.0 {
-		// If the screen is wider than tall, we "stretch" xRange
-		xRange = yRange * aspectRatio
-	} else {
-		// If the screen is taller than wide, we "stretch" yRange
-		yRange = xRange / aspectRatio
-	}
-
-	// Use PositionDelta to adjust the camera's "pan" position in world space
-	xmin := centerX - xRange/2.0 + scr.PositionDelta[0]
-	xmax := centerX + xRange/2.0 + scr.PositionDelta[0]
-	ymin := centerY - yRange/2.0 + scr.PositionDelta[1]
-	ymax := centerY + yRange/2.0 + scr.PositionDelta[1]
-
-	// Update the orthographic projection matrix
-	scr.projectionMatrix = mgl32.Ortho2D(xmin, xmax, ymin, ymax)
-
-	// Send the updated projection matrix to all shaders
-	for renderType, shaderProgram := range scr.Shaders {
-		if renderType != utils.FIXEDSTRING {
-			projectionUniform := gl.GetUniformLocation(shaderProgram, gl.Str("projection\x00"))
-			if projectionUniform < 0 {
-				fmt.Printf("Projection uniform not found for RenderType %v\n", renderType)
-			} else {
-				gl.UseProgram(shaderProgram)
-				gl.UniformMatrix4fv(projectionUniform, 1, false, &scr.projectionMatrix[0])
-			}
-		}
-	}
 }
 
 func (scr *Screen) mouseButtonCallback(w *glfw.Window, button glfw.MouseButton, action glfw.Action, mods glfw.ModifierKey) {
@@ -251,12 +126,4 @@ func (scr *Screen) resizeCallback(w *glfw.Window, width, height int) {
 	// Mark that a change occurred so the view is updated
 	scr.PositionChanged = true
 	scr.ScaleChanged = true
-}
-
-func (scr *Screen) Redraw() {
-	select {
-	case scr.RenderChannel <- func() {}:
-	default:
-		// Channel is full, no need to push more redraws
-	}
 }

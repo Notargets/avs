@@ -11,4 +11,4 @@ The implementation detail code for geoms, etc should go here for clarity.
 
 ## What kind of functions go in the screen directory?
 
-Functions essential for control and setup relevant to being called by the event loop, most often implemented as a closure.
+Functions essential for control and setup relevant to being called by the event loop, most often implemented within a closure.

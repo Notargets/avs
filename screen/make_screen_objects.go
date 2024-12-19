@@ -1,10 +1,14 @@
+/*
+ * // This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0.
+ * // If a copy of the MPL was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ * // 2024
+ */
+
 package screen
 
 import (
 	"fmt"
 	"math"
-
-	"github.com/go-gl/glfw/v3.3/glfw"
 
 	"github.com/notargets/avs/screen/main_gl_thread_object_actions"
 
@@ -16,15 +20,6 @@ import (
 
 	"github.com/go-gl/gl/v4.5-core/gl"
 )
-
-func (scr *Screen) SetObjectActive(key Key, active bool, window *glfw.Window) {
-	scr.RenderChannel <- func() {
-		if renderable, exists := scr.Objects[key]; exists {
-			renderable.Active = active
-			renderable.Window = window
-		}
-	}
-}
 
 func (scr *Screen) NewLine(key Key, X, Y, Colors []float32, rt ...utils.RenderType) (newKey Key) {
 	if key == NEW {

@@ -1,3 +1,9 @@
+/*
+ * // This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0.
+ * // If a copy of the MPL was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ * // 2024
+ */
+
 package main_gl_thread_object_actions
 
 import (
@@ -16,6 +22,32 @@ type Line struct {
 	Colors        []float32 // Flat list of color data [r1, g1, b1, r2, g2, b2, ...]
 	LineType      utils.RenderType
 	ShaderProgram uint32 // Shader program specific to this Line object
+}
+
+func (line *Line) AddShader() (shaderProgram uint32) {
+	// Line Shaders
+	var vertexShaderSource = `
+#version 450
+layout (location = 0) in vec2 position;
+layout (location = 1) in vec3 color;
+uniform mat4 projection; // Add this line
+out vec3 fragColor;
+void main() {
+	gl_Position = projection * vec4(position, 0.0, 1.0); // Use projection
+	fragColor = color;
+}
+` + "\x00"
+
+	var fragmentShaderSource = `
+#version 450
+in vec3 fragColor;
+out vec4 outColor;
+void main() {
+	outColor = vec4(fragColor, 1.0);
+}
+` + "\x00"
+	shaderProgram = compileShaderProgram(vertexShaderSource, fragmentShaderSource)
+	return
 }
 
 func (line *Line) Update(X, Y, Colors []float32, defaultColor ...[3]float32) {
@@ -116,30 +148,4 @@ func (line *Line) Render(projectionMatrix mgl32.Mat4) {
 	}
 	gl.BindVertexArray(0)
 	CheckGLError("After render")
-}
-
-func (line *Line) AddShader() (shaderProgram uint32) {
-	// Line Shaders
-	var vertexShaderSource = `
-#version 450
-layout (location = 0) in vec2 position;
-layout (location = 1) in vec3 color;
-uniform mat4 projection; // Add this line
-out vec3 fragColor;
-void main() {
-	gl_Position = projection * vec4(position, 0.0, 1.0); // Use projection
-	fragColor = color;
-}
-` + "\x00"
-
-	var fragmentShaderSource = `
-#version 450
-in vec3 fragColor;
-out vec4 outColor;
-void main() {
-	outColor = vec4(fragColor, 1.0);
-}
-` + "\x00"
-	shaderProgram = compileShaderProgram(vertexShaderSource, fragmentShaderSource)
-	return
 }

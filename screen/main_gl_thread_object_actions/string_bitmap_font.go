@@ -1,3 +1,9 @@
+/*
+ * // This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0.
+ * // If a copy of the MPL was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ * // 2024
+ */
+
 package main_gl_thread_object_actions
 
 import (
@@ -26,6 +32,136 @@ type String struct {
 	textureImg                  *image.RGBA
 	textureWidth, textureHeight uint32
 	TextFormatter               *assets.TextFormatter
+}
+
+func (str *String) AddShader() (shaderProgram uint32) {
+	var vertexShaderSource string
+	switch str.StringType {
+	case utils.STRING:
+		//fmt.Printf("Adding shader: %s\n", str.StringType)
+		vertexShaderSource = `
+			#version 450
+
+			layout (location = 0) in vec2 position; // Position input from the vertex buffer
+			layout (location = 1) in vec3 color;    // Color input from the vertex buffer
+
+			uniform mat4 projection; // Projection matrix
+
+			// Constant array of vec2 representing the UV coordinates for 4 vertices
+			const vec2 uv[4] = vec2[4](
+    			vec2(0.0, 1.0), // Top-left
+    			vec2(1.0, 1.0), // Top-right
+    			vec2(0.0, 0.0), // Bottom-left
+    			vec2(1.0, 0.0)  // Bottom-right
+			);
+
+			out vec2 fragUV;
+			out vec3 fragColor;
+
+			void main() {
+    			gl_Position = projection * vec4(position, 0.0, 1.0); // Apply projection matrix
+    			fragUV = uv[gl_VertexID % 4]; // Select UV coordinate based on gl_VertexID (assumes quads)
+    			fragColor = color;
+			}` + "\x00"
+	case utils.FIXEDSTRING:
+		//fmt.Printf("Adding shader: %s\n", str.StringType)
+		vertexShaderSource = `
+				#version 450
+				layout (location = 0) in vec4 NDCposition;
+				layout (location = 1) in vec3 color;
+
+			    // Constant array of vec2 representing the UV coordinates for 4 vertices
+			    const vec2 uv[4] = vec2[4](
+    			    vec2(0.0, 1.0), // Top-left
+    			    vec2(1.0, 1.0), // Top-right
+    			    vec2(0.0, 0.0), // Bottom-left
+    			    vec2(1.0, 0.0)  // Bottom-right
+			    );
+
+				out vec2 fragUV;
+				out vec3 fragColor;
+
+				void main() {
+    				gl_Position = NDCposition; // Use the NDS position directly (clip space)
+    			    fragUV = uv[gl_VertexID % 4]; // Select UV coordinate based on gl_VertexID (assumes quads)
+    				fragColor = color;
+				}` + "\x00"
+	default:
+		panic(fmt.Errorf("unknown shader type %v", str.StringType))
+	}
+
+	fragmentShaderSource := `
+		#version 450
+		in vec2 fragUV;
+		in vec3 fragColor;
+		uniform sampler2D fontTexture;
+		out vec4 outColor;
+
+		void main() {
+			vec4 texColor = texture(fontTexture, fragUV);
+			outColor = texColor * vec4(fragColor, texColor.a);
+		}` + "\x00"
+
+	shaderProgram = compileShaderProgram(vertexShaderSource, fragmentShaderSource)
+	CheckGLError("After compileShaderProgram")
+	return
+}
+
+func (str *String) Render(projectionMatrix mgl32.Mat4, windowWidth, windowHeight uint32, xMin, xMax, yMin, yMax float32) {
+	str.setupTextureMap(projectionMatrix, windowWidth, windowHeight, xMin, xMax, yMin, yMax)
+	CheckGLError("After Setup TextureMap")
+
+	//fmt.Printf("Rendering %s\n", str.StringType)
+	gl.UseProgram(str.ShaderProgram)
+	CheckGLError("After UseProgram")
+
+	// Check if the active program matches
+	var activeProgram int32
+	gl.GetIntegerv(gl.CURRENT_PROGRAM, &activeProgram)
+	if uint32(activeProgram) != str.ShaderProgram {
+		fmt.Printf("[Render] Shader program mismatch! Active: %d, Expected: %d\n", activeProgram, str.ShaderProgram)
+		panic("[Render] Shader program is not active as expected")
+	}
+
+	if str.ShaderProgram == 0 {
+		fmt.Println("[Render] Shader program handle is 0. Possible compilation/linking failure.")
+		panic("[Render] Shader program handle is 0")
+	}
+
+	// Bind the projection matrix to the shader
+	if str.StringType == utils.STRING {
+		projectionUniform := gl.GetUniformLocation(str.ShaderProgram, gl.Str("projection\x00"))
+		CheckGLError("After GetUniformLocation")
+		if projectionUniform < 0 {
+			fmt.Printf("[Render] Projection uniform not found for String Type: %s!", str.StringType.String())
+			panic("[Render] Projection uniform location returned -1")
+		}
+		gl.UniformMatrix4fv(projectionUniform, 1, false, &projectionMatrix[0])
+		CheckGLError("After UniformMatrix4fv")
+	}
+
+	// Bind the texture
+	gl.ActiveTexture(gl.TEXTURE0)
+	gl.BindTexture(gl.TEXTURE_2D, str.Texture)
+	CheckGLError("After BindTexture")
+
+	// Bind the VAO and draw the polygon
+	gl.BindVertexArray(str.VAO)
+	CheckGLError("After BindVertexArray")
+
+	// Enable Blending
+	gl.Enable(gl.BLEND)
+	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+	CheckGLError("After BlendFunc")
+
+	// Draw the quad (TRIANGLE_STRIP for simplicity)
+	gl.DrawArrays(gl.TRIANGLE_STRIP, 0, 4)
+	CheckGLError("After DrawArrays")
+
+	// Clean up
+	gl.Disable(gl.BLEND)
+	gl.BindVertexArray(0)
+	gl.BindTexture(gl.TEXTURE_2D, 0)
 }
 
 func (str *String) setupTextureMap(projectionMatrix mgl32.Mat4, currentWidth, currentHeight uint32,
@@ -263,134 +399,4 @@ func calculateQuadBounds(textureWidth, textureHeight, windowWidth, windowHeight,
 	quadWidth = winRatio * scaleFromDPI * worldSpaceWidth
 	quadHeight = winRatio * scaleFromDPI * worldSpaceHeight
 	return
-}
-
-func (str *String) AddShader() (shaderProgram uint32) {
-	var vertexShaderSource string
-	switch str.StringType {
-	case utils.STRING:
-		//fmt.Printf("Adding shader: %s\n", str.StringType)
-		vertexShaderSource = `
-			#version 450
-
-			layout (location = 0) in vec2 position; // Position input from the vertex buffer
-			layout (location = 1) in vec3 color;    // Color input from the vertex buffer
-
-			uniform mat4 projection; // Projection matrix
-
-			// Constant array of vec2 representing the UV coordinates for 4 vertices
-			const vec2 uv[4] = vec2[4](
-    			vec2(0.0, 1.0), // Top-left
-    			vec2(1.0, 1.0), // Top-right
-    			vec2(0.0, 0.0), // Bottom-left
-    			vec2(1.0, 0.0)  // Bottom-right
-			);
-
-			out vec2 fragUV;
-			out vec3 fragColor;
-
-			void main() {
-    			gl_Position = projection * vec4(position, 0.0, 1.0); // Apply projection matrix
-    			fragUV = uv[gl_VertexID % 4]; // Select UV coordinate based on gl_VertexID (assumes quads)
-    			fragColor = color;
-			}` + "\x00"
-	case utils.FIXEDSTRING:
-		//fmt.Printf("Adding shader: %s\n", str.StringType)
-		vertexShaderSource = `
-				#version 450
-				layout (location = 0) in vec4 NDCposition;
-				layout (location = 1) in vec3 color;
-
-			    // Constant array of vec2 representing the UV coordinates for 4 vertices
-			    const vec2 uv[4] = vec2[4](
-    			    vec2(0.0, 1.0), // Top-left
-    			    vec2(1.0, 1.0), // Top-right
-    			    vec2(0.0, 0.0), // Bottom-left
-    			    vec2(1.0, 0.0)  // Bottom-right
-			    );
-
-				out vec2 fragUV;
-				out vec3 fragColor;
-
-				void main() {
-    				gl_Position = NDCposition; // Use the NDS position directly (clip space)
-    			    fragUV = uv[gl_VertexID % 4]; // Select UV coordinate based on gl_VertexID (assumes quads)
-    				fragColor = color;
-				}` + "\x00"
-	default:
-		panic(fmt.Errorf("unknown shader type %v", str.StringType))
-	}
-
-	fragmentShaderSource := `
-		#version 450
-		in vec2 fragUV;
-		in vec3 fragColor;
-		uniform sampler2D fontTexture;
-		out vec4 outColor;
-
-		void main() {
-			vec4 texColor = texture(fontTexture, fragUV);
-			outColor = texColor * vec4(fragColor, texColor.a);
-		}` + "\x00"
-
-	shaderProgram = compileShaderProgram(vertexShaderSource, fragmentShaderSource)
-	CheckGLError("After compileShaderProgram")
-	return
-}
-
-func (str *String) Render(projectionMatrix mgl32.Mat4, windowWidth, windowHeight uint32, xMin, xMax, yMin, yMax float32) {
-	str.setupTextureMap(projectionMatrix, windowWidth, windowHeight, xMin, xMax, yMin, yMax)
-	CheckGLError("After Setup TextureMap")
-
-	//fmt.Printf("Rendering %s\n", str.StringType)
-	gl.UseProgram(str.ShaderProgram)
-	CheckGLError("After UseProgram")
-
-	// Check if the active program matches
-	var activeProgram int32
-	gl.GetIntegerv(gl.CURRENT_PROGRAM, &activeProgram)
-	if uint32(activeProgram) != str.ShaderProgram {
-		fmt.Printf("[Render] Shader program mismatch! Active: %d, Expected: %d\n", activeProgram, str.ShaderProgram)
-		panic("[Render] Shader program is not active as expected")
-	}
-
-	if str.ShaderProgram == 0 {
-		fmt.Println("[Render] Shader program handle is 0. Possible compilation/linking failure.")
-		panic("[Render] Shader program handle is 0")
-	}
-
-	// Bind the projection matrix to the shader
-	if str.StringType == utils.STRING {
-		projectionUniform := gl.GetUniformLocation(str.ShaderProgram, gl.Str("projection\x00"))
-		CheckGLError("After GetUniformLocation")
-		if projectionUniform < 0 {
-			fmt.Printf("[Render] Projection uniform not found for String Type: %s!", str.StringType.String())
-			panic("[Render] Projection uniform location returned -1")
-		}
-		gl.UniformMatrix4fv(projectionUniform, 1, false, &projectionMatrix[0])
-		CheckGLError("After UniformMatrix4fv")
-	}
-
-	// Bind the texture
-	gl.ActiveTexture(gl.TEXTURE0)
-	gl.BindTexture(gl.TEXTURE_2D, str.Texture)
-	CheckGLError("After BindTexture")
-
-	// Bind the VAO and draw the polygon
-	gl.BindVertexArray(str.VAO)
-	CheckGLError("After BindVertexArray")
-
-	// Enable Blending
-	gl.Enable(gl.BLEND)
-	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
-	CheckGLError("After BlendFunc")
-
-	// Draw the quad (TRIANGLE_STRIP for simplicity)
-	gl.DrawArrays(gl.TRIANGLE_STRIP, 0, 4)
-	CheckGLError("After DrawArrays")
-
-	// Clean up
-	gl.Disable(gl.BLEND)
-	gl.BindVertexArray(0)
-	gl.BindTexture(gl.TEXTURE_2D, 0)
 }

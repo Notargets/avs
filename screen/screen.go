@@ -1,3 +1,9 @@
+/*
+ * // This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0.
+ * // If a copy of the MPL was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ * // 2024
+ */
+
 package screen
 
 import (
@@ -17,17 +23,6 @@ import (
 	"github.com/go-gl/gl/v4.5-core/gl"
 	"github.com/go-gl/glfw/v3.3/glfw"
 	"github.com/go-gl/mathgl/mgl32"
-	"github.com/google/uuid"
-)
-
-type Key uuid.UUID
-
-func NewKey() Key {
-	return Key(uuid.New())
-}
-
-var (
-	NEW = Key(uuid.Nil)
 )
 
 type Screen struct {
@@ -52,12 +47,6 @@ type Screen struct {
 	PositionChanged  bool
 	ScaleChanged     bool
 	NeedsRedraw      bool
-}
-
-type Renderable struct {
-	Active bool
-	Object interface{}  // Any object that has a Render method (e.g., Line, TriMesh)
-	Window *glfw.Window // The target window for rendering
 }
 
 func NewScreen(width, height uint32, xmin, xmax, ymin, ymax, scale float32) *Screen {
@@ -217,29 +206,116 @@ func (scr *Screen) ChangeScale(scale float32) {
 	}
 }
 
-// checkGLError decodes OpenGL error codes into human-readable form and panics if an error occurs
-func checkGLError(message string) {
-	err := gl.GetError()
-	if err != gl.NO_ERROR {
-		var errorMessage string
-		switch err {
-		case gl.INVALID_ENUM:
-			errorMessage = "GL_INVALID_ENUM: An unacceptable value is specified for an enumerated argument."
-		case gl.INVALID_VALUE:
-			errorMessage = "GL_INVALID_VALUE: A numeric argument is out of range."
-		case gl.INVALID_OPERATION:
-			errorMessage = "GL_INVALID_OPERATION: The specified operation is not allowed in the current state."
-		case gl.INVALID_FRAMEBUFFER_OPERATION:
-			errorMessage = "GL_INVALID_FRAMEBUFFER_OPERATION: The framebuffer object is not complete."
-		case gl.OUT_OF_MEMORY:
-			errorMessage = "GL_OUT_OF_MEMORY: There is not enough memory left to execute the command."
-		case gl.STACK_UNDERFLOW:
-			errorMessage = "GL_STACK_UNDERFLOW: An attempt has been made to perform an operation that would cause an internal stack to underflow."
-		case gl.STACK_OVERFLOW:
-			errorMessage = "GL_STACK_OVERFLOW: An attempt has been made to perform an operation that would cause an internal stack to overflow."
-		default:
-			errorMessage = fmt.Sprintf("Unknown OpenGL error code: 0x%X", err)
+func (scr *Screen) SetZoomSpeed(speed float32) {
+	if speed <= 0 {
+		log.Println("Zoom speed must be positive, defaulting to 1.0")
+		scr.ZoomSpeed = 1.0
+		return
+	}
+	scr.ZoomSpeed = speed
+}
+
+func (scr *Screen) SetPanSpeed(speed float32) {
+	if speed <= 0 {
+		log.Println("Pan speed must be positive, defaulting to 1.0")
+		scr.PanSpeed = 1.0
+		return
+	}
+	scr.PanSpeed = speed
+}
+
+func (scr *Screen) updateProjectionMatrix() {
+	// Get the aspect ratio of the window
+	aspectRatio := float32(scr.WindowWidth) / float32(scr.WindowHeight)
+
+	// Determine world coordinate range based on zoom and position
+	xRange := (scr.XMax - scr.XMin) / scr.ZoomFactor / scr.Scale
+	yRange := (scr.YMax - scr.YMin) / scr.ZoomFactor / scr.Scale
+
+	// Calculate the current center of the view
+	centerX := (scr.XMin + scr.XMax) / 2.0
+	centerY := (scr.YMin + scr.YMax) / 2.0
+
+	// ** Key Change ** - Proper "squish" logic for X and Y
+	if aspectRatio > 1.0 {
+		// The screen is wider than it is tall, so "stretch" Y relative to X
+		yRange = yRange / aspectRatio
+	} else {
+		// The screen is taller than it is wide, so "stretch" X relative to Y
+		xRange = xRange * aspectRatio
+	}
+
+	// Use PositionDelta to adjust the camera's "pan" position in world space
+	xmin := centerX - xRange/2.0 + scr.PositionDelta[0]
+	xmax := centerX + xRange/2.0 + scr.PositionDelta[0]
+	ymin := centerY - yRange/2.0 + scr.PositionDelta[1]
+	ymax := centerY + yRange/2.0 + scr.PositionDelta[1]
+
+	// Update the orthographic projection matrix
+	scr.projectionMatrix = mgl32.Ortho2D(xmin, xmax, ymin, ymax)
+
+	// Send the updated projection matrix to all shaders
+	for renderType, shaderProgram := range scr.Shaders {
+		if renderType != utils.FIXEDSTRING {
+			projectionUniform := gl.GetUniformLocation(shaderProgram, gl.Str("projection\x00"))
+			if projectionUniform < 0 {
+				fmt.Printf("Projection uniform not found for RenderType %v\n", renderType)
+			} else {
+				gl.UseProgram(shaderProgram)
+				gl.UniformMatrix4fv(projectionUniform, 1, false, &scr.projectionMatrix[0])
+			}
 		}
-		panic(fmt.Sprintf("OpenGL Error [%s]: %s (0x%X)", message, errorMessage, err))
+	}
+}
+
+func (scr *Screen) updateProjectionMatrixSquare() {
+	// Get the aspect ratio of the window
+	aspectRatio := float32(scr.WindowWidth) / float32(scr.WindowHeight)
+
+	// Determine world coordinate range based on zoom and position
+	xRange := (scr.XMax - scr.XMin) / scr.ZoomFactor / scr.Scale
+	yRange := (scr.YMax - scr.YMin) / scr.ZoomFactor / scr.Scale
+
+	// Calculate the current center of the view
+	centerX := (scr.XMin + scr.XMax) / 2.0
+	centerY := (scr.YMin + scr.YMax) / 2.0
+
+	// Adjust for the aspect ratio, but keep the world coordinates intact
+	if aspectRatio > 1.0 {
+		// If the screen is wider than tall, we "stretch" xRange
+		xRange = yRange * aspectRatio
+	} else {
+		// If the screen is taller than wide, we "stretch" yRange
+		yRange = xRange / aspectRatio
+	}
+
+	// Use PositionDelta to adjust the camera's "pan" position in world space
+	xmin := centerX - xRange/2.0 + scr.PositionDelta[0]
+	xmax := centerX + xRange/2.0 + scr.PositionDelta[0]
+	ymin := centerY - yRange/2.0 + scr.PositionDelta[1]
+	ymax := centerY + yRange/2.0 + scr.PositionDelta[1]
+
+	// Update the orthographic projection matrix
+	scr.projectionMatrix = mgl32.Ortho2D(xmin, xmax, ymin, ymax)
+
+	// Send the updated projection matrix to all shaders
+	for renderType, shaderProgram := range scr.Shaders {
+		if renderType != utils.FIXEDSTRING {
+			projectionUniform := gl.GetUniformLocation(shaderProgram, gl.Str("projection\x00"))
+			if projectionUniform < 0 {
+				fmt.Printf("Projection uniform not found for RenderType %v\n", renderType)
+			} else {
+				gl.UseProgram(shaderProgram)
+				gl.UniformMatrix4fv(projectionUniform, 1, false, &scr.projectionMatrix[0])
+			}
+		}
+	}
+}
+
+func (scr *Screen) Redraw() {
+	select {
+	case scr.RenderChannel <- func() {}:
+	default:
+		// Channel is full, no need to push more redraws
 	}
 }
