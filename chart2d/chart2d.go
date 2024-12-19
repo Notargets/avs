@@ -1,7 +1,6 @@
 package chart2d
 
 import (
-	"fmt"
 	"image/color"
 	"math"
 
@@ -138,7 +137,7 @@ func calculateYTickTextOffset(y float32, charWidth float32) (delta float32) {
 		delta = charWidth * .5 // Minus sign is about 1/2 char
 	}
 	d := float32(math.Ceil(math.Log10(math.Abs(float64(y))))) + 1.1 // Add some for the decimal and the trailing zero
-	fmt.Printf("y: %v, CharWidth: %v, d: %v\n", y, charWidth, d)
+	//fmt.Printf("y: %v, CharWidth: %v, d: %v\n", y, charWidth, d)
 	delta += d * charWidth
 	return
 }
