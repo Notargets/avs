@@ -1,7 +1,9 @@
-package screen
+package main_gl_thread_object_actions
 
 import (
 	"fmt"
+
+	"github.com/go-gl/mathgl/mgl32"
 
 	"github.com/notargets/avs/utils"
 
@@ -92,7 +94,7 @@ func (line *Line) Update(X, Y, Colors []float32, defaultColor ...[3]float32) {
 }
 
 // Render draws the line using the shader program stored in Line
-func (line *Line) Render(scr *Screen) {
+func (line *Line) Render(projectionMatrix mgl32.Mat4) {
 	// Ensure shader program is active
 	gl.UseProgram(line.ShaderProgram)
 	gl.BindVertexArray(line.VAO)
@@ -100,7 +102,7 @@ func (line *Line) Render(scr *Screen) {
 	// Upload the projection matrix
 	projectionUniform := gl.GetUniformLocation(line.ShaderProgram, gl.Str("projection\x00"))
 	if projectionUniform >= 0 {
-		gl.UniformMatrix4fv(projectionUniform, 1, false, &scr.projectionMatrix[0])
+		gl.UniformMatrix4fv(projectionUniform, 1, false, &projectionMatrix[0])
 	} else {
 		fmt.Println("Projection matrix uniform not found in Line shader")
 	}
@@ -116,10 +118,9 @@ func (line *Line) Render(scr *Screen) {
 	checkGLError("After render")
 }
 
-func (line *Line) addShader(scr *Screen) (shaderProgram uint32) {
-	if _, present := scr.Shaders[utils.LINE]; !present {
-		// Line Shaders
-		var vertexShaderSource = `
+func (line *Line) AddShader() (shaderProgram uint32) {
+	// Line Shaders
+	var vertexShaderSource = `
 #version 450
 layout (location = 0) in vec2 position;
 layout (location = 1) in vec3 color;
@@ -131,7 +132,7 @@ void main() {
 }
 ` + "\x00"
 
-		var fragmentShaderSource = `
+	var fragmentShaderSource = `
 #version 450
 in vec3 fragColor;
 out vec4 outColor;
@@ -139,7 +140,33 @@ void main() {
 	outColor = vec4(fragColor, 1.0);
 }
 ` + "\x00"
-		scr.Shaders[utils.LINE] = compileShaderProgram(vertexShaderSource, fragmentShaderSource)
+	shaderProgram = compileShaderProgram(vertexShaderSource, fragmentShaderSource)
+	return
+}
+
+// checkGLError decodes OpenGL error codes into human-readable form and panics if an error occurs
+func checkGLError(message string) {
+	err := gl.GetError()
+	if err != gl.NO_ERROR {
+		var errorMessage string
+		switch err {
+		case gl.INVALID_ENUM:
+			errorMessage = "GL_INVALID_ENUM: An unacceptable value is specified for an enumerated argument."
+		case gl.INVALID_VALUE:
+			errorMessage = "GL_INVALID_VALUE: A numeric argument is out of range."
+		case gl.INVALID_OPERATION:
+			errorMessage = "GL_INVALID_OPERATION: The specified operation is not allowed in the current state."
+		case gl.INVALID_FRAMEBUFFER_OPERATION:
+			errorMessage = "GL_INVALID_FRAMEBUFFER_OPERATION: The framebuffer object is not complete."
+		case gl.OUT_OF_MEMORY:
+			errorMessage = "GL_OUT_OF_MEMORY: There is not enough memory left to execute the command."
+		case gl.STACK_UNDERFLOW:
+			errorMessage = "GL_STACK_UNDERFLOW: An attempt has been made to perform an operation that would cause an internal stack to underflow."
+		case gl.STACK_OVERFLOW:
+			errorMessage = "GL_STACK_OVERFLOW: An attempt has been made to perform an operation that would cause an internal stack to overflow."
+		default:
+			errorMessage = fmt.Sprintf("Unknown OpenGL error code: 0x%X", err)
+		}
+		panic(fmt.Sprintf("OpenGL Error [%s]: %s (0x%X)", message, errorMessage, err))
 	}
-	return scr.Shaders[utils.LINE]
 }

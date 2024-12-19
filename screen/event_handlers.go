@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/notargets/avs/screen/main_gl_thread_object_actions"
+
 	"github.com/notargets/avs/utils"
 
 	"github.com/go-gl/gl/v4.5-core/gl"
@@ -43,8 +45,8 @@ func (scr *Screen) fullScreenRender() {
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 	for _, obj := range scr.Objects {
 		switch renderObj := obj.Object.(type) {
-		case *Line:
-			renderObj.Render(scr)
+		case *main_gl_thread_object_actions.Line:
+			renderObj.Render(scr.projectionMatrix)
 		case *String:
 			renderObj.Render(scr)
 		default:

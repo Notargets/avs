@@ -5,6 +5,8 @@ import (
 	"image/color"
 	"strings"
 
+	"github.com/notargets/avs/screen/main_gl_thread_object_actions"
+
 	"github.com/notargets/avs/utils"
 
 	"github.com/go-gl/mathgl/mgl32"
@@ -36,15 +38,20 @@ func (scr *Screen) NewLine(key Key, X, Y, Colors []float32, rt ...utils.RenderTy
 
 	// Send a command to create or update a line object
 	scr.RenderChannel <- func() {
-		var line *Line
+		var line *main_gl_thread_object_actions.Line
 
 		// Check if the object exists in the scene
 		if existingRenderable, exists := scr.Objects[key]; exists {
-			line = existingRenderable.Object.(*Line)
+			line = existingRenderable.Object.(*main_gl_thread_object_actions.Line)
 		} else {
 			// Create new line
-			line = &Line{LineType: renderType}
-			line.ShaderProgram = line.addShader(scr)
+			line = &main_gl_thread_object_actions.Line{LineType: renderType}
+			if shader, present := scr.Shaders[utils.LINE]; !present {
+				line.ShaderProgram = line.AddShader()
+			} else {
+				line.ShaderProgram = shader
+			}
+			scr.Shaders[utils.LINE] = line.ShaderProgram
 			scr.Objects[key] = Renderable{
 				Active: true,
 				Object: line,
