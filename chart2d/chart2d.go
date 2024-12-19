@@ -22,7 +22,13 @@ type Chart2D struct {
 
 type Color [4]float32 // RGBA
 
-func NewChart2D(XMin, XMax, YMin, YMax, scale float32, width, height int) (chart *Chart2D) {
+func NewChart2D(XMin, XMax, YMin, YMax float32, width, height int, scaleOpt ...float32) (chart *Chart2D) {
+	var scale float32
+	if len(scaleOpt) == 0 {
+		scale = 0.90 * float32(height) / float32(width)
+	} else {
+		scale = scaleOpt[0]
+	}
 	chart = &Chart2D{
 		XMin:        XMin,
 		XMax:        XMax,

@@ -21,7 +21,6 @@ func main() {
 func Test_Text() {
 	width, height := 1920, 1080
 	//width, height := 1000, 1000
-	scale := float32(1.0)
 	var XMin, XMax, YMin, YMax float32
 	style := 2
 	switch style {
@@ -42,7 +41,7 @@ func Test_Text() {
 	default:
 		panic("No option here")
 	}
-	chart := chart2d.NewChart2D(XMin, XMax, YMin, YMax, scale, width, height)
+	chart := chart2d.NewChart2D(XMin, XMax, YMin, YMax, width, height)
 	tickText := chart.NewTextFormatter("NotoSans", "Regular", 24,
 		color.RGBA{255, 255, 255, 255}, true, false)
 	chart.AddAxis(color.RGBA{R: 255, G: 255, B: 255, A: 255}, tickText, 0, 11)
@@ -52,6 +51,8 @@ func Test_Text() {
 	TitleText := chart.NewTextFormatter("NotoSans", "Bold", 64,
 		color.RGBA{0, 255, 0, 255}, true, true)
 
+	titleHeight := chart.GetWorldSpaceCharHeight(TitleText)
+
 	xRange := chart.XMax - chart.XMin
 	_ = xRange
 	yRange := chart.YMax - chart.YMin
@@ -60,9 +61,12 @@ func Test_Text() {
 	chart.Printf(DynamicText, xpos, ypos, "This is text that moves with the screen objects")
 	ypos = chart.YMin + 0.4*yRange
 	chart.Printf(DynamicText, xpos, ypos, "Pan and zoom with right mouse and scroll wheel")
-	ypos = chart.YMin + 1.05*yRange
+
+	// Title
+	ypos = 1.1*chart.YMax - titleHeight
 	chart.Printf(TitleText, xpos, ypos, "This is an example of a title text string")
-	ypos = chart.YMin + 1.00*yRange
+	// Add a 33% pad for the vertical line spacing between lines
+	ypos = ypos - 1.33*titleHeight
 	chart.Printf(TitleText, xpos, ypos, "Title text doesn't move with pan and zoom and remains the same size when window is resized")
 	select {}
 }
