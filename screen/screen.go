@@ -198,7 +198,7 @@ func (scr *Screen) updateProjectionMatrix() {
 	ymin := centerY - yRange/2.0 + scr.PositionDelta[1]
 	ymax := centerY + yRange/2.0 + scr.PositionDelta[1]
 
-	// setupVertices the orthographic projection matrix
+	// calculate the orthographic projection matrix
 	scr.projectionMatrix = mgl32.Ortho2D(xmin, xmax, ymin, ymax)
 
 	// Send the updated projection matrix to all shaders

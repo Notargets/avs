@@ -9,8 +9,6 @@ package main_gl_thread_object_actions
 import (
 	"fmt"
 
-	"github.com/go-gl/mathgl/mgl32"
-
 	"github.com/notargets/avs/utils"
 
 	"github.com/go-gl/gl/v4.5-core/gl"
@@ -153,10 +151,9 @@ func (line *Line) loadGPUData() {
 }
 
 // Render draws the line using the shader program stored in Line
-func (line *Line) Render(projectionMatrix mgl32.Mat4) {
+func (line *Line) Render() {
 	// Ensure shader program is active
 	setShaderProgram(line.ShaderProgram)
-	bindProjectionMatrixToShader(line.ShaderProgram, projectionMatrix)
 
 	line.loadGPUData()
 

@@ -103,6 +103,7 @@ func setShaderProgram(shaderProgram uint32) {
 }
 
 func bindProjectionMatrixToShader(shaderProgram uint32, projectionMatrix mgl32.Mat4) {
+	return
 	// Bind the projection matrix to the shader
 	projectionUniform := gl.GetUniformLocation(shaderProgram, gl.Str("projection\x00"))
 	CheckGLError("After GetUniformLocation")

@@ -144,11 +144,6 @@ func (str *String) Render(projectionMatrix mgl32.Mat4, windowWidth,
 
 	str.sendHostBufferToGPU()
 
-	if str.StringType == utils.STRING {
-		// Only the STRING vertex shader uses the projection matrix
-		bindProjectionMatrixToShader(str.ShaderProgram, projectionMatrix)
-	}
-
 	// Draw the quad after binding the texture to it
 	// Bind the texture
 	gl.ActiveTexture(gl.TEXTURE0)
