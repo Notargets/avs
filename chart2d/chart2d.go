@@ -48,7 +48,7 @@ func NewChart2D(XMin, XMax, YMin, YMax float32, width, height int, scaleOpt ...f
 		LineColor:    color.RGBA{255, 255, 255, 255},
 		ScreenColor:  color.RGBA{46, 46, 46, 255},
 	}
-	chart.Screen.SetBackgroundColor(chart.ScreenColor)
+	chart.Screen.Window.SetBackgroundColor(chart.ScreenColor)
 	return
 }
 

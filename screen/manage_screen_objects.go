@@ -23,12 +23,12 @@ func NewObjectGroup(object interface{}) ObjectGroup {
 
 type Renderable struct {
 	Visible bool
-	Window  Window      // The target window for rendering
+	Window  *Window     // The target window for rendering
 	Objects ObjectGroup // Any object that has a Render method (e.g., Line,
 	// TriMesh)
 }
 
-func NewRenderable(window Window, object interface{}) (rb *Renderable) {
+func NewRenderable(window *Window, object interface{}) (rb *Renderable) {
 	rb = &Renderable{
 		Visible: true,
 		Window:  window,
@@ -57,13 +57,15 @@ func (scr *Screen) fullScreenRender() {
 			case *main_gl_thread_objects.Line:
 				renderObj.Render()
 			case *main_gl_thread_objects.String:
-				renderObj.Render(scr.projectionMatrix, scr.WindowWidth,
-					scr.WindowHeight, scr.XMin, scr.XMax, scr.YMin, scr.YMax)
+				renderObj.Render(scr.Window.ProjectionMatrix,
+					scr.Window.Width,
+					scr.Window.Height, scr.Window.XMin, scr.Window.XMax, scr.Window.YMin,
+					scr.Window.YMax)
 			default:
 				fmt.Printf("Unknown object type: %T\n", renderObj)
 			}
 		}
 	}
 	// Swap buffers to present the frame
-	scr.Window.Window.SwapBuffers()
+	scr.Window.SwapBuffers()
 }

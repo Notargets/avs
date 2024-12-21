@@ -55,6 +55,7 @@ func Test_Text() {
 	}
 
 	chart := chart2d.NewChart2D(XMin, XMax, YMin, YMax, width, height)
+
 	tickText := assets.NewTextFormatter("NotoSans", "Regular", 24,
 		color.RGBA{255, 255, 255, 255}, true, false)
 	chart.AddAxis(color.RGBA{R: 255, G: 255, B: 255, A: 255}, tickText, 0, 11)
