@@ -21,10 +21,7 @@ func (scr *Screen) NewLine(X, Y, Colors []float32,
 	key = utils.NewKey()
 
 	// Create new line
-	line := main_gl_thread_objects.NewLine(X, Y, Colors)
-
-	scr.Window.ActiveShaders.Store(utils.LINE,
-		main_gl_thread_objects.LineShader)
+	line := main_gl_thread_objects.NewLine(X, Y, Colors, scr.Window.Shaders)
 
 	scr.Objects[key] = NewRenderable(scr.Window, line)
 
@@ -46,15 +43,7 @@ func (scr *Screen) NewString(tf *assets.TextFormatter, x,
 	}
 
 	str := main_gl_thread_objects.NewString(tf, x, y,
-		text, scr.Window.Width, scr.Window.Height)
-
-	if str.StringType == utils.FIXEDSTRING {
-		scr.Window.ActiveShaders.Store(utils.FIXEDSTRING,
-			main_gl_thread_objects.FixedStringShader)
-	} else {
-		scr.Window.ActiveShaders.Store(utils.STRING,
-			main_gl_thread_objects.StringShader)
-	}
+		text, scr.Window.Width, scr.Window.Height, scr.Window.Shaders)
 
 	scr.Objects[key] = NewRenderable(scr.Window, str)
 

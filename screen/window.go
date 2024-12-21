@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"image/color"
 	"log"
-	"sync"
 
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/notargets/avs/utils"
@@ -25,6 +24,17 @@ var windowCount utils.SafeInt
 func init() {
 	windowCount.Write(-1)
 }
+
+type Position uint8
+
+const (
+	AUTO Position = iota
+	TOPLEFT
+	TOPRIGHT
+	BOTTOMLEFT
+	BOTTOMRIGHT
+	CENTER
+)
 
 type Window struct {
 	Window           *glfw.Window
@@ -41,13 +51,14 @@ type Window struct {
 	ZoomFactor       float32
 	ZoomSpeed        float32
 	PanSpeed         float32
-	ActiveShaders    sync.Map // We store a pointer to the package shader vars
 	RenderChannel    chan func()
 	ProjectionMatrix mgl32.Mat4
+	Shaders          map[utils.RenderType]uint32
 }
 
 func NewWindow(width, height uint32, xMin, xMax, yMin, yMax, scale float32,
-	title string, renderChannel chan func()) (win *Window) {
+	title string, renderChannel chan func(),
+	bgColor [4]float32, position Position) (win *Window) {
 
 	var (
 		err error
@@ -69,6 +80,7 @@ func NewWindow(width, height uint32, xMin, xMax, yMin, yMax, scale float32,
 		PositionDelta: [2]float32{0, 0},
 		ScaleChanged:  false,
 		NeedsRedraw:   true,
+		Shaders:       make(map[utils.RenderType]uint32),
 	}
 	// Launch the OpenGL thread
 	if err := glfw.Init(); err != nil {
@@ -89,8 +101,31 @@ func NewWindow(width, height uint32, xMin, xMax, yMin, yMax, scale float32,
 	// Calculate the position to center the window
 	screenWidth := videoMode.Width
 	screenHeight := videoMode.Height
-	windowX := (screenWidth - int(width)) / 2
-	windowY := (screenHeight - int(height)) / 2
+
+	// Put the window into a quadrant of the host window depending on window
+	// number
+	// fmt.Printf("Window Number: %d\n", windowCount.Read()+1)
+	if position == AUTO {
+		position = Position((windowCount.Read() + 1) % 4)
+	}
+	var windowX, windowY int
+	switch position {
+	case TOPLEFT:
+		windowX = 0
+		windowY = 0
+	case BOTTOMLEFT:
+		windowX = 0
+		windowY = screenHeight / 2
+	case BOTTOMRIGHT:
+		windowX = screenWidth / 2
+		windowY = screenHeight / 2
+	case TOPRIGHT:
+		windowX = screenWidth / 2
+		windowY = 0
+	case CENTER:
+		windowX = (screenWidth - int(width)) / 2
+		windowY = (screenHeight - int(height)) / 2
+	}
 
 	// Set the window position to the calculated coordinates
 	window.SetPos(windowX, windowY)
@@ -101,9 +136,12 @@ func NewWindow(width, height uint32, xMin, xMax, yMin, yMax, scale float32,
 		if err := gl.Init(); err != nil {
 			log.Fatalln("Failed to initialize OpenGL context:", err)
 		}
-		windowCount.Write(windowCount.Read() + 1)
 	}
-	gl.ClearColor(0.3, 0.3, 0.3, 1.0)
+	windowCount.Write(windowCount.Read() + 1)
+
+	gl.ClearColor(bgColor[0], bgColor[1], bgColor[2], bgColor[3])
+	gl.Clear(gl.COLOR_BUFFER_BIT)
+	window.SwapBuffers()
 
 	// Enable VSync
 	glfw.SwapInterval(1)
@@ -112,8 +150,8 @@ func NewWindow(width, height uint32, xMin, xMax, yMin, yMax, scale float32,
 	gl.Viewport(0, 0, int32(width), int32(height))
 
 	// For each object type in Screen, we need to load the shaders here
-	main_gl_thread_objects.AddStringShaders()
-	main_gl_thread_objects.AddLineShader()
+	main_gl_thread_objects.AddStringShaders(win.Shaders)
+	main_gl_thread_objects.AddLineShader(win.Shaders)
 
 	win.SetCallbacks()
 
@@ -123,6 +161,10 @@ func NewWindow(width, height uint32, xMin, xMax, yMin, yMax, scale float32,
 
 	// Notify the main thread that OpenGL is ready
 	return
+}
+
+func (win *Window) SetCurrent() {
+	win.Window.MakeContextCurrent()
 }
 
 func (win *Window) SetPos(windowX, windowY int) {
@@ -257,16 +299,9 @@ func (win *Window) UpdateProjectionMatrix() {
 
 	// Send the updated projection matrix to all shaders that share the world
 	// view. FIXEDSTRING doesn't
-	win.ActiveShaders.Range(func(key, value interface{}) bool {
+	for renderType, shaderProgram := range win.Shaders {
+		// win.ActiveShaders.Range(func(key, value interface{}) bool {
 		// Type assertion for the key and value
-		renderType, okKey := key.(utils.RenderType)
-		shaderProgram, okValue := value.(uint32)
-
-		if !okKey || !okValue {
-			fmt.Println("[Error] Type assertion failed for ActiveShaders Range")
-			return true // Continue iterating despite the error
-		}
-
 		if renderType != utils.FIXEDSTRING {
 			projectionUniform := gl.GetUniformLocation(shaderProgram, gl.Str("projection\x00"))
 			if projectionUniform < 0 {
@@ -278,14 +313,11 @@ func (win *Window) UpdateProjectionMatrix() {
 			}
 		}
 
-		return true // Continue to the next item
-	})
-
+	}
 }
 
 func (win *Window) SetBackgroundColor(screenColor color.Color) {
 	win.RenderChannel <- func() {
-		// gl.ClearColor(r, g, b, a)
 		fc := utils.ColorToFloat32(screenColor)
 		gl.ClearColor(fc[0], fc[1], fc[2], fc[3])
 	}

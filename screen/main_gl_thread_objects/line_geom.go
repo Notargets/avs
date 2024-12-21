@@ -14,9 +14,7 @@ import (
 	"github.com/go-gl/gl/v4.5-core/gl"
 )
 
-var LineShader uint32
-
-func AddLineShader() {
+func AddLineShader(shaderMap map[utils.RenderType]uint32) {
 	// Line Shaders
 	var vertexShader = gl.Str(`
 		#version 450
@@ -37,7 +35,7 @@ func AddLineShader() {
 			outColor = vec4(fragColor, 1.0);
 		}` + "\x00")
 
-	LineShader = compileShaderProgram(vertexShader, fragmentShader)
+	shaderMap[utils.LINE] = compileShaderProgram(vertexShader, fragmentShader)
 }
 
 type Line struct {
@@ -48,14 +46,15 @@ type Line struct {
 	ShaderProgram uint32 // Shader program specific to this Line object
 }
 
-func NewLine(X, Y, Colors []float32, rt ...utils.RenderType) (line *Line) {
+func NewLine(X, Y, Colors []float32, shaderMap map[utils.RenderType]uint32,
+	rt ...utils.RenderType) (line *Line) {
 	var renderType = utils.LINE
 	if len(rt) != 0 {
 		renderType = utils.POLYLINE
 	}
 	line = &Line{
 		LineType:      renderType,
-		ShaderProgram: LineShader,
+		ShaderProgram: shaderMap[renderType],
 	}
 	line.setupVertices(X, Y, Colors)
 	return

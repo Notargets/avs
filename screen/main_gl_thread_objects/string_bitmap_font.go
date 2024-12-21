@@ -20,7 +20,7 @@ import (
 var StringShader uint32
 var FixedStringShader uint32
 
-func AddStringShaders() {
+func AddStringShaders(shaderMap map[utils.RenderType]uint32) {
 	fragmentShaderSource := gl.Str(`
 		#version 450
 		in vec2 fragUV;
@@ -57,7 +57,8 @@ func AddStringShaders() {
     			fragUV = uv[gl_VertexID % 4]; // Select UV coordinate based on gl_VertexID (assumes quads)
     			fragColor = color;
 			}` + "\x00")
-	StringShader = compileShaderProgram(vertexShaderSource, fragmentShaderSource)
+	shaderMap[utils.STRING] = compileShaderProgram(vertexShaderSource,
+		fragmentShaderSource)
 	CheckGLError("After String compileShaderProgram")
 
 	vertexShaderSource = gl.Str(`
@@ -83,7 +84,8 @@ func AddStringShaders() {
 					                              // on gl_VertexID ( assumes quads)
     				fragColor = color;
 				}` + "\x00")
-	FixedStringShader = compileShaderProgram(vertexShaderSource, fragmentShaderSource)
+	shaderMap[utils.FIXEDSTRING] = compileShaderProgram(vertexShaderSource,
+		fragmentShaderSource)
 	CheckGLError("After FixedString compileShaderProgram")
 }
 
@@ -104,7 +106,8 @@ type String struct {
 }
 
 func NewString(tf *assets.TextFormatter, x, y float32,
-	text string, windowWidth, windowHeight uint32) (str *String) {
+	text string, windowWidth, windowHeight uint32,
+	shaderMap map[utils.RenderType]uint32) (str *String) {
 	str = &String{
 		Text:                   text,
 		Position:               mgl32.Vec2{x, y},
@@ -115,11 +118,10 @@ func NewString(tf *assets.TextFormatter, x, y float32,
 	}
 	if tf.ScreenFixed {
 		str.StringType = utils.FIXEDSTRING
-		str.ShaderProgram = FixedStringShader
 	} else {
 		str.StringType = utils.STRING
-		str.ShaderProgram = StringShader
 	}
+	str.ShaderProgram = shaderMap[str.StringType]
 	return
 }
 

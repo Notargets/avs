@@ -7,7 +7,6 @@
 package screen
 
 import (
-	"fmt"
 	"runtime"
 
 	"github.com/notargets/avs/utils"
@@ -19,7 +18,9 @@ type Screen struct {
 	RenderChannel chan func()
 }
 
-func NewScreen(width, height uint32, xmin, xmax, ymin, ymax, scale float32) *Screen {
+func NewScreen(width, height uint32, xmin, xmax, ymin, ymax, scale float32,
+	bgColor [4]float32) *Screen {
+
 	screen := &Screen{
 		Objects:       make(map[utils.Key]*Renderable),
 		RenderChannel: make(chan func(), 100),
@@ -33,10 +34,10 @@ func NewScreen(width, height uint32, xmin, xmax, ymin, ymax, scale float32) *Scr
 		runtime.LockOSThread()
 
 		screen.Window = NewWindow(width, height, xmin, xmax, ymin, ymax, scale,
-			"Chart2D", screen.RenderChannel)
+			"Chart2D", screen.RenderChannel, bgColor, CENTER)
 
 		// Notify the main thread that OpenGL is ready
-		fmt.Println("[OpenGL] Initialization complete, signaling main thread.")
+		// fmt.Println("[OpenGL] Initialization complete, signaling main thread.")
 		done <- OpenGLReady{}
 
 		// Start the event loop (OpenGL runs here)
