@@ -43,9 +43,9 @@ func NewScreen(width, height uint32, xmin, xmax, ymin, ymax, scale float32) *Scr
 		screen.EventLoop()
 	}(initDone)
 	// Wait for the OpenGL thread to signal readiness
-	fmt.Println("[Main] Waiting for OpenGL initialization...")
+	// fmt.Println("[Main] Waiting for OpenGL initialization...")
 	<-initDone
-	fmt.Println("[Main] OpenGL initialization complete, proceeding.")
+	// fmt.Println("[Main] OpenGL initialization complete, proceeding.")
 
 	return screen
 }

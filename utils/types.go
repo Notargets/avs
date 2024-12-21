@@ -6,7 +6,28 @@
 
 package utils
 
-import "github.com/google/uuid"
+import (
+	"sync/atomic"
+	"unsafe"
+
+	"github.com/google/uuid"
+)
+
+type SafeInt struct {
+	value unsafe.Pointer
+}
+
+// Write sets a new value atomically
+func (si *SafeInt) Write(val int) {
+	atomic.StorePointer(&si.value, unsafe.Pointer(&val))
+}
+
+// Read atomically retrieves the variable's value.
+// It returns an `int` type
+func (si *SafeInt) Read() int {
+	ptr := atomic.LoadPointer(&si.value)
+	return *(*int)(ptr)
+}
 
 type RenderType uint16
 

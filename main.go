@@ -31,7 +31,7 @@ func main() {
 }
 
 func Test_Text() {
-	width, height := 1920, 1080
+	width, height := 1440, 900
 	// width, height := 1000, 1000
 	var XMin, XMax, YMin, YMax float32
 	style := 2
@@ -60,9 +60,9 @@ func Test_Text() {
 		color.RGBA{255, 255, 255, 255}, true, false)
 	chart.AddAxis(color.RGBA{R: 255, G: 255, B: 255, A: 255}, tickText, 0, 11)
 
-	DynamicText := assets.NewTextFormatter("NotoSans", "Regular", 36,
+	DynamicText := assets.NewTextFormatter("NotoSans", "Regular", 24,
 		color.RGBA{255, 0, 255, 255}, false, false)
-	TitleText := assets.NewTextFormatter("NotoSans", "Bold", 64,
+	TitleText := assets.NewTextFormatter("NotoSans", "Bold", 48,
 		color.RGBA{0, 255, 0, 255}, true, true)
 
 	titleHeight := chart.GetWorldSpaceCharHeight(TitleText)

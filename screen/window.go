@@ -20,7 +20,11 @@ import (
 	"github.com/notargets/avs/screen/main_gl_thread_objects"
 )
 
-var IsFirstWindow = true
+var windowCount utils.SafeInt
+
+func init() {
+	windowCount.Write(-1)
+}
 
 type Window struct {
 	Window           *glfw.Window
@@ -93,8 +97,11 @@ func NewWindow(width, height uint32, xMin, xMax, yMin, yMax, scale float32,
 
 	window.MakeContextCurrent()
 
-	if err := gl.Init(); err != nil {
-		log.Fatalln("Failed to initialize OpenGL context:", err)
+	if windowCount.Read() == -1 {
+		if err := gl.Init(); err != nil {
+			log.Fatalln("Failed to initialize OpenGL context:", err)
+		}
+		windowCount.Write(windowCount.Read() + 1)
 	}
 	gl.ClearColor(0.3, 0.3, 0.3, 1.0)
 
