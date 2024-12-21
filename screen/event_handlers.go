@@ -12,7 +12,7 @@ import (
 )
 
 func (scr *Screen) EventLoop() {
-	for !scr.Window.ShouldClose() {
+	for !scr.Window.Window.ShouldClose() {
 		// Wait for any input event (mouse, keyboard, resize, etc.)
 		glfw.WaitEventsTimeout(0.02)
 
@@ -26,7 +26,7 @@ func (scr *Screen) EventLoop() {
 			break
 		}
 
-		// Update the projection matrix if pan/zoom has changed
+		// setupVertices the projection matrix if pan/zoom has changed
 		if scr.NeedsRedraw || scr.PositionChanged || scr.ScaleChanged {
 			scr.updateProjectionMatrix()
 			scr.PositionChanged = false
@@ -39,10 +39,10 @@ func (scr *Screen) EventLoop() {
 }
 
 func (scr *Screen) SetCallbacks() {
-	scr.Window.SetMouseButtonCallback(scr.mouseButtonCallback)
-	scr.Window.SetCursorPosCallback(scr.cursorPositionCallback)
-	scr.Window.SetScrollCallback(scr.scrollCallback)
-	scr.Window.SetSizeCallback(scr.resizeCallback)
+	scr.Window.Window.SetMouseButtonCallback(scr.mouseButtonCallback)
+	scr.Window.Window.SetCursorPosCallback(scr.cursorPositionCallback)
+	scr.Window.Window.SetScrollCallback(scr.scrollCallback)
+	scr.Window.Window.SetSizeCallback(scr.resizeCallback)
 
 }
 
@@ -72,14 +72,14 @@ func (scr *Screen) cursorPositionCallback(w *glfw.Window, xpos, ypos float64) {
 		dx := float32(xpos-scr.lastX) / float32(width) * (scr.XMax - scr.XMin) / scr.Scale
 		dy := float32(ypos-scr.lastY) / float32(height) * (scr.YMax - scr.YMin) / scr.Scale
 
-		// Update world position
+		// setupVertices world position
 		scr.PositionDelta[0] -= dx // X-axis pan
 		scr.PositionDelta[1] += dy // Y-axis pan (inverted since screen Y is inverted)
 
 		// Mark the screen as needing a projection update
 		scr.PositionChanged = true
 
-		// Update cursor tracking position
+		// setupVertices cursor tracking position
 		scr.lastX = xpos
 		scr.lastY = ypos
 	}
@@ -113,11 +113,11 @@ func (scr *Screen) scrollCallback(w *glfw.Window, xoff, yoff float64) {
 }
 
 func (scr *Screen) resizeCallback(w *glfw.Window, width, height int) {
-	// Update screen dimensions
+	// setupVertices screen dimensions
 	scr.WindowWidth = uint32(width)
 	scr.WindowHeight = uint32(height)
 
-	// Update OpenGL viewport
+	// setupVertices OpenGL viewport
 	gl.Viewport(0, 0, int32(width), int32(height))
 
 	// Recompute the projection matrix to maintain the aspect ratio and world bounds

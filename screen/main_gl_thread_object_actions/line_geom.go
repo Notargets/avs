@@ -16,6 +16,32 @@ import (
 	"github.com/go-gl/gl/v4.5-core/gl"
 )
 
+var LineShader uint32
+
+func AddLineShader() {
+	// Line Shaders
+	var vertexShader = gl.Str(`
+		#version 450
+		layout (location = 0) in vec2 position;
+		layout (location = 1) in vec3 color;
+		uniform mat4 projection; // Add this line
+		out vec3 fragColor;
+		void main() {
+			gl_Position = projection * vec4(position, 0.0, 1.0); // Use projection
+			fragColor = color;
+		}` + "\x00")
+
+	var fragmentShader = gl.Str(`
+		#version 450
+		in vec3 fragColor;
+		out vec4 outColor;
+		void main() {
+			outColor = vec4(fragColor, 1.0);
+		}` + "\x00")
+
+	LineShader = compileShaderProgram(vertexShader, fragmentShader)
+}
+
 type Line struct {
 	VAO, VBO, CBO uint32    // Vertex Array Object, Vertex Buffer Object, Color Buffer Object
 	Vertices      []float32 // Flat list of vertex positions [x1, y1, x2, y2, ...]
@@ -24,50 +50,42 @@ type Line struct {
 	ShaderProgram uint32 // Shader program specific to this Line object
 }
 
-func (line *Line) AddShader() (shaderProgram uint32) {
-	// Line Shaders
-	var vertexShaderSource = `
-#version 450
-layout (location = 0) in vec2 position;
-layout (location = 1) in vec3 color;
-uniform mat4 projection; // Add this line
-out vec3 fragColor;
-void main() {
-	gl_Position = projection * vec4(position, 0.0, 1.0); // Use projection
-	fragColor = color;
-}
-` + "\x00"
-
-	var fragmentShaderSource = `
-#version 450
-in vec3 fragColor;
-out vec4 outColor;
-void main() {
-	outColor = vec4(fragColor, 1.0);
-}
-` + "\x00"
-	shaderProgram = compileShaderProgram(vertexShaderSource, fragmentShaderSource)
+func NewLine(X, Y, Colors []float32, rt ...utils.RenderType) (line *Line) {
+	var renderType = utils.LINE
+	if len(rt) != 0 {
+		renderType = utils.POLYLINE
+	}
+	line = &Line{
+		LineType:      renderType,
+		ShaderProgram: LineShader,
+	}
+	line.setupVertices(X, Y, Colors)
 	return
 }
 
-func (line *Line) Update(X, Y, Colors []float32, defaultColor ...[3]float32) {
+func (line *Line) setupVertices(X, Y, Colors []float32,
+	defaultColor ...[3]float32) {
 	// Error check: Ensure X and Y are of the same length
 	if len(X) > 0 && len(Y) > 0 && len(X) != len(Y) {
 		panic("X and Y must have the same length if both are provided")
 	}
 	if len(Colors) != 0 && len(Colors) != 3*len(X) {
-		panic("Colors must have 3*length(X) if any are provided, one RGB each vertex")
+		panic("Colors must have 3*length(X) if any are provided, " +
+			"one RGB each vertex")
 	}
 
 	// Validate vertex count based on LineType
 	switch line.LineType {
 	case utils.LINE:
 		if len(X) > 0 && len(Y) > 0 && len(X)%2 != 0 {
-			panic(fmt.Sprintf("Invalid vertex count for LINE: %d. Each line segment requires two points (X1, Y1, X2, Y2). Vertex count must be a multiple of 2.", len(X)))
+			panic(fmt.Sprintf("Invalid vertex count for LINE: %d. "+
+				"Each line segment requires two points (X1, Y1, X2, "+
+				"Y2). Vertex count must be a multiple of 2.", len(X)))
 		}
 	case utils.POLYLINE:
 		if len(X) < 2 {
-			panic(fmt.Sprintf("Invalid vertex count for POLYLINE: %d. POLYLINE requires at least two vertices.", len(X)))
+			panic(fmt.Sprintf("Invalid vertex count for POLYLINE: %d. "+
+				"POLYLINE requires at least two vertices.", len(X)))
 		}
 	default:
 		panic(fmt.Sprintf("Unsupported LineType: %v", line.LineType))
@@ -90,7 +108,8 @@ func (line *Line) Update(X, Y, Colors []float32, defaultColor ...[3]float32) {
 
 	// Error check: Ensure Colors array is a multiple of 3 (RGB per vertex)
 	if len(Colors) > 0 && len(Colors)%3 != 0 {
-		panic(fmt.Sprintf("Invalid color count: %d. Color array must be a multiple of 3 (R, G, B per vertex).", len(Colors)))
+		panic(fmt.Sprintf("Invalid color count: %d. "+
+			"Color array must be a multiple of 3 (R, G, B per vertex).", len(Colors)))
 	}
 
 	// Create colors for each vertex
@@ -107,6 +126,14 @@ func (line *Line) Update(X, Y, Colors []float32, defaultColor ...[3]float32) {
 			line.Colors[3*i+2] = colorToUse[2] // B
 		}
 	}
+}
+
+func (line *Line) loadGPUData() {
+	// Transfer the vertex data into the VBO buffer. Use the VBA to identify the layout of the data
+	// Generate VBO and VAO once
+	gl.GenBuffers(1, &line.VBO)
+	gl.GenVertexArrays(1, &line.VAO)
+	gl.GenBuffers(1, &line.CBO)
 
 	// Upload vertex positions to GPU
 	gl.BindVertexArray(line.VAO)
@@ -128,17 +155,12 @@ func (line *Line) Update(X, Y, Colors []float32, defaultColor ...[3]float32) {
 // Render draws the line using the shader program stored in Line
 func (line *Line) Render(projectionMatrix mgl32.Mat4) {
 	// Ensure shader program is active
-	gl.UseProgram(line.ShaderProgram)
+	setShaderProgram(line.ShaderProgram)
+	bindProjectionMatrixToShader(line.ShaderProgram, projectionMatrix)
+
+	line.loadGPUData()
+
 	gl.BindVertexArray(line.VAO)
-
-	// Upload the projection matrix
-	projectionUniform := gl.GetUniformLocation(line.ShaderProgram, gl.Str("projection\x00"))
-	if projectionUniform >= 0 {
-		gl.UniformMatrix4fv(projectionUniform, 1, false, &projectionMatrix[0])
-	} else {
-		fmt.Println("Projection matrix uniform not found in Line shader")
-	}
-
 	// Draw the line segments
 	if line.LineType == utils.LINE {
 		gl.DrawArrays(gl.LINES, 0, int32(len(line.Vertices)/2))

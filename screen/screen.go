@@ -11,8 +11,7 @@ import (
 	"image/color"
 	"log"
 	"runtime"
-	"runtime/cgo"
-	"unsafe"
+	"sync"
 
 	"github.com/notargets/avs/screen/main_gl_thread_object_actions"
 
@@ -26,11 +25,14 @@ import (
 )
 
 type Screen struct {
-	Shaders          utils.ShaderPrograms // Stores precompiled shaders for all graphics types
-	Window           *glfw.Window
-	Font             font.Face // Using gltext font instead of raw OpenGL textures
-	Objects          map[Key]Renderable
-	RenderChannel    chan func()
+	Window        Window
+	Font          font.Face // Using gltext font instead of raw OpenGL textures
+	Objects       map[utils.Key]*Renderable
+	RenderChannel chan func()
+	// ActiveShaders sync.Map[utils.RenderType]uint32 // We store a pointer to the
+	ActiveShaders sync.Map // We store a pointer to the
+	// package shader
+	// vars
 	Scale            float32
 	PositionDelta    [2]float32
 	isDragging       bool
@@ -51,8 +53,7 @@ type Screen struct {
 
 func NewScreen(width, height uint32, xmin, xmax, ymin, ymax, scale float32) *Screen {
 	screen := &Screen{
-		Shaders:       make(utils.ShaderPrograms),
-		Objects:       make(map[Key]Renderable),
+		Objects:       make(map[utils.Key]*Renderable),
 		RenderChannel: make(chan func(), 100),
 		isDragging:    false,
 		WindowWidth:   width,
@@ -68,11 +69,15 @@ func NewScreen(width, height uint32, xmin, xmax, ymin, ymax, scale float32) *Scr
 		PositionDelta: [2]float32{0, 0},
 		NeedsRedraw:   true,
 	}
+	// OpenGLReady is used to signal when OpenGL is fully initialized
+	type OpenGLReady struct{}
+	// Channel for synchronization
+	initDone := make(chan OpenGLReady)
 
-	// Launch the OpenGL thread
-	go func() {
+	go func(done chan OpenGLReady) {
 		runtime.LockOSThread()
 
+		// Launch the OpenGL thread
 		if err := glfw.Init(); err != nil {
 			log.Fatalln("Failed to initialize glfw:", err)
 		}
@@ -81,6 +86,7 @@ func NewScreen(width, height uint32, xmin, xmax, ymin, ymax, scale float32) *Scr
 		if err != nil {
 			panic(err)
 		}
+		screen.Window = Window{window}
 		// Get primary monitor video mode (used to get the screen dimensions)
 		monitor := glfw.GetPrimaryMonitor()
 		videoMode := monitor.GetVideoMode()
@@ -101,99 +107,40 @@ func NewScreen(width, height uint32, xmin, xmax, ymin, ymax, scale float32) *Scr
 		}
 		gl.ClearColor(0.3, 0.3, 0.3, 1.0)
 
-		// Store window reference
-		screen.Window = window
-
 		// Enable VSync
 		glfw.SwapInterval(1)
 
 		// Call the GL screen initialization
 		gl.Viewport(0, 0, int32(width), int32(height))
-		screen.updateProjectionMatrix()
+
+		main_gl_thread_object_actions.AddStringShaders()
+		main_gl_thread_object_actions.AddLineShader()
+
 		screen.SetCallbacks()
 
 		// Force the first frame to render
 		screen.PositionChanged = true
 		screen.ScaleChanged = true
 
+		// Notify the main thread that OpenGL is ready
+		fmt.Println("[OpenGL] Initialization complete, signaling main thread.")
+		done <- OpenGLReady{}
+
 		// Start the event loop (OpenGL runs here)
 		screen.EventLoop()
-	}()
+	}(initDone)
+	// Wait for the OpenGL thread to signal readiness
+	fmt.Println("[Main] Waiting for OpenGL initialization...")
+	<-initDone
+	fmt.Println("[Main] OpenGL initialization complete, proceeding.")
 
 	return screen
-}
-
-func (scr *Screen) InitGLScreen(width, height int) {
-	var err error
-	runtime.LockOSThread()
-
-	if err := glfw.Init(); err != nil {
-		log.Fatalln("failed to initialize glfw:", err)
-	}
-
-	scr.Window, err = glfw.CreateWindow(width, height, "Chart2D", nil, nil)
-	if err != nil {
-		panic(err)
-	}
-	scr.Window.MakeContextCurrent()
-
-	// Check if context is properly active
-	if glfw.GetCurrentContext() == nil {
-		log.Fatalln("GLFW Context is not current!")
-	}
-
-	// Initialize OpenGL function pointers
-	if err := gl.Init(); err != nil {
-		log.Fatalln("Failed to initialize OpenGL context:", err)
-	}
-
-	// Check OpenGL version (optional, but useful for debugging)
-	version := gl.GoStr(gl.GetString(gl.VERSION))
-	if version == "" {
-		log.Fatalln("OpenGL context not properly initializedFIXEDSTRING")
-	}
-	fmt.Println("OpenGL version:", version)
-
-	// Check for OpenGL errors
-	main_gl_thread_object_actions.CheckGLError("glfw MakeContextCurrent")
-
-	// Enable VSync (limit frame rate to refresh rate)
-	glfw.SwapInterval(1)
-
-	handle := cgo.NewHandle(scr)
-	scr.Window.SetUserPointer(unsafe.Pointer(&handle))
-
-	scr.Window.SetMouseButtonCallback(func(w *glfw.Window, button glfw.MouseButton, action glfw.Action, mods glfw.ModifierKey) {
-		handle := (*cgo.Handle)(w.GetUserPointer())
-		scr := handle.Value().(*Screen)
-		scr.mouseButtonCallback(w, button, action, mods)
-	})
-
-	scr.Window.SetCursorPosCallback(func(w *glfw.Window, xpos, ypos float64) {
-		handle := (*cgo.Handle)(w.GetUserPointer())
-		scr := handle.Value().(*Screen)
-		scr.cursorPositionCallback(w, xpos, ypos)
-	})
-
-	scr.Window.SetScrollCallback(func(w *glfw.Window, xoff, yoff float64) {
-		handle := (*cgo.Handle)(w.GetUserPointer())
-		scr := handle.Value().(*Screen)
-		scr.scrollCallback(w, xoff, yoff)
-	})
-
-	scr.Window.SetSizeCallback(func(w *glfw.Window, width, height int) {
-		handle := (*cgo.Handle)(w.GetUserPointer())
-		scr := handle.Value().(*Screen)
-		scr.resizeCallback(w, width, height)
-	})
-
-	return
 }
 
 func (scr *Screen) SetBackgroundColor(screenColor color.Color) {
 
 	scr.RenderChannel <- func() {
-		//gl.ClearColor(r, g, b, a)
+		// gl.ClearColor(r, g, b, a)
 		fc := utils.ColorToFloat32(screenColor)
 		gl.ClearColor(fc[0], fc[1], fc[2], fc[3])
 	}
@@ -251,11 +198,20 @@ func (scr *Screen) updateProjectionMatrix() {
 	ymin := centerY - yRange/2.0 + scr.PositionDelta[1]
 	ymax := centerY + yRange/2.0 + scr.PositionDelta[1]
 
-	// Update the orthographic projection matrix
+	// setupVertices the orthographic projection matrix
 	scr.projectionMatrix = mgl32.Ortho2D(xmin, xmax, ymin, ymax)
 
 	// Send the updated projection matrix to all shaders
-	for renderType, shaderProgram := range scr.Shaders {
+	scr.ActiveShaders.Range(func(key, value interface{}) bool {
+		// Type assertion for the key and value
+		renderType, okKey := key.(utils.RenderType)
+		shaderProgram, okValue := value.(uint32)
+
+		if !okKey || !okValue {
+			fmt.Println("[Error] Type assertion failed for ActiveShaders Range")
+			return true // Continue iterating despite the error
+		}
+
 		if renderType != utils.FIXEDSTRING {
 			projectionUniform := gl.GetUniformLocation(shaderProgram, gl.Str("projection\x00"))
 			if projectionUniform < 0 {
@@ -265,51 +221,10 @@ func (scr *Screen) updateProjectionMatrix() {
 				gl.UniformMatrix4fv(projectionUniform, 1, false, &scr.projectionMatrix[0])
 			}
 		}
-	}
-}
 
-func (scr *Screen) updateProjectionMatrixSquare() {
-	// Get the aspect ratio of the window
-	aspectRatio := float32(scr.WindowWidth) / float32(scr.WindowHeight)
+		return true // Continue to the next item
+	})
 
-	// Determine world coordinate range based on zoom and position
-	xRange := (scr.XMax - scr.XMin) / scr.ZoomFactor / scr.Scale
-	yRange := (scr.YMax - scr.YMin) / scr.ZoomFactor / scr.Scale
-
-	// Calculate the current center of the view
-	centerX := (scr.XMin + scr.XMax) / 2.0
-	centerY := (scr.YMin + scr.YMax) / 2.0
-
-	// Adjust for the aspect ratio, but keep the world coordinates intact
-	if aspectRatio > 1.0 {
-		// If the screen is wider than tall, we "stretch" xRange
-		xRange = yRange * aspectRatio
-	} else {
-		// If the screen is taller than wide, we "stretch" yRange
-		yRange = xRange / aspectRatio
-	}
-
-	// Use PositionDelta to adjust the camera's "pan" position in world space
-	xmin := centerX - xRange/2.0 + scr.PositionDelta[0]
-	xmax := centerX + xRange/2.0 + scr.PositionDelta[0]
-	ymin := centerY - yRange/2.0 + scr.PositionDelta[1]
-	ymax := centerY + yRange/2.0 + scr.PositionDelta[1]
-
-	// Update the orthographic projection matrix
-	scr.projectionMatrix = mgl32.Ortho2D(xmin, xmax, ymin, ymax)
-
-	// Send the updated projection matrix to all shaders
-	for renderType, shaderProgram := range scr.Shaders {
-		if renderType != utils.FIXEDSTRING {
-			projectionUniform := gl.GetUniformLocation(shaderProgram, gl.Str("projection\x00"))
-			if projectionUniform < 0 {
-				fmt.Printf("Projection uniform not found for RenderType %v\n", renderType)
-			} else {
-				gl.UseProgram(shaderProgram)
-				gl.UniformMatrix4fv(projectionUniform, 1, false, &scr.projectionMatrix[0])
-			}
-		}
-	}
 }
 
 func (scr *Screen) Redraw() {

@@ -15,7 +15,7 @@ import (
 )
 
 // TODO: Alter the object management to add a top level map[WindowKey]map[ObjectKey]Renderable, where the Renderable is
-// TODO: ... an Interface{} with the Methods: Add, Delete, Update, Show, Hide. The Add() will incorporate the ObjectKey
+// TODO: ... an Interface{} with the Methods: Add, Delete, setupVertices, Show, Hide. The Add() will incorporate the ObjectKey
 // TODO: ... into the object struct so that the Show/Hide functions can toggle the Visible in the Renderable
 // TODO: ... implementation. This allows the event loop to query whether to draw or not before introspecting the object.
 // TODO: ... The Delete() should cleanup any internal references, then delete the ObjectKey from the top level object
@@ -32,7 +32,7 @@ func main() {
 
 func Test_Text() {
 	width, height := 1920, 1080
-	//width, height := 1000, 1000
+	// width, height := 1000, 1000
 	var XMin, XMax, YMin, YMax float32
 	style := 2
 	switch style {

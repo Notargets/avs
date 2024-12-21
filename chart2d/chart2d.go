@@ -52,12 +52,14 @@ func NewChart2D(XMin, XMax, YMin, YMax float32, width, height int, scaleOpt ...f
 	return
 }
 
-func (chart *Chart2D) AddLine(X, Y []float32) {
-	chart.Screen.NewPolyLine(screen.NEW, X, Y, utils.GetSingleColorArray(Y, chart.LineColor))
+func (chart *Chart2D) AddLine(X, Y []float32) (key utils.Key) {
+	return chart.Screen.NewPolyLine(X, Y, utils.GetSingleColorArray(Y,
+		chart.LineColor))
 }
 
-func (chart *Chart2D) Printf(formatter *assets.TextFormatter, x, y float32, format string, args ...interface{}) {
-	chart.Screen.Printf(formatter, x, y, format, args...)
+func (chart *Chart2D) Printf(formatter *assets.TextFormatter, x, y float32,
+	format string, args ...interface{}) (key utils.Key) {
+	return chart.Screen.Printf(formatter, x, y, format, args...)
 }
 
 func (chart *Chart2D) GetWorldSpaceCharHeight(tf *assets.TextFormatter) (height float32) {
@@ -68,7 +70,8 @@ func (chart *Chart2D) GetWorldSpaceCharWidth(tf *assets.TextFormatter) (height f
 	return tf.GetWorldSpaceCharWidth(chart.XMax-chart.XMin, chart.YMax-chart.YMin, chart.WindowWidth, chart.WindowHeight)
 }
 
-func (chart *Chart2D) AddAxis(axisColor color.Color, tf *assets.TextFormatter, yAxisLocation float32, nSegs int) {
+func (chart *Chart2D) AddAxis(axisColor color.Color,
+	tf *assets.TextFormatter, yAxisLocation float32, nSegs int) (key utils.Key) {
 	var (
 		xMin, xMax           = chart.XMin, chart.XMax
 		yMin, yMax           = chart.YMin, chart.YMax
@@ -117,6 +120,6 @@ func (chart *Chart2D) AddAxis(axisColor color.Color, tf *assets.TextFormatter, y
 		chart.Printf(tfY, x-yTextDelta, y, "%4.1f", y)
 		y = y + yInc
 	}
-	//chart.Screen.ChangePosition(0.0, 0.0)
-	chart.Screen.NewLine(screen.NEW, X, Y, C) // 2 points, so 2 * 3 = 6 colors
+	// chart.Screen.ChangePosition(0.0, 0.0)
+	return chart.Screen.NewLine(X, Y, C) // 2 points, so 2 * 3 = 6 colors
 }

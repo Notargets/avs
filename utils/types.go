@@ -6,7 +6,19 @@
 
 package utils
 
+import "github.com/google/uuid"
+
 type RenderType uint16
+
+type Key uuid.UUID
+
+func NewKey() Key {
+	return Key(uuid.New())
+}
+
+var (
+	NEW = Key(uuid.Nil)
+)
 
 const (
 	LINE RenderType = iota
@@ -54,5 +66,3 @@ func (r RenderType) String() string {
 		return "Unknown"
 	}
 }
-
-type ShaderPrograms map[RenderType]uint32

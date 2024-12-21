@@ -10,15 +10,18 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/go-gl/mathgl/mgl32"
+
 	"github.com/go-gl/gl/v4.5-core/gl"
 )
 
-func compileShaderProgram(vertexSource, fragmentSource string) uint32 {
+// compileShaderProgram takes pointers to C-style uint8 strings for vertex and fragment shader sources.
+// It compiles the shaders, links them into a shader program, and returns the program ID.
+func compileShaderProgram(vertexSource, fragmentSource *uint8) uint32 {
 	// Compile vertex shader
 	vertexShader := gl.CreateShader(gl.VERTEX_SHADER)
-	csource, free := gl.Strs(vertexSource) // Unpack both pointer and cleanup function
-	gl.ShaderSource(vertexShader, 1, csource, nil)
-	defer free() // Defer cleanup to release the C string memory
+	CheckGLError("After CreateShader (vertex)")
+	gl.ShaderSource(vertexShader, 1, &vertexSource, nil)
 	gl.CompileShader(vertexShader)
 
 	// Check for vertex shader compile errors
@@ -34,9 +37,8 @@ func compileShaderProgram(vertexSource, fragmentSource string) uint32 {
 
 	// Compile fragment shader
 	fragmentShader := gl.CreateShader(gl.FRAGMENT_SHADER)
-	csource, free = gl.Strs(fragmentSource) // Unpack again for fragment shader
-	gl.ShaderSource(fragmentShader, 1, csource, nil)
-	defer free() // Defer cleanup to release the C string memory
+	CheckGLError("After CreateShader (fragment)")
+	gl.ShaderSource(fragmentShader, 1, &fragmentSource, nil)
 	gl.CompileShader(fragmentShader)
 
 	// Check for fragment shader compile errors
@@ -51,6 +53,7 @@ func compileShaderProgram(vertexSource, fragmentSource string) uint32 {
 
 	// Link the shader program
 	shaderProgram := gl.CreateProgram()
+	CheckGLError("After CreateProgram")
 	gl.AttachShader(shaderProgram, vertexShader)
 	gl.AttachShader(shaderProgram, fragmentShader)
 	gl.LinkProgram(shaderProgram)
@@ -69,7 +72,45 @@ func compileShaderProgram(vertexSource, fragmentSource string) uint32 {
 	gl.DeleteShader(vertexShader)
 	gl.DeleteShader(fragmentShader)
 
+	if !gl.IsProgram(shaderProgram) {
+		fmt.Printf("Invalid shader program: %d\n", shaderProgram)
+		panic("Shader program validation failed")
+	}
+
 	return shaderProgram
+}
+
+func setShaderProgram(shaderProgram uint32) {
+	if !gl.IsProgram(shaderProgram) {
+		fmt.Printf("[Render] Shader program %d is not valid.\n", shaderProgram)
+		panic("[Render] Invalid shader program")
+	}
+	gl.UseProgram(shaderProgram)
+	CheckGLError("After UseProgram")
+	// Check if the active program matches
+	var activeProgram int32
+	gl.GetIntegerv(gl.CURRENT_PROGRAM, &activeProgram)
+	if uint32(activeProgram) != shaderProgram {
+		fmt.Printf("[Render] Shader program mismatch! Visible: %d, "+
+			"Expected: %d\n", activeProgram, shaderProgram)
+		panic("[Render] Shader program is not active as expected")
+	}
+	if shaderProgram == 0 {
+		fmt.Println("[Render] Shader program handle is 0. " +
+			"Possible compilation/linking failure.")
+		panic("[Render] Shader program handle is 0")
+	}
+}
+
+func bindProjectionMatrixToShader(shaderProgram uint32, projectionMatrix mgl32.Mat4) {
+	// Bind the projection matrix to the shader
+	projectionUniform := gl.GetUniformLocation(shaderProgram, gl.Str("projection\x00"))
+	CheckGLError("After GetUniformLocation")
+	if projectionUniform < 0 {
+		panic("[Render] Projection uniform location returned -1")
+	}
+	gl.UniformMatrix4fv(projectionUniform, 1, false, &projectionMatrix[0])
+	CheckGLError("After UniformMatrix4fv")
 }
 
 // checkGLError decodes OpenGL error codes into human-readable form and panics if an error occurs
@@ -79,22 +120,31 @@ func CheckGLError(message string) {
 		var errorMessage string
 		switch err {
 		case gl.INVALID_ENUM:
-			errorMessage = "GL_INVALID_ENUM: An unacceptable value is specified for an enumerated argument."
+			errorMessage = "GL_INVALID_ENUM: An unacceptable value is" +
+				" specified  for an enumerated argument."
 		case gl.INVALID_VALUE:
-			errorMessage = "GL_INVALID_VALUE: A numeric argument is out of range."
+			errorMessage = "GL_INVALID_VALUE: A numeric argument is out of" +
+				"  range."
 		case gl.INVALID_OPERATION:
-			errorMessage = "GL_INVALID_OPERATION: The specified operation is not allowed in the current state."
+			errorMessage = "GL_INVALID_OPERATION: The specified operation" +
+				" is not allowed in the current state."
 		case gl.INVALID_FRAMEBUFFER_OPERATION:
-			errorMessage = "GL_INVALID_FRAMEBUFFER_OPERATION: The framebuffer object is not complete."
+			errorMessage = "GL_INVALID_FRAMEBUFFER_OPERATION: The" +
+				" framebuffer object is not complete."
 		case gl.OUT_OF_MEMORY:
-			errorMessage = "GL_OUT_OF_MEMORY: There is not enough memory left to execute the command."
+			errorMessage = "GL_OUT_OF_MEMORY: There is not enough memory" +
+				" left to execute the command."
 		case gl.STACK_UNDERFLOW:
-			errorMessage = "GL_STACK_UNDERFLOW: An attempt has been made to perform an operation that would cause an internal stack to underflow."
+			errorMessage = "GL_STACK_UNDERFLOW: An attempt has been made to" +
+				" perform an operation that would cause an internal stack to" +
+				" underflow."
 		case gl.STACK_OVERFLOW:
-			errorMessage = "GL_STACK_OVERFLOW: An attempt has been made to perform an operation that would cause an internal stack to overflow."
+			errorMessage = "GL_STACK_OVERFLOW: An attempt has been made to" +
+				" perform an operation that would cause an internal stack to overflow."
 		default:
 			errorMessage = fmt.Sprintf("Unknown OpenGL error code: 0x%X", err)
 		}
-		panic(fmt.Sprintf("OpenGL Error [%s]: %s (0x%X)", message, errorMessage, err))
+		panic(fmt.Sprintf("OpenGL Error [%s]: %s (0x%X)", message,
+			errorMessage, err))
 	}
 }

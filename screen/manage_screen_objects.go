@@ -9,51 +9,60 @@ package screen
 import (
 	"fmt"
 
+	"github.com/notargets/avs/utils"
+
 	"github.com/go-gl/gl/v4.5-core/gl"
-	"github.com/go-gl/glfw/v3.3/glfw"
-	"github.com/google/uuid"
 	"github.com/notargets/avs/screen/main_gl_thread_object_actions"
 )
 
-type Key uuid.UUID
+type ObjectGroup []interface{}
 
-func NewKey() Key {
-	return Key(uuid.New())
+func NewObjectGroup(object interface{}) ObjectGroup {
+	return ObjectGroup{object}
 }
-
-var (
-	NEW = Key(uuid.Nil)
-)
 
 type Renderable struct {
-	Active bool
-	Object interface{}  // Any object that has a Render method (e.g., Line, TriMesh)
-	Window *glfw.Window // The target window for rendering
+	Visible bool
+	Window  Window      // The target window for rendering
+	Objects ObjectGroup // Any object that has a Render method (e.g., Line,
+	// TriMesh)
 }
 
-func (scr *Screen) SetObjectActive(key Key, active bool, window *glfw.Window) {
-	scr.RenderChannel <- func() {
-		if renderable, exists := scr.Objects[key]; exists {
-			renderable.Active = active
-			renderable.Window = window
-		}
+func NewRenderable(window Window, object interface{}) (rb *Renderable) {
+	rb = &Renderable{
+		Visible: true,
+		Window:  window,
+		Objects: NewObjectGroup(object),
 	}
-	scr.Redraw()
+	return
+}
+
+func (rb *Renderable) Add(key utils.Key) {
+	// An object group is append only by design
+	rb.Objects = append(rb.Objects, key)
+}
+
+func (rb *Renderable) SetVisible(isVisible bool) {
+	rb.Visible = isVisible
 }
 
 func (scr *Screen) fullScreenRender() {
 	// Clear the screen before rendering
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 	for _, obj := range scr.Objects {
-		switch renderObj := obj.Object.(type) {
-		case *main_gl_thread_object_actions.Line:
-			renderObj.Render(scr.projectionMatrix)
-		case *main_gl_thread_object_actions.String:
-			renderObj.Render(scr.projectionMatrix, scr.WindowWidth, scr.WindowHeight, scr.XMin, scr.XMax, scr.YMin, scr.YMax)
-		default:
-			fmt.Printf("Unknown object type: %T\n", renderObj)
+		renderObjList := obj.Objects
+		for _, object := range renderObjList {
+			switch renderObj := object.(type) {
+			// switch renderObj := obj.Object.(type) {
+			case *main_gl_thread_object_actions.Line:
+				renderObj.Render(scr.projectionMatrix)
+			case *main_gl_thread_object_actions.String:
+				renderObj.Render(scr.projectionMatrix, scr.WindowWidth, scr.WindowHeight, scr.XMin, scr.XMax, scr.YMin, scr.YMax)
+			default:
+				fmt.Printf("Unknown object type: %T\n", renderObj)
+			}
 		}
 	}
 	// Swap buffers to present the frame
-	scr.Window.SwapBuffers()
+	scr.Window.Window.SwapBuffers()
 }
