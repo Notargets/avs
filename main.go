@@ -53,6 +53,7 @@ func Test_Text() {
 	default:
 		panic("No option here")
 	}
+
 	chart := chart2d.NewChart2D(XMin, XMax, YMin, YMax, width, height)
 	tickText := assets.NewTextFormatter("NotoSans", "Regular", 24,
 		color.RGBA{255, 255, 255, 255}, true, false)

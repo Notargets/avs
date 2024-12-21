@@ -9,7 +9,7 @@ package screen
 import (
 	"fmt"
 
-	"github.com/notargets/avs/screen/main_gl_thread_object_actions"
+	"github.com/notargets/avs/screen/main_gl_thread_objects"
 
 	"github.com/notargets/avs/utils"
 
@@ -21,9 +21,9 @@ func (scr *Screen) NewLine(X, Y, Colors []float32,
 	key = utils.NewKey()
 
 	// Create new line
-	line := main_gl_thread_object_actions.NewLine(X, Y, Colors)
+	line := main_gl_thread_objects.NewLine(X, Y, Colors)
 
-	scr.ActiveShaders.Store(utils.LINE, main_gl_thread_object_actions.LineShader)
+	scr.ActiveShaders.Store(utils.LINE, main_gl_thread_objects.LineShader)
 
 	scr.Objects[key] = NewRenderable(scr.Window, line)
 
@@ -44,13 +44,13 @@ func (scr *Screen) NewString(tf *assets.TextFormatter, x,
 		panic("textFormatter is nil")
 	}
 
-	str := main_gl_thread_object_actions.NewString(tf, x, y,
+	str := main_gl_thread_objects.NewString(tf, x, y,
 		text, scr.WindowWidth, scr.WindowHeight)
 
 	if str.StringType == utils.FIXEDSTRING {
-		scr.ActiveShaders.Store(utils.FIXEDSTRING, main_gl_thread_object_actions.FixedStringShader)
+		scr.ActiveShaders.Store(utils.FIXEDSTRING, main_gl_thread_objects.FixedStringShader)
 	} else {
-		scr.ActiveShaders.Store(utils.STRING, main_gl_thread_object_actions.StringShader)
+		scr.ActiveShaders.Store(utils.STRING, main_gl_thread_objects.StringShader)
 	}
 
 	scr.Objects[key] = NewRenderable(scr.Window, str)

@@ -13,7 +13,7 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/notargets/avs/screen/main_gl_thread_object_actions"
+	"github.com/notargets/avs/screen/main_gl_thread_objects"
 
 	"github.com/notargets/avs/utils"
 
@@ -113,8 +113,9 @@ func NewScreen(width, height uint32, xmin, xmax, ymin, ymax, scale float32) *Scr
 		// Call the GL screen initialization
 		gl.Viewport(0, 0, int32(width), int32(height))
 
-		main_gl_thread_object_actions.AddStringShaders()
-		main_gl_thread_object_actions.AddLineShader()
+		// For each object type in Screen, we need to load the shaders here
+		main_gl_thread_objects.AddStringShaders()
+		main_gl_thread_objects.AddLineShader()
 
 		screen.SetCallbacks()
 
@@ -130,9 +131,9 @@ func NewScreen(width, height uint32, xmin, xmax, ymin, ymax, scale float32) *Scr
 		screen.EventLoop()
 	}(initDone)
 	// Wait for the OpenGL thread to signal readiness
-	fmt.Println("[Main] Waiting for OpenGL initialization...")
+	// fmt.Println("[Main] Waiting for OpenGL initialization...")
 	<-initDone
-	fmt.Println("[Main] OpenGL initialization complete, proceeding.")
+	// fmt.Println("[Main] OpenGL initialization complete, proceeding.")
 
 	return screen
 }
@@ -201,7 +202,8 @@ func (scr *Screen) updateProjectionMatrix() {
 	// calculate the orthographic projection matrix
 	scr.projectionMatrix = mgl32.Ortho2D(xmin, xmax, ymin, ymax)
 
-	// Send the updated projection matrix to all shaders
+	// Send the updated projection matrix to all shaders that share the world
+	// view. FIXEDSTRING doesn't
 	scr.ActiveShaders.Range(func(key, value interface{}) bool {
 		// Type assertion for the key and value
 		renderType, okKey := key.(utils.RenderType)

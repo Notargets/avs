@@ -4,11 +4,10 @@
  * // 2024
  */
 
-package main_gl_thread_object_actions
+package main_gl_thread_objects
 
 import (
 	"image"
-	"math"
 
 	"github.com/notargets/avs/utils"
 
@@ -20,12 +19,6 @@ import (
 
 var StringShader uint32
 var FixedStringShader uint32
-
-// init initializes the default value for shaderProgram
-func init() {
-	StringShader = math.MaxUint32
-	FixedStringShader = math.MaxUint32
-}
 
 func AddStringShaders() {
 	fragmentShaderSource := gl.Str(`
@@ -170,19 +163,19 @@ func (str *String) Render(projectionMatrix mgl32.Mat4, windowWidth,
 }
 
 func (str *String) setupTextureMap(xMin, xMax, yMin, yMax float32) {
-	if str.StringType == utils.STRING || !str.InitializedFIXEDSTRING {
-		// This is done every time for STRING, only once for FIXEDSTRING
-		// For STRING, this compensates for resize and pan via the projection matrix
-		// For FIXEDSTRING, the projection is applied once to get to Screen / Pixel fixed coordinates
-		str.calculatePolygonVertices(xMin, xMax, yMin, yMax)
-	}
-
 	// Load our texture map with the drawn text if not done already
 	if str.textureImg == nil {
 		var img *image.RGBA
 		img = str.TextFormatter.TypeFace.RenderFontTextureImg(str.Text, str.TextFormatter.Color)
 		str.textureImg = img
 		str.textureWidth, str.textureHeight = uint32(str.textureImg.Bounds().Dx()), uint32(str.textureImg.Bounds().Dy())
+	}
+
+	if str.StringType == utils.STRING || !str.InitializedFIXEDSTRING {
+		// This is done every time for STRING, only once for FIXEDSTRING
+		// For STRING, this compensates for resize and pan via the projection matrix
+		// For FIXEDSTRING, the projection is applied once to get to Screen / Pixel fixed coordinates
+		str.calculatePolygonVertices(xMin, xMax, yMin, yMax)
 	}
 }
 

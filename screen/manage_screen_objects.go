@@ -12,7 +12,7 @@ import (
 	"github.com/notargets/avs/utils"
 
 	"github.com/go-gl/gl/v4.5-core/gl"
-	"github.com/notargets/avs/screen/main_gl_thread_object_actions"
+	"github.com/notargets/avs/screen/main_gl_thread_objects"
 )
 
 type ObjectGroup []interface{}
@@ -54,10 +54,11 @@ func (scr *Screen) fullScreenRender() {
 		for _, object := range renderObjList {
 			switch renderObj := object.(type) {
 			// switch renderObj := obj.Object.(type) {
-			case *main_gl_thread_object_actions.Line:
+			case *main_gl_thread_objects.Line:
 				renderObj.Render()
-			case *main_gl_thread_object_actions.String:
-				renderObj.Render(scr.projectionMatrix, scr.WindowWidth, scr.WindowHeight, scr.XMin, scr.XMax, scr.YMin, scr.YMax)
+			case *main_gl_thread_objects.String:
+				renderObj.Render(scr.projectionMatrix, scr.WindowWidth,
+					scr.WindowHeight, scr.XMin, scr.XMax, scr.YMin, scr.YMax)
 			default:
 				fmt.Printf("Unknown object type: %T\n", renderObj)
 			}

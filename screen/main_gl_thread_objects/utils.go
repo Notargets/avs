@@ -4,7 +4,7 @@
  * // 2024
  */
 
-package main_gl_thread_object_actions
+package main_gl_thread_objects
 
 import (
 	"fmt"
