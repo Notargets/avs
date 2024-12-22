@@ -23,12 +23,12 @@ func NewObjectGroup(object interface{}) ObjectGroup {
 
 type Renderable struct {
 	Visible bool
-	Window  *Window     // The target window for rendering
-	Objects ObjectGroup // Any object that has a Render method (e.g., Line,
+	Window  *main_gl_thread_objects.Window // The target window for rendering
+	Objects ObjectGroup                    // Any object that has a Render method (e.g., Line,
 	// TriMesh)
 }
 
-func NewRenderable(window *Window, object interface{}) (rb *Renderable) {
+func NewRenderable(window *main_gl_thread_objects.Window, object interface{}) (rb *Renderable) {
 	rb = &Renderable{
 		Visible: true,
 		Window:  window,
@@ -46,7 +46,7 @@ func (rb *Renderable) SetVisible(isVisible bool) {
 	rb.Visible = isVisible
 }
 
-func (scr *Screen) fullScreenRender(win *Window) {
+func (scr *Screen) fullScreenRender(win *main_gl_thread_objects.Window) {
 	// Clear the screen before rendering
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 	for _, obj := range scr.Objects {

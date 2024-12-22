@@ -25,7 +25,6 @@ import (
 // TODO: ... windows are added to the Scene, the context within Scene's struct can be switched to a keyed windows and
 // TODO: ... new Add() calls will be scoped to the "current" window. At some point, objects could be moved among
 // TODO: ... windows.
-// 012345678901234567890123456789012345678901234567890123456789012345678901234567
 func main() {
 	Test_Text()
 }
@@ -62,7 +61,7 @@ func Test_Text() {
 
 	DynamicText := assets.NewTextFormatter("NotoSans", "Regular", 24,
 		color.RGBA{255, 0, 255, 255}, false, false)
-	TitleText := assets.NewTextFormatter("NotoSans", "Bold", 48,
+	TitleText := assets.NewTextFormatter("NotoSans", "Bold", 36,
 		color.RGBA{0, 255, 0, 255}, true, true)
 
 	titleHeight := chart.GetWorldSpaceCharHeight(TitleText)
@@ -84,11 +83,12 @@ func Test_Text() {
 	chart.Printf(TitleText, xpos, ypos, "Title text doesn't move with pan and zoom and remains the same size when window is resized")
 
 	// win2 := chart.NewWindow(uint32(width), uint32(height), XMin, XMax, YMin,
-	// 	YMax, 1.0,
-	// 	"Second Window", [4]float32{46. / 255., 46. / 255., 46. / 255, 1.},
-	// 	screen.AUTO)
+	// 	YMax, 1.0, "Second Window",
+	// 	[4]float32{46. / 255., 46. / 255., 46. / 255, 1.},
+	// 	main_gl_thread_objects.AUTO)
 	//
 	// chart.Screen.MakeContextCurrent(win2)
+	//
 	// // Title
 	// ypos = 0.1*chart.YMax - titleHeight
 	// chart.Printf(TitleText, xpos, ypos, "This is an example of a title text string")

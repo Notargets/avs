@@ -22,7 +22,8 @@ func (scr *Screen) EventLoop() {
 		// Process commands from the RenderChannel
 		select {
 		case command := <-scr.RenderChannel:
-			command() // Execute the command (can include OpenGL calls)
+			command() // Execute the command (
+			// can include OpenGL calls)
 			(scr.Window.Read()).NeedsRedraw = true
 		default:
 			// No command, continue

@@ -7,16 +7,18 @@
 package screen
 
 import (
+	"fmt"
 	"runtime"
 	"sync/atomic"
 	"unsafe"
+
+	"github.com/notargets/avs/screen/main_gl_thread_objects"
 
 	"github.com/notargets/avs/utils"
 )
 
 type Screen struct {
-	// Window        *Window
-	Window        SafeWindow
+	Window        SafeWindow // Concurrency safe so we can read in this thread
 	Objects       map[utils.Key]*Renderable
 	RenderChannel chan func()
 }
@@ -26,55 +28,84 @@ type SafeWindow struct {
 }
 
 // Write sets a new value atomically
-func (si *SafeWindow) Write(val *Window) {
+func (si *SafeWindow) Write(val *main_gl_thread_objects.Window) {
 	atomic.StorePointer(&si.value, unsafe.Pointer(&val))
 }
 
 // Read atomically retrieves the variable's value.
 // It returns an `int` type
-func (si *SafeWindow) Read() *Window {
+func (si *SafeWindow) Read() *main_gl_thread_objects.Window {
 	ptr := atomic.LoadPointer(&si.value)
-	return *(*(*Window))(ptr)
+	return *(*(*main_gl_thread_objects.Window))(ptr)
 }
 
 func NewScreen(width, height uint32, xmin, xmax, ymin, ymax, scale float32,
-	bgColor [4]float32, position Position) *Screen {
+	bgColor [4]float32, position main_gl_thread_objects.Position) *Screen {
 
 	screen := &Screen{
 		Objects:       make(map[utils.Key]*Renderable),
 		RenderChannel: make(chan func(), 100),
 	}
 	// OpenGLReady is used to signal when OpenGL is fully initialized
-	type OpenGLReady struct{}
 	// Channel for synchronization
-	initDone := make(chan OpenGLReady)
+	doneChan := make(chan struct{})
 
-	go func(done chan OpenGLReady) {
+	go func() {
 		runtime.LockOSThread()
 
-		screen.Window.Write(NewWindow(width, height, xmin, xmax, ymin, ymax,
+		// Open a default window. User needs to GetCurrentWindow before opening
+		// a new Window to return to the default, as the win pointer is not
+		// exposed
+		screen.Window.Write(main_gl_thread_objects.NewWindow(width, height,
+			xmin, xmax, ymin, ymax,
 			scale, "Chart2D", screen.RenderChannel, bgColor, position))
 
-		// Notify the main thread that OpenGL is ready
-		// fmt.Println("[OpenGL] Initialization complete, signaling main thread.")
-		done <- OpenGLReady{}
+		fmt.Println("[OpenGL] Initialization complete, signaling main thread.")
+		doneChan <- struct{}{}
 
 		// Start the event loop (OpenGL runs here)
 		screen.EventLoop()
-	}(initDone)
+	}()
 	// Wait for the OpenGL thread to signal readiness
-	// fmt.Println("[Main] Waiting for OpenGL initialization...")
-	<-initDone
-	// fmt.Println("[Main] OpenGL initialization complete, proceeding.")
+	fmt.Println("[Main] Waiting for OpenGL initialization...")
+	<-doneChan
+	fmt.Println("[Main] OpenGL initialization complete, proceeding.")
 
 	return screen
 }
 
 func (scr *Screen) Redraw() {
-	scr.Window.Read().Redraw()
+	scr.RenderChannel <- func() {}
 }
 
-func (scr *Screen) MakeContextCurrent(win *Window) {
-	scr.Window.Write(win)
-	scr.Window.Read().MakeContextCurrent()
+func (scr *Screen) GetCurrentWindow() (win *main_gl_thread_objects.Window) {
+	win = scr.Window.Read()
+	return
+}
+
+func (scr *Screen) MakeContextCurrent(win *main_gl_thread_objects.Window) {
+	scr.RenderChannel <- func() {
+		scr.Window.Write(win)
+		scr.Window.Read().MakeContextCurrent()
+	}
+}
+
+func (scr *Screen) NewWindow(width, height uint32, xmin, xmax, ymin, ymax,
+	scale float32, title string, bgColor [4]float32,
+	position main_gl_thread_objects.Position) (win *main_gl_thread_objects.Window) {
+
+	// Channel for synchronization
+	fmt.Println("[NewWindow] Creating new Window")
+	doneChan := make(chan struct{}, 2)
+	scr.RenderChannel <- func() {
+		fmt.Println("[NewWindow] Inside New Window")
+		scr.Window.Write(main_gl_thread_objects.NewWindow(width, height, xmin, xmax,
+			ymin, ymax, scale, title, scr.RenderChannel, bgColor, position))
+		doneChan <- struct{}{}
+	}
+	<-doneChan
+
+	win = scr.Window.Read()
+
+	return
 }

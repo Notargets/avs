@@ -4,7 +4,7 @@
  * // 2024
  */
 
-package screen
+package main_gl_thread_objects
 
 import (
 	"fmt"
@@ -16,13 +16,12 @@ import (
 
 	"github.com/go-gl/gl/v4.5-core/gl"
 	"github.com/go-gl/glfw/v3.3/glfw"
-	"github.com/notargets/avs/screen/main_gl_thread_objects"
 )
 
-var windowCount utils.SafeInt
+var windowCount int
 
 func init() {
-	windowCount.Write(-1)
+	windowCount = -1
 }
 
 type Position uint8
@@ -106,7 +105,7 @@ func NewWindow(width, height uint32, xMin, xMax, yMin, yMax, scale float32,
 	// number
 	// fmt.Printf("Window Number: %d\n", windowCount.Read()+1)
 	if position == AUTO {
-		position = Position((windowCount.Read() + 1) % 4)
+		position = Position((windowCount + 1) % 4)
 	}
 	// fmt.Printf("Window Count+1 (current) = %d, Position = %d\n",
 	// 	windowCount.Read()+1, position)
@@ -134,12 +133,12 @@ func NewWindow(width, height uint32, xMin, xMax, yMin, yMax, scale float32,
 
 	window.MakeContextCurrent()
 
-	if windowCount.Read() == -1 {
+	if windowCount == -1 {
 		if err := gl.Init(); err != nil {
 			log.Fatalln("Failed to initialize OpenGL context:", err)
 		}
 	}
-	windowCount.Write(windowCount.Read() + 1)
+	windowCount++
 
 	gl.ClearColor(bgColor[0], bgColor[1], bgColor[2], bgColor[3])
 	gl.Clear(gl.COLOR_BUFFER_BIT)
@@ -152,8 +151,8 @@ func NewWindow(width, height uint32, xMin, xMax, yMin, yMax, scale float32,
 	gl.Viewport(0, 0, int32(width), int32(height))
 
 	// For each object type in Screen, we need to load the shaders here
-	main_gl_thread_objects.AddStringShaders(win.Shaders)
-	main_gl_thread_objects.AddLineShader(win.Shaders)
+	AddStringShaders(win.Shaders)
+	AddLineShader(win.Shaders)
 
 	win.SetCallbacks()
 
@@ -315,10 +314,13 @@ func (win *Window) UpdateProjectionMatrix() {
 }
 
 func (win *Window) SetBackgroundColor(screenColor color.Color) {
+	doneChan := make(chan struct{})
 	win.RenderChannel <- func() {
 		fc := utils.ColorToFloat32(screenColor)
 		gl.ClearColor(fc[0], fc[1], fc[2], fc[3])
+		doneChan <- struct{}{}
 	}
+	<-doneChan
 }
 
 func (win *Window) ChangeScale(scale float32) {
