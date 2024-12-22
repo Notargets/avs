@@ -21,7 +21,7 @@ func (scr *Screen) NewLine(X, Y, Colors []float32,
 	key = utils.NewKey()
 
 	// Create new line
-	line := main_gl_thread_objects.NewLine(X, Y, Colors, scr.Window.Read().Shaders)
+	line := main_gl_thread_objects.NewLine(X, Y, Colors, scr.Window.Read().Shaders, rt...)
 
 	scr.Objects[key] = NewRenderable(scr.Window.Read(), line)
 

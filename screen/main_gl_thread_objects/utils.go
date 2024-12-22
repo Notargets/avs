@@ -10,8 +10,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/go-gl/mathgl/mgl32"
-
 	"github.com/go-gl/gl/v4.5-core/gl"
 )
 
@@ -102,19 +100,7 @@ func setShaderProgram(shaderProgram uint32) {
 	}
 }
 
-func bindProjectionMatrixToShader(shaderProgram uint32, projectionMatrix mgl32.Mat4) {
-	return
-	// Bind the projection matrix to the shader
-	projectionUniform := gl.GetUniformLocation(shaderProgram, gl.Str("projection\x00"))
-	CheckGLError("After GetUniformLocation")
-	if projectionUniform < 0 {
-		panic("[Render] Projection uniform location returned -1")
-	}
-	gl.UniformMatrix4fv(projectionUniform, 1, false, &projectionMatrix[0])
-	CheckGLError("After UniformMatrix4fv")
-}
-
-// checkGLError decodes OpenGL error codes into human-readable form and panics if an error occurs
+// CheckGLError checkGLError decodes OpenGL error codes into human-readable form and panics if an error occurs
 func CheckGLError(message string) {
 	err := gl.GetError()
 	if err != gl.NO_ERROR {

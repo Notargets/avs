@@ -8,19 +8,7 @@ package utils
 
 type ScalarFunc func(float64) float64
 
-/*
-Legendre polynomials
-
-Transformed Legendre Polynomials:
-  - transformed into the interval X: 0->1
-  - normalized per: https://en.wikipedia.org/wiki/Discontinuous_Galerkin_method
-    which multiplies each Pn by SQRT(2*n+1)
-    P1: SQRT(3)
-    P2: SQRT(5)
-    P3: SQRT(7)
-    P4: SQRT(9) = 3
-    P5: SQRT(11)
-*/
+// Legendre0 /*
 func Legendre0(x float64) float64 { return 1 }
 func Legendre1(x float64) float64 { return x }
 func Legendre2(x float64) float64 { return 0.5 * (3*x*x - 1) }

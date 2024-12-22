@@ -28,11 +28,11 @@ import (
 // TODO: ... new Add() calls will be scoped to the "current" window. At some point, objects could be moved among
 // TODO: ... windows.
 func main() {
-	chart := Test_Text()
+	chart := TestText()
 	Test2(chart)
 }
 
-func Test_Text() (chart *chart2d.Chart2D) {
+func TestText() (chart *chart2d.Chart2D) {
 	width, height := 1200, 760
 	// width, height := 1000, 1000
 	var XMin, XMax, YMin, YMax float32
@@ -59,13 +59,13 @@ func Test_Text() (chart *chart2d.Chart2D) {
 	chart = chart2d.NewChart2D(XMin, XMax, YMin, YMax, width, height)
 
 	tickText := assets.NewTextFormatter("NotoSans", "Regular", 24,
-		color.RGBA{255, 255, 255, 255}, true, false)
+		color.RGBA{R: 255, G: 255, B: 255, A: 255}, true, false)
 	chart.AddAxis(color.RGBA{R: 255, G: 255, B: 255, A: 255}, tickText, 0, 11)
 
 	DynamicText := assets.NewTextFormatter("NotoSans", "Regular", 24,
-		color.RGBA{255, 0, 255, 255}, false, false)
+		color.RGBA{R: 255, B: 255, A: 255}, false, false)
 	TitleText := assets.NewTextFormatter("NotoSans", "Bold", 36,
-		color.RGBA{0, 255, 0, 255}, true, true)
+		color.RGBA{G: 255, A: 255}, true, true)
 
 	titleHeight := chart.GetWorldSpaceCharHeight(TitleText)
 
@@ -102,7 +102,7 @@ func Test2(chart *chart2d.Chart2D) {
 
 	// Title
 	TitleText := assets.NewTextFormatter("NotoSans", "Bold", 36,
-		color.RGBA{0, 255, 0, 255}, true, true)
+		color.RGBA{G: 255, A: 255}, true, true)
 
 	titleHeight := chart.GetWorldSpaceCharHeight(TitleText)
 	ypos := 0.6*chart.YMax - titleHeight

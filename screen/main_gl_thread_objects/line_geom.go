@@ -8,6 +8,7 @@ package main_gl_thread_objects
 
 import (
 	"fmt"
+	"unsafe"
 
 	"github.com/notargets/avs/utils"
 
@@ -98,7 +99,7 @@ func (line *Line) setupVertices(X, Y, Colors []float32,
 	}
 
 	// Default color logic
-	var colorToUse [3]float32 = [3]float32{1.0, 1.0, 1.0} // Default color is white
+	var colorToUse = [3]float32{1.0, 1.0, 1.0} // Default color is white
 	if len(defaultColor) > 0 {
 		colorToUse = defaultColor[0]
 	}
@@ -136,13 +137,13 @@ func (line *Line) loadGPUData() {
 	gl.BindVertexArray(line.VAO)
 	gl.BindBuffer(gl.ARRAY_BUFFER, line.VBO)
 	gl.BufferData(gl.ARRAY_BUFFER, len(line.Vertices)*4, gl.Ptr(line.Vertices), gl.STATIC_DRAW)
-	gl.VertexAttribPointer(0, 2, gl.FLOAT, false, 0, gl.PtrOffset(0))
+	gl.VertexAttribPointer(0, 2, gl.FLOAT, false, 0, unsafe.Pointer(uintptr(0)))
 	gl.EnableVertexAttribArray(0)
 
 	// Upload color data to GPU
 	gl.BindBuffer(gl.ARRAY_BUFFER, line.CBO)
 	gl.BufferData(gl.ARRAY_BUFFER, len(line.Colors)*4, gl.Ptr(line.Colors), gl.STATIC_DRAW)
-	gl.VertexAttribPointer(1, 3, gl.FLOAT, false, 0, gl.PtrOffset(0))
+	gl.VertexAttribPointer(1, 3, gl.FLOAT, false, 0, unsafe.Pointer(uintptr(0)))
 	gl.EnableVertexAttribArray(1)
 
 	// Unbind the VAO to avoid unintended modifications

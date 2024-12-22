@@ -37,10 +37,6 @@ func NewKey() Key {
 	return Key(uuid.New())
 }
 
-var (
-	NEW = Key(uuid.Nil)
-)
-
 const (
 	LINE RenderType = iota
 	POLYLINE

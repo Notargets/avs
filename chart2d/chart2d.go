@@ -49,7 +49,7 @@ func NewChart2D(XMin, XMax, YMin, YMax float32, width, height int, scaleOpt ...f
 		Screen: screen.NewScreen(uint32(width), uint32(height), XMin,
 			XMax, YMin, YMax, scale, [4]float32{46. / 255., 46. / 255.,
 				46. / 255., 1.}, main_gl_thread_objects.AUTO),
-		LineColor: color.RGBA{255, 255, 255, 255},
+		LineColor: color.RGBA{R: 255, G: 255, B: 255, A: 255},
 	}
 	return
 }
@@ -82,9 +82,9 @@ func (chart *Chart2D) AddAxis(axisColor color.Color,
 		yInc                 = yScale / float32(nSegs-1)
 		xTickSize, yTickSize = 0.020 * xScale, 0.020 * yScale
 		tickColor            = axisColor
-		X                    = []float32{}
-		Y                    = []float32{}
-		C                    = []float32{}
+		X                    = make([]float32, 0)
+		Y                    = make([]float32, 0)
+		C                    = make([]float32, 0)
 	)
 	if nSegs%2 == 0 {
 		panic("nSegs must be odd")

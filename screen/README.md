@@ -40,7 +40,7 @@ a X range and Y range through an
 Orthographic projection. This implies that if we enter an X range and Y range
 that are not square, say Y range bigger
 than X range, the objects rendered into this space will be "squished" into the
-screen coordinates, so that an square
+screen coordinates, so that a square
 box in X and Y world coordinates will appear as an enlongated rectangle:
 
 ```

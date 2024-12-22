@@ -8,6 +8,7 @@ package main_gl_thread_objects
 
 import (
 	"image"
+	"unsafe"
 
 	"github.com/notargets/avs/utils"
 
@@ -16,9 +17,6 @@ import (
 	"github.com/go-gl/gl/v4.5-core/gl"
 	"github.com/go-gl/mathgl/mgl32"
 )
-
-var StringShader uint32
-var FixedStringShader uint32
 
 func AddStringShaders(shaderMap map[utils.RenderType]uint32) {
 	fragmentShaderSource := gl.Str(`
@@ -226,13 +224,13 @@ func (str *String) fixSTRINGAspectRatio(windowWidth, windowHeight uint32, ndc *[
 	Sy := float32(str.WindowHeight) / float32(windowHeight)
 
 	// Calculate the center of the polygon in NDC coordinates
-	var c_r, c_s float32
+	var cR, cS float32
 	for i := 0; i < 4; i++ {
-		c_r += ndc[i][0] // Sum of all r's
-		c_s += ndc[i][1] // Sum of all s's
+		cR += ndc[i][0] // Sum of all r's
+		cS += ndc[i][1] // Sum of all s's
 	}
-	c_r /= 4 // Average of r-coordinates (center x)
-	c_s /= 4 // Average of s-coordinates (center y)
+	cR /= 4 // Average of r-coordinates (center x)
+	cS /= 4 // Average of s-coordinates (center y)
 
 	// Apply the transformation to each of the 4 NDC vertices
 	for i := 0; i < 4; i++ {
@@ -243,8 +241,8 @@ func (str *String) fixSTRINGAspectRatio(windowWidth, windowHeight uint32, ndc *[
 		w := ndc[i][3] // w-coordinate (w) - unchanged
 
 		// Apply the aspect ratio scaling to r and s
-		newR := Sx*(r-c_r) + c_r
-		newS := Sy*(s-c_s) + c_s
+		newR := Sx*(r-cR) + cR
+		newS := Sy*(s-cS) + cS
 
 		// Store the updated vertex back into the buffer
 		ndc[i] = mgl32.Vec4{newR, newS, t, w}
@@ -353,17 +351,17 @@ func (str *String) sendHostBufferToGPU() {
 	offset := 0
 	if str.StringType == utils.STRING {
 		// Load the transformed vertex coordinates
-		gl.VertexAttribPointer(0, 2, gl.FLOAT, false, stride, gl.PtrOffset(offset)) // PositionDelta (2 floats)
-		offset += 2 * 4                                                             // Advance by 2 floats = 8 bytes
+		gl.VertexAttribPointer(0, 2, gl.FLOAT, false, stride, unsafe.Pointer(uintptr(offset))) // PositionDelta (2 floats)
+		offset += 2 * 4                                                                        // Advance by 2 floats = 8 bytes
 	} else if str.StringType == utils.FIXEDSTRING {
 		// **Frozen PositionDelta **
 		// Load the NDC fixed vertex coordinates
-		gl.VertexAttribPointer(0, 4, gl.FLOAT, false, stride, gl.PtrOffset(offset)) // Fixed PositionDelta (4 floats)
-		offset += 4 * 4                                                             // Advance by 2 floats = 8 bytes
+		gl.VertexAttribPointer(0, 4, gl.FLOAT, false, stride, unsafe.Pointer(uintptr(offset))) // Fixed PositionDelta (4 floats)
+		offset += 4 * 4                                                                        // Advance by 2 floats = 8 bytes
 	}
 	gl.EnableVertexAttribArray(0)
 	// **Color **
-	gl.VertexAttribPointer(1, 3, gl.FLOAT, false, stride, gl.PtrOffset(offset)) // Color (3 floats)
+	gl.VertexAttribPointer(1, 3, gl.FLOAT, false, stride, unsafe.Pointer(uintptr(offset))) // Color (3 floats)
 	gl.EnableVertexAttribArray(1)
 }
 

@@ -34,7 +34,7 @@ func (tf *TextFormatter) GetWorldSpaceCharHeight(yRange float32, windowWidth, wi
 	worldPerPixel := yRange / float32(windowHeight)
 	screenRatio := float32(windowHeight) / float32(windowWidth)
 	pixelHeight := tf.TypeFace.FontHeight
-	//fmt.Printf("pitch: %v, pixelHeight: %v, DPI: %v\n", tf.TypeFace.FontPitch, pixelHeight, tf.TypeFace.FontDPI)
+	// fmt.Printf("pitch: %v, pixelHeight: %v, DPI: %v\n", tf.TypeFace.FontPitch, pixelHeight, tf.TypeFace.FontDPI)
 	// Height includes the inter-line height, so divide by 1.5
 	charHeight = (worldPerPixel) * float32(pixelHeight) * float32(72) / float32(tf.TypeFace.FontDPI) * screenRatio / 1.5
 	return

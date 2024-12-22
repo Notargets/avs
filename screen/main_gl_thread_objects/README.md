@@ -10,7 +10,7 @@ to functions in this package.
 
 ## What kind of functions go here?
 
-The implementation detail code for geoms, etc should go here for clarity.
+The implementation detail code for geoms, etc, should go here for clarity.
 
 ## What kind of functions go in the screen directory?
 

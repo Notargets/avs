@@ -8,7 +8,6 @@ package assets
 
 import (
 	"fmt"
-	"hash/fnv"
 	"image"
 	"image/color"
 	"image/draw"
@@ -74,16 +73,6 @@ func NewOpenGLTypeFace(fontBaseName, fontOptionName string, fontPitch uint32) (t
 }
 
 // generateHash generates a simple hash using FNV for a filename and font pitch
-func generateHash(filename string, pitch int) uint64 {
-	// Create a new FNV-1a hash
-	h := fnv.New64a()
-
-	// Write the filename and pitch to the hash
-	h.Write([]byte(fmt.Sprintf("%s|%d", filename, pitch)))
-
-	// Return the 64-bit hash as a uint64
-	return h.Sum64()
-}
 
 func (tf *OpenGLTypeFace) RenderFontTextureImg(text string, fontColor color.Color) (img *image.RGBA) {
 	var (
@@ -94,8 +83,8 @@ func (tf *OpenGLTypeFace) RenderFontTextureImg(text string, fontColor color.Colo
 	if err != nil {
 		panic(err)
 	}
-	//SaveDebugImage(img, "debug_image.png")
-	//fmt.Printf("Text Width: %d, Height %d\n", textureWidth, textureHeight)
+	// SaveDebugImage(img, "debug_image.png")
+	// fmt.Printf("Text Width: %d, Height %d\n", textureWidth, textureHeight)
 	return
 }
 
