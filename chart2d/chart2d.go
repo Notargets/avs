@@ -39,6 +39,7 @@ func NewChart2D(XMin, XMax, YMin, YMax float32, width, height int, scaleOpt ...f
 		scale = scaleOpt[0]
 	}
 	chart = &Chart2D{
+		Scale:        scale,
 		XMin:         XMin,
 		XMax:         XMax,
 		YMin:         YMin,

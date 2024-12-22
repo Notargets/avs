@@ -93,7 +93,7 @@ func Test2(chart *chart2d.Chart2D) {
 	win1 := chart.Screen.Window.Read()
 
 	win2 := chart.NewWindow(chart.WindowWidth, chart.WindowHeight,
-		chart.XMin, chart.XMax, chart.YMin, chart.YMax, chart.Scale,
+		chart.XMin, chart.XMax, chart.YMin, chart.YMax, 0.8*chart.Scale,
 		"Second Window",
 		[4]float32{46. / 255., 46. / 255., 46. / 255, 1.},
 		main_gl_thread_objects.AUTO)
@@ -105,14 +105,15 @@ func Test2(chart *chart2d.Chart2D) {
 		color.RGBA{0, 255, 0, 255}, true, true)
 
 	titleHeight := chart.GetWorldSpaceCharHeight(TitleText)
-	ypos := 0.1*chart.YMax - titleHeight
+	ypos := 0.6*chart.YMax - titleHeight
 	chart.Printf(TitleText, 0, ypos,
 		"Title 2 first line")
 	// Add a 33% pad for the vertical line spacing between lines
-	ypos = ypos - 0.33*titleHeight
+	ypos = ypos - titleHeight
 	chart.Printf(TitleText, 0, ypos, "Title 2 second line")
 
-	chart.Screen.MakeContextCurrent(win1)
+	// chart.Screen.MakeContextCurrent(win1)
+	_ = win1
 
 	select {}
 }
