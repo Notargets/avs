@@ -46,10 +46,9 @@ func NewScreen(width, height uint32, xmin, xmax, ymin, ymax, scale float32,
 		Objects:       make(map[utils.Key]*Renderable),
 		RenderChannel: make(chan func(), 100),
 	}
-	// OpenGLReady is used to signal when OpenGL is fully initialized
+
 	// Channel for synchronization
 	doneChan := make(chan struct{})
-
 	go func() {
 		runtime.LockOSThread()
 
@@ -60,16 +59,16 @@ func NewScreen(width, height uint32, xmin, xmax, ymin, ymax, scale float32,
 			xmin, xmax, ymin, ymax,
 			scale, "Chart2D", screen.RenderChannel, bgColor, position))
 
-		fmt.Println("[OpenGL] Initialization complete, signaling main thread.")
+		// fmt.Println("[OpenGL] Initialization complete, signaling main thread.")
 		doneChan <- struct{}{}
 
 		// Start the event loop (OpenGL runs here)
 		screen.EventLoop()
 	}()
 	// Wait for the OpenGL thread to signal readiness
-	fmt.Println("[Main] Waiting for OpenGL initialization...")
+	// fmt.Println("[Main] Waiting for OpenGL initialization...")
 	<-doneChan
-	fmt.Println("[Main] OpenGL initialization complete, proceeding.")
+	// fmt.Println("[Main] OpenGL initialization complete, proceeding.")
 
 	return screen
 }
@@ -84,10 +83,13 @@ func (scr *Screen) GetCurrentWindow() (win *main_gl_thread_objects.Window) {
 }
 
 func (scr *Screen) MakeContextCurrent(win *main_gl_thread_objects.Window) {
+	doneChan := make(chan struct{})
 	scr.RenderChannel <- func() {
 		scr.Window.Write(win)
 		scr.Window.Read().MakeContextCurrent()
+		doneChan <- struct{}{}
 	}
+	<-doneChan
 }
 
 func (scr *Screen) NewWindow(width, height uint32, xmin, xmax, ymin, ymax,

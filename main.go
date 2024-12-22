@@ -9,6 +9,8 @@ package main
 import (
 	"image/color"
 
+	"github.com/notargets/avs/screen/main_gl_thread_objects"
+
 	"github.com/notargets/avs/assets"
 
 	"github.com/notargets/avs/chart2d"
@@ -26,10 +28,11 @@ import (
 // TODO: ... new Add() calls will be scoped to the "current" window. At some point, objects could be moved among
 // TODO: ... windows.
 func main() {
-	Test_Text()
+	chart := Test_Text()
+	Test2(chart)
 }
 
-func Test_Text() {
+func Test_Text() (chart *chart2d.Chart2D) {
 	width, height := 1200, 760
 	// width, height := 1000, 1000
 	var XMin, XMax, YMin, YMax float32
@@ -53,7 +56,7 @@ func Test_Text() {
 		panic("No option here")
 	}
 
-	chart := chart2d.NewChart2D(XMin, XMax, YMin, YMax, width, height)
+	chart = chart2d.NewChart2D(XMin, XMax, YMin, YMax, width, height)
 
 	tickText := assets.NewTextFormatter("NotoSans", "Regular", 24,
 		color.RGBA{255, 255, 255, 255}, true, false)
@@ -82,19 +85,34 @@ func Test_Text() {
 	ypos = ypos - 1.33*titleHeight
 	chart.Printf(TitleText, xpos, ypos, "Title text doesn't move with pan and zoom and remains the same size when window is resized")
 
-	// win2 := chart.NewWindow(uint32(width), uint32(height), XMin, XMax, YMin,
-	// 	YMax, 1.0, "Second Window",
-	// 	[4]float32{46. / 255., 46. / 255., 46. / 255, 1.},
-	// 	main_gl_thread_objects.AUTO)
-	//
-	// chart.Screen.MakeContextCurrent(win2)
-	//
-	// // Title
-	// ypos = 0.1*chart.YMax - titleHeight
-	// chart.Printf(TitleText, xpos, ypos, "This is an example of a title text string")
-	// // Add a 33% pad for the vertical line spacing between lines
-	// ypos = ypos - 0.33*titleHeight
-	// chart.Printf(TitleText, xpos, ypos, "Title text doesn't move with pan and zoom and remains the same size when window is resized")
+	return
+}
+
+func Test2(chart *chart2d.Chart2D) {
+
+	win1 := chart.Screen.Window.Read()
+
+	win2 := chart.NewWindow(chart.WindowWidth, chart.WindowHeight,
+		chart.XMin, chart.XMax, chart.YMin, chart.YMax, chart.Scale,
+		"Second Window",
+		[4]float32{46. / 255., 46. / 255., 46. / 255, 1.},
+		main_gl_thread_objects.AUTO)
+
+	chart.Screen.MakeContextCurrent(win2)
+
+	// Title
+	TitleText := assets.NewTextFormatter("NotoSans", "Bold", 36,
+		color.RGBA{0, 255, 0, 255}, true, true)
+
+	titleHeight := chart.GetWorldSpaceCharHeight(TitleText)
+	ypos := 0.1*chart.YMax - titleHeight
+	chart.Printf(TitleText, 0, ypos,
+		"Title 2 first line")
+	// Add a 33% pad for the vertical line spacing between lines
+	ypos = ypos - 0.33*titleHeight
+	chart.Printf(TitleText, 0, ypos, "Title 2 second line")
+
+	chart.Screen.MakeContextCurrent(win1)
 
 	select {}
 }
