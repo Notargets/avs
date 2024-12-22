@@ -11,7 +11,11 @@ import (
 )
 
 func (scr *Screen) EventLoop() {
-	for !scr.Window.Window.ShouldClose() {
+	for {
+		win := scr.Window.Read()
+		if win.Window.ShouldClose() {
+			break
+		}
 		// Wait for any input event (mouse, keyboard, resize, etc.)
 		glfw.WaitEventsTimeout(0.02)
 
@@ -19,19 +23,19 @@ func (scr *Screen) EventLoop() {
 		select {
 		case command := <-scr.RenderChannel:
 			command() // Execute the command (can include OpenGL calls)
-			scr.Window.NeedsRedraw = true
+			(scr.Window.Read()).NeedsRedraw = true
 		default:
 			// No command, continue
 			break
 		}
 
 		// setupVertices the projection matrix if pan/zoom has changed
-		if scr.Window.NeedsRedraw || scr.Window.PositionChanged || scr.Window.ScaleChanged {
-			scr.Window.UpdateProjectionMatrix()
-			scr.Window.PositionChanged = false
-			scr.Window.ScaleChanged = false
-			scr.Window.NeedsRedraw = false
-			scr.fullScreenRender()
+		if win.NeedsRedraw || win.PositionChanged || win.ScaleChanged {
+			win.UpdateProjectionMatrix()
+			win.PositionChanged = false
+			win.ScaleChanged = false
+			win.NeedsRedraw = false
+			scr.fullScreenRender(win)
 		}
 
 	}

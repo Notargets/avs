@@ -46,7 +46,7 @@ func (rb *Renderable) SetVisible(isVisible bool) {
 	rb.Visible = isVisible
 }
 
-func (scr *Screen) fullScreenRender() {
+func (scr *Screen) fullScreenRender(win *Window) {
 	// Clear the screen before rendering
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 	for _, obj := range scr.Objects {
@@ -57,15 +57,13 @@ func (scr *Screen) fullScreenRender() {
 			case *main_gl_thread_objects.Line:
 				renderObj.Render()
 			case *main_gl_thread_objects.String:
-				renderObj.Render(scr.Window.ProjectionMatrix,
-					scr.Window.Width,
-					scr.Window.Height, scr.Window.XMin, scr.Window.XMax, scr.Window.YMin,
-					scr.Window.YMax)
+				renderObj.Render(win.ProjectionMatrix, win.Width, win.Height,
+					win.XMin, win.XMax, win.YMin, win.YMax)
 			default:
 				fmt.Printf("Unknown object type: %T\n", renderObj)
 			}
 		}
 	}
 	// Swap buffers to present the frame
-	scr.Window.SwapBuffers()
+	win.SwapBuffers()
 }

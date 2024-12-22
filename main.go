@@ -31,7 +31,7 @@ func main() {
 }
 
 func Test_Text() {
-	width, height := 1440, 900
+	width, height := 1200, 760
 	// width, height := 1000, 1000
 	var XMin, XMax, YMin, YMax float32
 	style := 2
@@ -82,5 +82,19 @@ func Test_Text() {
 	// Add a 33% pad for the vertical line spacing between lines
 	ypos = ypos - 1.33*titleHeight
 	chart.Printf(TitleText, xpos, ypos, "Title text doesn't move with pan and zoom and remains the same size when window is resized")
+
+	// win2 := chart.NewWindow(uint32(width), uint32(height), XMin, XMax, YMin,
+	// 	YMax, 1.0,
+	// 	"Second Window", [4]float32{46. / 255., 46. / 255., 46. / 255, 1.},
+	// 	screen.AUTO)
+	//
+	// chart.Screen.MakeContextCurrent(win2)
+	// // Title
+	// ypos = 0.1*chart.YMax - titleHeight
+	// chart.Printf(TitleText, xpos, ypos, "This is an example of a title text string")
+	// // Add a 33% pad for the vertical line spacing between lines
+	// ypos = ypos - 0.33*titleHeight
+	// chart.Printf(TitleText, xpos, ypos, "Title text doesn't move with pan and zoom and remains the same size when window is resized")
+
 	select {}
 }

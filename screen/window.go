@@ -28,12 +28,12 @@ func init() {
 type Position uint8
 
 const (
-	AUTO Position = iota
-	TOPLEFT
+	TOPLEFT Position = iota
 	TOPRIGHT
 	BOTTOMLEFT
 	BOTTOMRIGHT
 	CENTER
+	AUTO
 )
 
 type Window struct {
@@ -57,8 +57,8 @@ type Window struct {
 }
 
 func NewWindow(width, height uint32, xMin, xMax, yMin, yMax, scale float32,
-	title string, renderChannel chan func(),
-	bgColor [4]float32, position Position) (win *Window) {
+	title string, renderChannel chan func(), bgColor [4]float32,
+	position Position) (win *Window) {
 
 	var (
 		err error
@@ -108,20 +108,22 @@ func NewWindow(width, height uint32, xMin, xMax, yMin, yMax, scale float32,
 	if position == AUTO {
 		position = Position((windowCount.Read() + 1) % 4)
 	}
+	// fmt.Printf("Window Count+1 (current) = %d, Position = %d\n",
+	// 	windowCount.Read()+1, position)
 	var windowX, windowY int
 	switch position {
 	case TOPLEFT:
-		windowX = 0
-		windowY = 0
+		windowX = screenWidth / 32
+		windowY = screenHeight / 32
 	case BOTTOMLEFT:
-		windowX = 0
-		windowY = screenHeight / 2
+		windowX = screenWidth / 32
+		windowY = screenHeight/2 + screenHeight/32
 	case BOTTOMRIGHT:
-		windowX = screenWidth / 2
-		windowY = screenHeight / 2
+		windowX = screenWidth/2 + screenWidth/32
+		windowY = screenHeight/2 + screenHeight/32
 	case TOPRIGHT:
-		windowX = screenWidth / 2
-		windowY = 0
+		windowX = screenWidth/2 + screenWidth/32
+		windowY = screenHeight / 32
 	case CENTER:
 		windowX = (screenWidth - int(width)) / 2
 		windowY = (screenHeight - int(height)) / 2
@@ -163,17 +165,13 @@ func NewWindow(width, height uint32, xMin, xMax, yMin, yMax, scale float32,
 	return
 }
 
-func (win *Window) SetCurrent() {
+func (win *Window) MakeContextCurrent() {
 	win.Window.MakeContextCurrent()
 }
 
 func (win *Window) SetPos(windowX, windowY int) {
 	// Set the window position to the calculated coordinates
 	win.Window.SetPos(windowX, windowY)
-}
-
-func (win *Window) MakeContextCurrent() {
-	win.Window.MakeContextCurrent()
 }
 
 func (win *Window) SetCallbacks() {

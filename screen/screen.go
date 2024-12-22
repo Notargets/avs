@@ -8,18 +8,37 @@ package screen
 
 import (
 	"runtime"
+	"sync/atomic"
+	"unsafe"
 
 	"github.com/notargets/avs/utils"
 )
 
 type Screen struct {
-	Window        *Window
+	// Window        *Window
+	Window        SafeWindow
 	Objects       map[utils.Key]*Renderable
 	RenderChannel chan func()
 }
 
+type SafeWindow struct {
+	value unsafe.Pointer
+}
+
+// Write sets a new value atomically
+func (si *SafeWindow) Write(val *Window) {
+	atomic.StorePointer(&si.value, unsafe.Pointer(&val))
+}
+
+// Read atomically retrieves the variable's value.
+// It returns an `int` type
+func (si *SafeWindow) Read() *Window {
+	ptr := atomic.LoadPointer(&si.value)
+	return *(*(*Window))(ptr)
+}
+
 func NewScreen(width, height uint32, xmin, xmax, ymin, ymax, scale float32,
-	bgColor [4]float32) *Screen {
+	bgColor [4]float32, position Position) *Screen {
 
 	screen := &Screen{
 		Objects:       make(map[utils.Key]*Renderable),
@@ -33,8 +52,8 @@ func NewScreen(width, height uint32, xmin, xmax, ymin, ymax, scale float32,
 	go func(done chan OpenGLReady) {
 		runtime.LockOSThread()
 
-		screen.Window = NewWindow(width, height, xmin, xmax, ymin, ymax, scale,
-			"Chart2D", screen.RenderChannel, bgColor, CENTER)
+		screen.Window.Write(NewWindow(width, height, xmin, xmax, ymin, ymax,
+			scale, "Chart2D", screen.RenderChannel, bgColor, position))
 
 		// Notify the main thread that OpenGL is ready
 		// fmt.Println("[OpenGL] Initialization complete, signaling main thread.")
@@ -52,5 +71,10 @@ func NewScreen(width, height uint32, xmin, xmax, ymin, ymax, scale float32,
 }
 
 func (scr *Screen) Redraw() {
-	scr.Window.Redraw()
+	scr.Window.Read().Redraw()
+}
+
+func (scr *Screen) MakeContextCurrent(win *Window) {
+	scr.Window.Write(win)
+	scr.Window.Read().MakeContextCurrent()
 }
