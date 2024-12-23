@@ -54,6 +54,7 @@ type Window struct {
 	Shaders          map[utils.RenderType]uint32
 	Objects          map[utils.Key]*Renderable
 	WindowIndex      int
+	doneChannel      chan struct{}
 }
 
 func NewWindow(width, height uint32, xMin, xMax, yMin, yMax, scale float32,
@@ -82,6 +83,7 @@ func NewWindow(width, height uint32, xMin, xMax, yMin, yMax, scale float32,
 		NeedsRedraw:   true,
 		Shaders:       make(map[utils.RenderType]uint32),
 		Objects:       make(map[utils.Key]*Renderable),
+		doneChannel:   make(chan struct{}),
 	}
 	// Launch the OpenGL thread
 	if err := glfw.Init(); err != nil {
@@ -132,9 +134,7 @@ func NewWindow(width, height uint32, xMin, xMax, yMin, yMax, scale float32,
 	// Set the window position to the calculated coordinates
 	win.SetPos(windowX, windowY)
 
-	win.MakeContextCurrent()
-
-	win.SetCallbacks()
+	win.Window.MakeContextCurrent()
 
 	if windowIndex == -1 {
 		if err := gl.Init(); err != nil {
@@ -143,8 +143,10 @@ func NewWindow(width, height uint32, xMin, xMax, yMin, yMax, scale float32,
 	}
 	windowIndex++
 	win.WindowIndex = windowIndex
-	CurrentWindow.WindowIndex = windowIndex
-	CurrentWindow.Window = win
+	currentWindow.WindowIndex = windowIndex
+	currentWindow.Window = win
+
+	win.SetCallbacks()
 
 	gl.ClearColor(bgColor[0], bgColor[1], bgColor[2], bgColor[3])
 	gl.Clear(gl.COLOR_BUFFER_BIT)
@@ -169,9 +171,11 @@ func NewWindow(width, height uint32, xMin, xMax, yMin, yMax, scale float32,
 }
 
 func (win *Window) MakeContextCurrent() {
-	CurrentWindow.WindowIndex = win.WindowIndex
-	CurrentWindow.Window = win
-	win.Window.MakeContextCurrent()
+	win.RenderChannel <- func() {
+		currentWindow.WindowIndex = win.WindowIndex
+		currentWindow.Window = win
+		win.Window.MakeContextCurrent()
+	}
 }
 
 func (win *Window) NewRenderable(key utils.Key, object interface{}) (
@@ -243,9 +247,14 @@ func (win *Window) SwapBuffers() {
 }
 
 func (win *Window) Redraw() {
-	select {
-	case win.RenderChannel <- func() {}:
-	default:
-		// Channel is full, no need to push more redraws
+	var needReset = false
+	oldWin := currentWindow.Window
+	if oldWin != win {
+		win.MakeContextCurrent()
+		needReset = true
+	}
+	win.RenderChannel <- func() {}
+	if needReset {
+		oldWin.MakeContextCurrent()
 	}
 }

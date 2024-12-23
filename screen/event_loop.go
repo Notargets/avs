@@ -14,7 +14,7 @@ import (
 func (scr *Screen) EventLoop() {
 	for {
 		// win := scr.Window.Read()
-		win := main_gl_thread_objects.CurrentWindow.Window
+		win := main_gl_thread_objects.GetCurrentWindow()
 		if win.Window.ShouldClose() {
 			break
 		}

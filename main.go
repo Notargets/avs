@@ -30,6 +30,7 @@ import (
 func main() {
 	chart := TestText()
 	Test2(chart)
+	select {}
 }
 
 func TestText() (chart *chart2d.Chart2D) {
@@ -98,6 +99,7 @@ func Test2(chart *chart2d.Chart2D) {
 		[4]float32{46. / 255., 46. / 255., 46. / 255, 1.},
 		main_gl_thread_objects.AUTO)
 
+	chart.Screen.SetDrawWindow(win2)
 	// Test text
 	DynamicText := assets.NewTextFormatter("NotoSans", "Regular", 24,
 		color.RGBA{R: 255, B: 255, A: 255}, false, false)
@@ -120,7 +122,10 @@ func Test2(chart *chart2d.Chart2D) {
 	ypos = ypos - titleHeight
 	chart.Printf(TitleText, 0, ypos, "Title 2 second line")
 
+	chart.Screen.SetDrawWindow(win1)
+
+	chart.Printf(TitleText, 0, ypos, "Title 3 First Window")
+
 	_, _ = win1, win2
 
-	select {}
 }

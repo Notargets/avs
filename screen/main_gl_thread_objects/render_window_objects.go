@@ -17,7 +17,11 @@ type currentWindowTracker struct {
 	Window      *Window
 }
 
-var CurrentWindow currentWindowTracker
+var currentWindow currentWindowTracker
+
+func GetCurrentWindow() *Window {
+	return currentWindow.Window
+}
 
 func (win *Window) FullScreenRender() {
 	// Clear the screen before rendering

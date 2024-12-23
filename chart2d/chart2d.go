@@ -46,11 +46,11 @@ func NewChart2D(XMin, XMax, YMin, YMax float32, width, height int, scaleOpt ...f
 		YMax:         YMax,
 		WindowWidth:  uint32(width),
 		WindowHeight: uint32(height),
-		Screen: screen.NewScreen(uint32(width), uint32(height), XMin,
-			XMax, YMin, YMax, scale, [4]float32{46. / 255., 46. / 255.,
-				46. / 255., 1.}, main_gl_thread_objects.AUTO),
-		LineColor: color.RGBA{R: 255, G: 255, B: 255, A: 255},
+		LineColor:    color.RGBA{R: 255, G: 255, B: 255, A: 255},
 	}
+	chart.Screen = screen.NewScreen(uint32(width), uint32(height), XMin,
+		XMax, YMin, YMax, scale, [4]float32{46. / 255., 46. / 255.,
+			46. / 255., 1.}, main_gl_thread_objects.AUTO)
 	return
 }
 
