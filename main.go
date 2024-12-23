@@ -98,22 +98,29 @@ func Test2(chart *chart2d.Chart2D) {
 		[4]float32{46. / 255., 46. / 255., 46. / 255, 1.},
 		main_gl_thread_objects.AUTO)
 
-	// chart.Screen.MakeContextCurrent(win2)
+	// Test text
+	DynamicText := assets.NewTextFormatter("NotoSans", "Regular", 24,
+		color.RGBA{R: 255, B: 255, A: 255}, false, false)
+	xRange := chart.XMax - chart.XMin
+	_ = xRange
+	yRange := chart.YMax - chart.YMin
+	xpos := float32(0)
+	ypos := chart.YMin + 0.5*yRange
+	chart.Printf(DynamicText, xpos, ypos, "Window 2 Dynamic Text")
 
 	// Title
 	TitleText := assets.NewTextFormatter("NotoSans", "Bold", 36,
 		color.RGBA{G: 255, A: 255}, true, true)
 
 	titleHeight := chart.GetWorldSpaceCharHeight(TitleText)
-	ypos := 0.6*chart.YMax - titleHeight
+	ypos = 0.6*chart.YMax - titleHeight
 	chart.Printf(TitleText, 0, ypos,
 		"Title 2 first line")
 	// Add a 33% pad for the vertical line spacing between lines
 	ypos = ypos - titleHeight
 	chart.Printf(TitleText, 0, ypos, "Title 2 second line")
 
-	chart.Screen.MakeContextCurrent(win1)
-	_ = win2
+	_, _ = win1, win2
 
 	select {}
 }
