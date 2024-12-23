@@ -245,11 +245,7 @@ func (win *Window) SwapBuffers() {
 }
 
 func (win *Window) Redraw() {
-	// Temporarily grab Current Context for the redraw if needed
-	needReset, curWin := win.SetCurrentWindow()
+	win.SetCurrentWindow()
 	win.UpdateProjectionMatrix()
 	win.FullScreenRender()
-	if needReset {
-		curWin.SetCurrentWindow()
-	}
 }

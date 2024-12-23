@@ -29,7 +29,7 @@ func (scr *Screen) EventLoop() {
 			break
 		}
 
-		win = main_gl_thread_objects.GetCurrentWindow()
+		// win = main_gl_thread_objects.GetCurrentWindow()
 		// setupVertices the projection matrix if pan/zoom has changed
 		if win.PositionChanged || win.ScaleChanged {
 			win.Redraw()
