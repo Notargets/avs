@@ -12,6 +12,13 @@ import (
 	"github.com/go-gl/gl/v4.5-core/gl"
 )
 
+type currentWindowTracker struct {
+	WindowIndex int
+	Window      *Window
+}
+
+var CurrentWindow currentWindowTracker
+
 func (win *Window) FullScreenRender() {
 	// Clear the screen before rendering
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)

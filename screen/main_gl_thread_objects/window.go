@@ -143,6 +143,8 @@ func NewWindow(width, height uint32, xMin, xMax, yMin, yMax, scale float32,
 	}
 	windowIndex++
 	win.WindowIndex = windowIndex
+	CurrentWindow.WindowIndex = windowIndex
+	CurrentWindow.Window = win
 
 	gl.ClearColor(bgColor[0], bgColor[1], bgColor[2], bgColor[3])
 	gl.Clear(gl.COLOR_BUFFER_BIT)
@@ -167,6 +169,8 @@ func NewWindow(width, height uint32, xMin, xMax, yMin, yMax, scale float32,
 }
 
 func (win *Window) MakeContextCurrent() {
+	CurrentWindow.WindowIndex = win.WindowIndex
+	CurrentWindow.Window = win
 	win.Window.MakeContextCurrent()
 }
 

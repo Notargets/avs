@@ -8,11 +8,13 @@ package screen
 
 import (
 	"github.com/go-gl/glfw/v3.3/glfw"
+	"github.com/notargets/avs/screen/main_gl_thread_objects"
 )
 
 func (scr *Screen) EventLoop() {
 	for {
-		win := scr.Window.Read()
+		// win := scr.Window.Read()
+		win := main_gl_thread_objects.CurrentWindow.Window
 		if win.Window.ShouldClose() {
 			break
 		}
@@ -24,7 +26,7 @@ func (scr *Screen) EventLoop() {
 		case command := <-scr.RenderChannel:
 			command() // Execute the command (
 			// can include OpenGL calls)
-			(scr.Window.Read()).NeedsRedraw = true
+			win.NeedsRedraw = true
 		default:
 			// No command, continue
 			break

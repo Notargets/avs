@@ -7,7 +7,6 @@
 package main_gl_thread_objects
 
 import (
-	"fmt"
 	"image/color"
 	"log"
 
@@ -26,7 +25,7 @@ func (win *Window) SetCallbacks() {
 
 func (win *Window) focusCallback(w *glfw.Window, focused bool) {
 	if focused {
-		fmt.Printf("window: %v is now focused\n", win.WindowIndex)
+		// fmt.Printf("window: %v is now focused\n", win.WindowIndex)
 		win.MakeContextCurrent()
 	}
 }
@@ -73,6 +72,7 @@ func (win *Window) cursorPositionCallback(w *glfw.Window, xpos, ypos float64) {
 }
 
 func (win *Window) scrollCallback(w *glfw.Window, xoff, yoff float64) {
+	// fmt.Printf("Scrolling Window %v\n", win.WindowIndex)
 	// Adjust the zoom factor based on scroll input
 	win.ZoomFactor *= 1.0 + float32(yoff)*0.1*win.ZoomSpeed
 

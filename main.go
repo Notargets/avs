@@ -90,7 +90,7 @@ func TestText() (chart *chart2d.Chart2D) {
 
 func Test2(chart *chart2d.Chart2D) {
 
-	win1 := chart.Screen.Window.Read()
+	win1 := chart.Screen.GetCurrentWindow()
 
 	win2 := chart.NewWindow(chart.WindowWidth, chart.WindowHeight,
 		chart.XMin, chart.XMax, chart.YMin, chart.YMax, 0.8*chart.Scale,
