@@ -9,6 +9,8 @@ package main_gl_thread_objects
 import (
 	"fmt"
 
+	"github.com/go-gl/glfw/v3.3/glfw"
+
 	"github.com/go-gl/gl/v4.5-core/gl"
 )
 
@@ -21,6 +23,19 @@ var currentWindow currentWindowTracker
 
 func GetCurrentWindow() *Window {
 	return currentWindow.Window
+}
+
+func (win *Window) SetCurrentWindow() (swapped bool, curWin *Window) {
+	swapped = false
+	curWin = GetCurrentWindow()
+	if win != curWin {
+		swapped = true
+	}
+	win.MakeContextCurrent()
+	win.Window.Focus()
+	currentWindow.WindowIndex = win.WindowIndex
+	currentWindow.Window = win
+	return
 }
 
 func (win *Window) FullScreenRender() {
@@ -42,4 +57,5 @@ func (win *Window) FullScreenRender() {
 	}
 	// Swap buffers to present the frame
 	win.SwapBuffers()
+	glfw.PollEvents()
 }

@@ -22,21 +22,17 @@ func (scr *Screen) NewLine(X, Y, Colors []float32,
 
 	scr.RenderChannel <- func() {
 		// Create new line
-		var needSwitch = false
-		win := scr.GetCurrentWindow()
-		if win != scr.drawWindow {
-			scr.drawWindow.MakeContextCurrent()
-			needSwitch = true
-		}
+		win := scr.drawWindow
+		needSwitch, curWin := win.SetCurrentWindow()
 		line := main_gl_thread_objects.NewLine(X, Y, Colors, win.Shaders, rt...)
-		scr.drawWindow.NewRenderable(key, line)
+		win.NewRenderable(key, line)
+		win.Redraw()
 		if needSwitch {
-			win.MakeContextCurrent()
+			curWin.SetCurrentWindow()
 		}
 		scr.DoneChan <- struct{}{}
 	}
 	<-scr.DoneChan
-	scr.drawWindow.Redraw()
 
 	return key
 }
@@ -54,23 +50,18 @@ func (scr *Screen) NewString(tf *assets.TextFormatter, x,
 	}
 
 	scr.RenderChannel <- func() {
-		var needSwitch = false
-		win := scr.GetCurrentWindow()
-		if win != scr.drawWindow {
-			scr.drawWindow.MakeContextCurrent()
-			needSwitch = true
-		}
+		win := scr.drawWindow
+		needSwitch, curWin := win.SetCurrentWindow()
 		str := main_gl_thread_objects.NewString(tf, x, y, text, win.Width,
 			win.Height, win.Shaders)
-		scr.drawWindow.NewRenderable(key, str)
-
+		win.NewRenderable(key, str)
+		win.Redraw()
 		if needSwitch {
-			win.MakeContextCurrent()
+			curWin.SetCurrentWindow()
 		}
 		scr.DoneChan <- struct{}{}
 	}
 	<-scr.DoneChan
-	scr.drawWindow.Redraw()
 
 	return
 }

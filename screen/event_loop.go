@@ -13,7 +13,6 @@ import (
 
 func (scr *Screen) EventLoop() {
 	for {
-		// win := scr.Window.Read()
 		win := main_gl_thread_objects.GetCurrentWindow()
 		if win.Window.ShouldClose() {
 			break
@@ -25,20 +24,17 @@ func (scr *Screen) EventLoop() {
 		select {
 		case command := <-scr.RenderChannel:
 			command() // Execute the command (
-			// can include OpenGL calls)
-			win.NeedsRedraw = true
 		default:
 			// No command, continue
 			break
 		}
 
+		win = main_gl_thread_objects.GetCurrentWindow()
 		// setupVertices the projection matrix if pan/zoom has changed
-		if win.NeedsRedraw || win.PositionChanged || win.ScaleChanged {
-			win.UpdateProjectionMatrix()
+		if win.PositionChanged || win.ScaleChanged {
+			win.Redraw()
 			win.PositionChanged = false
 			win.ScaleChanged = false
-			win.NeedsRedraw = false
-			win.FullScreenRender()
 		}
 
 	}

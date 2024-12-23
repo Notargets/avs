@@ -40,7 +40,6 @@ type Window struct {
 	YMin, YMax       float32
 	Scale            float32
 	Width, Height    uint32
-	NeedsRedraw      bool
 	IsDragging       bool
 	LastX, LastY     float64
 	PositionChanged  bool
@@ -80,7 +79,6 @@ func NewWindow(width, height uint32, xMin, xMax, yMin, yMax, scale float32,
 		ZoomFactor:    1.,
 		PositionDelta: [2]float32{0, 0},
 		ScaleChanged:  false,
-		NeedsRedraw:   true,
 		Shaders:       make(map[utils.RenderType]uint32),
 		Objects:       make(map[utils.Key]*Renderable),
 		doneChannel:   make(chan struct{}),
@@ -247,14 +245,11 @@ func (win *Window) SwapBuffers() {
 }
 
 func (win *Window) Redraw() {
-	var needReset = false
-	oldWin := currentWindow.Window
-	if oldWin != win {
-		win.MakeContextCurrent()
-		needReset = true
-	}
-	win.RenderChannel <- func() {}
+	// Temporarily grab Current Context for the redraw if needed
+	needReset, curWin := win.SetCurrentWindow()
+	win.UpdateProjectionMatrix()
+	win.FullScreenRender()
 	if needReset {
-		oldWin.MakeContextCurrent()
+		curWin.SetCurrentWindow()
 	}
 }
