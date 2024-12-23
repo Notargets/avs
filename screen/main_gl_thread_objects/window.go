@@ -17,10 +17,10 @@ import (
 	"github.com/go-gl/glfw/v3.3/glfw"
 )
 
-var windowCount int
+var windowIndex int
 
 func init() {
-	windowCount = -1
+	windowIndex = -1
 }
 
 type Position uint8
@@ -53,6 +53,7 @@ type Window struct {
 	ProjectionMatrix mgl32.Mat4
 	Shaders          map[utils.RenderType]uint32
 	Objects          map[utils.Key]*Renderable
+	WindowIndex      int
 }
 
 func NewWindow(width, height uint32, xMin, xMax, yMin, yMax, scale float32,
@@ -92,7 +93,6 @@ func NewWindow(width, height uint32, xMin, xMax, yMin, yMax, scale float32,
 	if err != nil {
 		panic(err)
 	}
-	window := win.Window
 
 	// Get primary monitor video mode (used to get the screen dimensions)
 	monitor := glfw.GetPrimaryMonitor()
@@ -104,12 +104,12 @@ func NewWindow(width, height uint32, xMin, xMax, yMin, yMax, scale float32,
 
 	// Put the window into a quadrant of the host window depending on window
 	// number
-	// fmt.Printf("Window Number: %d\n", windowCount.Read()+1)
+	// fmt.Printf("Window Number: %d\n", windowIndex.Read()+1)
 	if position == AUTO {
-		position = Position((windowCount + 1) % 4)
+		position = Position((windowIndex + 1) % 4)
 	}
 	// fmt.Printf("Window Count+1 (current) = %d, Position = %d\n",
-	// 	windowCount.Read()+1, position)
+	// 	windowIndex.Read()+1, position)
 	var windowX, windowY int
 	switch position {
 	case TOPLEFT:
@@ -130,20 +130,23 @@ func NewWindow(width, height uint32, xMin, xMax, yMin, yMax, scale float32,
 	}
 
 	// Set the window position to the calculated coordinates
-	window.SetPos(windowX, windowY)
+	win.SetPos(windowX, windowY)
 
-	window.MakeContextCurrent()
+	win.MakeContextCurrent()
 
-	if windowCount == -1 {
+	win.SetCallbacks()
+
+	if windowIndex == -1 {
 		if err := gl.Init(); err != nil {
 			log.Fatalln("Failed to initialize OpenGL context:", err)
 		}
 	}
-	windowCount++
+	windowIndex++
+	win.WindowIndex = windowIndex
 
 	gl.ClearColor(bgColor[0], bgColor[1], bgColor[2], bgColor[3])
 	gl.Clear(gl.COLOR_BUFFER_BIT)
-	window.SwapBuffers()
+	win.SwapBuffers()
 
 	// Enable VSync
 	glfw.SwapInterval(1)
@@ -154,8 +157,6 @@ func NewWindow(width, height uint32, xMin, xMax, yMin, yMax, scale float32,
 	// For each object type in Screen, we need to load the shaders here
 	AddStringShaders(win.Shaders)
 	AddLineShader(win.Shaders)
-
-	win.SetCallbacks()
 
 	// Force the first frame to render
 	win.PositionChanged = true

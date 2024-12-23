@@ -7,6 +7,7 @@
 package main_gl_thread_objects
 
 import (
+	"fmt"
 	"image/color"
 	"log"
 
@@ -20,15 +21,20 @@ func (win *Window) SetCallbacks() {
 	win.Window.SetCursorPosCallback(win.cursorPositionCallback)
 	win.Window.SetScrollCallback(win.scrollCallback)
 	win.Window.SetSizeCallback(win.resizeCallback)
+	win.Window.SetFocusCallback(win.focusCallback)
+}
+
+func (win *Window) focusCallback(w *glfw.Window, focused bool) {
+	if focused {
+		fmt.Printf("window: %v is now focused\n", win.WindowIndex)
+		win.MakeContextCurrent()
+	}
 }
 
 func (win *Window) mouseButtonCallback(w *glfw.Window, button glfw.MouseButton,
 	action glfw.Action, mods glfw.ModifierKey) {
 	switch button {
 	case glfw.MouseButtonLeft:
-		if action == glfw.Press {
-			win.MakeContextCurrent()
-		}
 		return
 	case glfw.MouseButtonRight:
 		if action == glfw.Press {
@@ -46,7 +52,7 @@ func (win *Window) mouseButtonCallback(w *glfw.Window, button glfw.MouseButton,
 
 func (win *Window) cursorPositionCallback(w *glfw.Window, xpos, ypos float64) {
 	if win.IsDragging {
-		width, height := w.GetSize()
+		width, height := win.Window.GetSize()
 
 		// Calculate movement in world coordinates (pan logic)
 		dx := float32(xpos-win.LastX) / float32(width) * (win.XMax - win.XMin) / win.Scale
