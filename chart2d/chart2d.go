@@ -54,22 +54,13 @@ func NewChart2D(XMin, XMax, YMin, YMax float32, width, height int, scaleOpt ...f
 	return
 }
 
-func (chart *Chart2D) AddLine(X, Y []float32) (key utils.Key) {
-	return chart.Screen.NewPolyLine(X, Y, utils.GetSingleColorArray(Y,
-		chart.LineColor))
+func (chart *Chart2D) AddLine(X, Y, Colors []float32,
+	rt ...utils.RenderType) (key utils.Key) {
+	return chart.Screen.NewLine(X, Y, Colors, rt...)
 }
-
 func (chart *Chart2D) Printf(formatter *assets.TextFormatter, x, y float32,
 	format string, args ...interface{}) (key utils.Key) {
 	return chart.Screen.Printf(formatter, x, y, format, args...)
-}
-
-func (chart *Chart2D) GetWorldSpaceCharHeight(tf *assets.TextFormatter) (height float32) {
-	return tf.GetWorldSpaceCharHeight(chart.YMax-chart.YMin, chart.WindowWidth, chart.WindowHeight)
-}
-
-func (chart *Chart2D) GetWorldSpaceCharWidth(tf *assets.TextFormatter) (height float32) {
-	return tf.GetWorldSpaceCharWidth(chart.XMax-chart.XMin, chart.YMax-chart.YMin, chart.WindowWidth, chart.WindowHeight)
 }
 
 func (chart *Chart2D) AddAxis(axisColor color.Color,
@@ -92,7 +83,8 @@ func (chart *Chart2D) AddAxis(axisColor color.Color,
 
 	// Generate color array for 2 vertices per axis (X-axis and Y-axis)
 	X, Y, C = utils.AddSegmentToLine(X, Y, C, xMin, 0, xMax, 0, axisColor)
-	X, Y, C = utils.AddSegmentToLine(X, Y, C, yAxisLocation, yMin, yAxisLocation, yMax, axisColor)
+	X, Y, C = utils.AddSegmentToLine(X, Y, C, yAxisLocation, yMin, yAxisLocation,
+		yMax, axisColor)
 
 	// Draw ticks along X axis
 	var x, y = xMin, float32(0) // X axis is always drawn at Y = 0
@@ -123,7 +115,7 @@ func (chart *Chart2D) AddAxis(axisColor color.Color,
 		y = y + yInc
 	}
 	// chart.Screen.ChangePosition(0.0, 0.0)
-	return chart.Screen.NewLine(X, Y, C) // 2 points, so 2 * 3 = 6 colors
+	return chart.AddLine(X, Y, C) // 2 points, so 2 * 3 = 6 colors
 }
 
 func (chart *Chart2D) NewWindow(width, height uint32, xMin, xMax, yMin,
@@ -131,5 +123,22 @@ func (chart *Chart2D) NewWindow(width, height uint32, xMin, xMax, yMin,
 	position main_gl_thread_objects.Position) (win *main_gl_thread_objects.Window) {
 	win = chart.Screen.NewWindow(width, height, xMin, xMax, yMin, yMax, scale,
 		title, bgColor, position)
+	return
+}
+
+func (chart *Chart2D) GetWorldSpaceCharHeight(tf *assets.TextFormatter) (height float32) {
+	return tf.GetWorldSpaceCharHeight(chart.YMax-chart.YMin, chart.WindowWidth, chart.WindowHeight)
+}
+
+func (chart *Chart2D) GetWorldSpaceCharWidth(tf *assets.TextFormatter) (height float32) {
+	return tf.GetWorldSpaceCharWidth(chart.XMax-chart.XMin, chart.YMax-chart.YMin, chart.WindowWidth, chart.WindowHeight)
+}
+
+func (chart *Chart2D) SetDrawWindow(win *main_gl_thread_objects.Window) {
+	chart.Screen.SetDrawWindow(win)
+}
+
+func (chart *Chart2D) GetCurrentWindow() (win *main_gl_thread_objects.Window) {
+	win = chart.Screen.GetCurrentWindow()
 	return
 }

@@ -9,6 +9,8 @@ package main
 import (
 	"image/color"
 
+	"github.com/notargets/avs/utils"
+
 	"github.com/notargets/avs/screen/main_gl_thread_objects"
 
 	"github.com/notargets/avs/assets"
@@ -91,7 +93,7 @@ func TestText() (chart *chart2d.Chart2D) {
 
 func Test2(chart *chart2d.Chart2D) {
 
-	win1 := chart.Screen.GetCurrentWindow()
+	win1 := chart.GetCurrentWindow()
 
 	win2 := chart.NewWindow(chart.WindowWidth, chart.WindowHeight,
 		chart.XMin, chart.XMax, chart.YMin, chart.YMax, 0.8*chart.Scale,
@@ -99,7 +101,7 @@ func Test2(chart *chart2d.Chart2D) {
 		[4]float32{46. / 255., 46. / 255., 46. / 255, 1.},
 		main_gl_thread_objects.AUTO)
 
-	chart.Screen.SetDrawWindow(win2)
+	chart.SetDrawWindow(win2)
 	// Test text
 	DynamicText := assets.NewTextFormatter("NotoSans", "Regular", 24,
 		color.RGBA{R: 255, B: 255, A: 255}, false, false)
@@ -122,9 +124,27 @@ func Test2(chart *chart2d.Chart2D) {
 	ypos = ypos - titleHeight
 	chart.Printf(TitleText, 0, ypos, "Title 2 second line")
 
-	chart.Screen.SetDrawWindow(win1)
+	// Draw in first window
+	chart.SetDrawWindow(win1)
 
 	chart.Printf(TitleText, 0, ypos, "Title 3 First Window")
+
+	X, Y, C := utils.AddSegmentToLine([]float32{}, []float32{}, []float32{},
+		chart.XMin+0.25*xRange, chart.YMin+0.75*yRange,
+		chart.XMin+0.5*xRange, chart.YMin+0.75*yRange,
+		color.RGBA{255, 0, 0, 255})
+	chart.AddLine(X, Y, C)
+
+	// Draw in second window
+	chart.SetDrawWindow(win2)
+
+	chart.Printf(TitleText, 0, ypos-0.3*yRange, "Title 4 Second Window")
+
+	X, Y, C = utils.AddSegmentToLine([]float32{}, []float32{}, []float32{},
+		chart.XMin+0.25*xRange, chart.YMin+0.75*yRange,
+		chart.XMin+0.5*xRange, chart.YMin+0.75*yRange,
+		color.RGBA{0, 255, 0, 255})
+	chart.AddLine(X, Y, C)
 
 	_, _ = win1, win2
 

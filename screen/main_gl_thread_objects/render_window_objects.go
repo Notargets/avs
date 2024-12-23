@@ -30,11 +30,11 @@ func (win *Window) SetCurrentWindow() (swapped bool, curWin *Window) {
 	curWin = GetCurrentWindow()
 	if win != curWin {
 		swapped = true
+		win.MakeContextCurrent()
+		win.Window.Focus()
+		currentWindow.WindowIndex = win.WindowIndex
+		currentWindow.Window = win
 	}
-	win.MakeContextCurrent()
-	win.Window.Focus()
-	currentWindow.WindowIndex = win.WindowIndex
-	currentWindow.Window = win
 	return
 }
 
