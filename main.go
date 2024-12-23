@@ -98,7 +98,7 @@ func Test2(chart *chart2d.Chart2D) {
 		[4]float32{46. / 255., 46. / 255., 46. / 255, 1.},
 		main_gl_thread_objects.AUTO)
 
-	chart.Screen.MakeContextCurrent(win2)
+	// chart.Screen.MakeContextCurrent(win2)
 
 	// Title
 	TitleText := assets.NewTextFormatter("NotoSans", "Bold", 36,
@@ -112,8 +112,8 @@ func Test2(chart *chart2d.Chart2D) {
 	ypos = ypos - titleHeight
 	chart.Printf(TitleText, 0, ypos, "Title 2 second line")
 
-	// chart.Screen.MakeContextCurrent(win1)
-	_ = win1
+	chart.Screen.MakeContextCurrent(win1)
+	_ = win2
 
 	select {}
 }

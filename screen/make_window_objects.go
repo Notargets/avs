@@ -23,7 +23,8 @@ func (scr *Screen) NewLine(X, Y, Colors []float32,
 	// Create new line
 	line := main_gl_thread_objects.NewLine(X, Y, Colors, scr.Window.Read().Shaders, rt...)
 
-	scr.Objects[key] = NewRenderable(scr.Window.Read(), line)
+	// scr.Objects[key] = main_gl_thread_objects.NewRenderable(scr.Window.Read(), line)
+	scr.Window.Read().NewRenderable(key, line)
 
 	scr.Redraw()
 
@@ -46,7 +47,8 @@ func (scr *Screen) NewString(tf *assets.TextFormatter, x,
 	str := main_gl_thread_objects.NewString(tf, x, y,
 		text, win.Width, win.Height, win.Shaders)
 
-	scr.Objects[key] = NewRenderable(win, str)
+	// scr.Objects[key] = main_gl_thread_objects.NewRenderable(win, str)
+	scr.Window.Read().NewRenderable(key, str)
 
 	scr.Redraw()
 

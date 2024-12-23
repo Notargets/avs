@@ -36,7 +36,7 @@ func (scr *Screen) EventLoop() {
 			win.PositionChanged = false
 			win.ScaleChanged = false
 			win.NeedsRedraw = false
-			scr.fullScreenRender(win)
+			win.FullScreenRender()
 		}
 
 	}

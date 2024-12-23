@@ -13,13 +13,10 @@ import (
 	"unsafe"
 
 	"github.com/notargets/avs/screen/main_gl_thread_objects"
-
-	"github.com/notargets/avs/utils"
 )
 
 type Screen struct {
 	Window        SafeWindow // Concurrency safe so we can read in this thread
-	Objects       map[utils.Key]*Renderable
 	RenderChannel chan func()
 }
 
@@ -43,7 +40,6 @@ func NewScreen(width, height uint32, xmin, xmax, ymin, ymax, scale float32,
 	bgColor [4]float32, position main_gl_thread_objects.Position) *Screen {
 
 	screen := &Screen{
-		Objects:       make(map[utils.Key]*Renderable),
 		RenderChannel: make(chan func(), 100),
 	}
 

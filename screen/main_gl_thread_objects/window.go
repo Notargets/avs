@@ -53,6 +53,7 @@ type Window struct {
 	RenderChannel    chan func()
 	ProjectionMatrix mgl32.Mat4
 	Shaders          map[utils.RenderType]uint32
+	Objects          map[utils.Key]*Renderable
 }
 
 func NewWindow(width, height uint32, xMin, xMax, yMin, yMax, scale float32,
@@ -80,6 +81,7 @@ func NewWindow(width, height uint32, xMin, xMax, yMin, yMax, scale float32,
 		ScaleChanged:  false,
 		NeedsRedraw:   true,
 		Shaders:       make(map[utils.RenderType]uint32),
+		Objects:       make(map[utils.Key]*Renderable),
 	}
 	// Launch the OpenGL thread
 	if err := glfw.Init(); err != nil {
@@ -166,6 +168,16 @@ func NewWindow(width, height uint32, xMin, xMax, yMin, yMax, scale float32,
 
 func (win *Window) MakeContextCurrent() {
 	win.Window.MakeContextCurrent()
+}
+
+func (win *Window) NewRenderable(key utils.Key, object interface{}) (
+	rb *Renderable) {
+	rb = &Renderable{
+		Visible: true,
+		Objects: NewObjectGroup(object),
+	}
+	win.Objects[key] = rb
+	return
 }
 
 func (win *Window) SetPos(windowX, windowY int) {
