@@ -48,12 +48,10 @@ type Window struct {
 	zoomFactor       float32
 	zoomSpeed        float32
 	panSpeed         float32
-	renderChannel    chan func()
 	projectionMatrix mgl32.Mat4
 	shaders          map[utils.RenderType]uint32
 	objects          map[utils.Key]*Renderable
 	windowIndex      int
-	doneChannel      chan struct{}
 }
 
 func NewWindow(width, height uint32, xMin, xMax, yMin, yMax, scale float32,
@@ -72,7 +70,6 @@ func NewWindow(width, height uint32, xMin, xMax, yMin, yMax, scale float32,
 		yMin:          yMin,
 		yMax:          yMax,
 		scale:         scale,
-		renderChannel: renderChannel,
 		isDragging:    false,
 		panSpeed:      1.,
 		zoomSpeed:     1.,
@@ -81,7 +78,6 @@ func NewWindow(width, height uint32, xMin, xMax, yMin, yMax, scale float32,
 		scaleChanged:  false,
 		shaders:       make(map[utils.RenderType]uint32),
 		objects:       make(map[utils.Key]*Renderable),
-		doneChannel:   make(chan struct{}),
 	}
 	// Launch the OpenGL thread
 	if err := glfw.Init(); err != nil {
@@ -169,11 +165,9 @@ func NewWindow(width, height uint32, xMin, xMax, yMin, yMax, scale float32,
 }
 
 func (win *Window) MakeContextCurrent() {
-	win.renderChannel <- func() {
-		currentWindow.WindowIndex = win.windowIndex
-		currentWindow.Window = win
-		win.window.MakeContextCurrent()
-	}
+	currentWindow.WindowIndex = win.windowIndex
+	currentWindow.Window = win
+	win.window.MakeContextCurrent()
 }
 
 func (win *Window) NewRenderable(key utils.Key, object interface{}) (
