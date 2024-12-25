@@ -8,12 +8,12 @@ package screen
 
 import (
 	"github.com/go-gl/glfw/v3.3/glfw"
-	"github.com/notargets/avs/screen/main_gl_thread_objects"
+	"github.com/notargets/avs/screen/gl_thread_objects"
 )
 
 func (scr *Screen) EventLoop() {
 	for {
-		win := main_gl_thread_objects.GetCurrentWindow()
+		win := gl_thread_objects.GetCurrentWindow()
 		if win.ShouldClose() {
 			break
 		}
@@ -29,7 +29,7 @@ func (scr *Screen) EventLoop() {
 			break
 		}
 
-		// win = main_gl_thread_objects.GetCurrentWindow()
+		// win = gl_thread_objects.GetCurrentWindow()
 		// setupVertices the projection matrix if pan/zoom has changed
 		if win.PositionScaleChanged() {
 			win.Redraw()

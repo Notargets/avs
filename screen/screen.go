@@ -9,17 +9,17 @@ package screen
 import (
 	"runtime"
 
-	"github.com/notargets/avs/screen/main_gl_thread_objects"
+	"github.com/notargets/avs/screen/gl_thread_objects"
 )
 
 type Screen struct {
 	RenderChannel chan func()
 	DoneChan      chan struct{} // Re-usable synchronization channel
-	drawWindow    *main_gl_thread_objects.Window
+	drawWindow    *gl_thread_objects.Window
 }
 
 func NewScreen(width, height uint32, xmin, xmax, ymin, ymax, scale float32,
-	bgColor [4]float32, position main_gl_thread_objects.Position) (scr *Screen) {
+	bgColor [4]float32, position gl_thread_objects.Position) (scr *Screen) {
 
 	scr = &Screen{
 		RenderChannel: make(chan func(), 100),
@@ -32,7 +32,7 @@ func NewScreen(width, height uint32, xmin, xmax, ymin, ymax, scale float32,
 		// Open a default window. User needs to GetCurrentWindow before opening
 		// a new window to return to the default, as the win pointer is not
 		// exposed
-		win := main_gl_thread_objects.NewWindow(width, height,
+		win := gl_thread_objects.NewWindow(width, height,
 			xmin, xmax, ymin, ymax,
 			scale, "Chart2D", scr.RenderChannel, bgColor, position)
 
@@ -52,26 +52,26 @@ func NewScreen(width, height uint32, xmin, xmax, ymin, ymax, scale float32,
 	return
 }
 
-func (scr *Screen) SetDrawWindow(drawWindow *main_gl_thread_objects.Window) {
+func (scr *Screen) SetDrawWindow(drawWindow *gl_thread_objects.Window) {
 	scr.drawWindow = drawWindow
 }
 
-func (scr *Screen) GetCurrentWindow() (win *main_gl_thread_objects.Window) {
-	win = main_gl_thread_objects.GetCurrentWindow()
+func (scr *Screen) GetCurrentWindow() (win *gl_thread_objects.Window) {
+	win = gl_thread_objects.GetCurrentWindow()
 	return
 }
 
-func (scr *Screen) Redraw(win *main_gl_thread_objects.Window) {
+func (scr *Screen) Redraw(win *gl_thread_objects.Window) {
 	win.Redraw()
 }
 
 func (scr *Screen) NewWindow(width, height uint32, xmin, xmax, ymin, ymax,
 	scale float32, title string, bgColor [4]float32,
-	position main_gl_thread_objects.Position) (win *main_gl_thread_objects.Window) {
+	position gl_thread_objects.Position) (win *gl_thread_objects.Window) {
 
 	scr.RenderChannel <- func() {
 		// fmt.Println("[NewWindow] Inside New window")
-		main_gl_thread_objects.NewWindow(width, height, xmin, xmax,
+		gl_thread_objects.NewWindow(width, height, xmin, xmax,
 			ymin, ymax, scale, title, scr.RenderChannel, bgColor, position)
 		scr.DoneChan <- struct{}{}
 	}

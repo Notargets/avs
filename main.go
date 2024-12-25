@@ -11,7 +11,7 @@ import (
 
 	"github.com/notargets/avs/utils"
 
-	"github.com/notargets/avs/screen/main_gl_thread_objects"
+	"github.com/notargets/avs/screen/gl_thread_objects"
 
 	"github.com/notargets/avs/assets"
 
@@ -99,7 +99,7 @@ func Test2(chart *chart2d.Chart2D) {
 		chart.XMin, chart.XMax, chart.YMin, chart.YMax, 0.8*chart.Scale,
 		"Second window",
 		[4]float32{46. / 255., 46. / 255., 46. / 255, 1.},
-		main_gl_thread_objects.AUTO)
+		gl_thread_objects.AUTO)
 
 	chart.SetDrawWindow(win2)
 	// Test text

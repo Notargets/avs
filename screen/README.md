@@ -25,10 +25,20 @@ changes.
 
 The Screen package controls the setup of the windows and the management of the
 objects that will be drawn in them. Under
-the screen directory we have the main_gl_thread_object_actions package that does
+the screen directory we have the gl_thread_object_actions package that does
 what it says, code there interacts with
 the OGL pipeline to draw objects. This and the screen directory are the only
 places we should see opengl library calls.
+
+The only context in which Screen can call opengl is indirectly by dropping a 
+closure (function call) into the RenderChannel. The RenderChannel is listened to
+inside the event loop, and it is able to execute the OGL calls in that thread.
+In all current cases, the thread that executed the Screen function will sync
+with the OGL thread using a "Done" message delivered by the OGL thread to
+the DoneChan channel.
+
+The Screen package is small, and is focused on being the layer that synchronizes
+the caller's thread with the OGL single threaded execution model.
 
 ## Rendering approach, scene setup, world coordinates
 

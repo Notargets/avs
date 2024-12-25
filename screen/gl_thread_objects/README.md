@@ -1,16 +1,14 @@
 # Instructions for components of this package
 
-Functions within this directory should only be called by the main thread, which
-is running the event loop.
-
-When the event loop receives a function (closure), that function will be
-specific to an object whose code
-resides in the screen package. That code, specific to the action, will call out
-to functions in this package.
+Functions within this directory should only be called within the main thread, 
+which is running the event loop.
 
 ## What kind of functions go here?
 
 The implementation detail code for geoms, etc, should go here for clarity.
+
+Every function in this package is going to run in a single threaded context.
+There is no need to implement concurrency management for variables in here.
 
 ## What kind of functions go in the screen directory?
 

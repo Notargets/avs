@@ -4,7 +4,7 @@
  * // 2024
  */
 
-package main_gl_thread_objects
+package gl_thread_objects
 
 import "github.com/notargets/avs/utils"
 
