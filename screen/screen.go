@@ -34,7 +34,7 @@ func NewScreen(width, height uint32, xmin, xmax, ymin, ymax, scale float32,
 		// exposed
 		win := gl_thread_objects.NewWindow(width, height,
 			xmin, xmax, ymin, ymax,
-			scale, "Chart2D", scr.RenderChannel, bgColor, position)
+			scale, "Chart2D", bgColor, position)
 
 		scr.SetDrawWindow(win) // Set default draw window
 
@@ -72,7 +72,7 @@ func (scr *Screen) NewWindow(width, height uint32, xmin, xmax, ymin, ymax,
 	scr.RenderChannel <- func() {
 		// fmt.Println("[NewWindow] Inside New window")
 		gl_thread_objects.NewWindow(width, height, xmin, xmax,
-			ymin, ymax, scale, title, scr.RenderChannel, bgColor, position)
+			ymin, ymax, scale, title, bgColor, position)
 		scr.DoneChan <- struct{}{}
 	}
 	<-scr.DoneChan

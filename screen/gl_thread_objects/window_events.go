@@ -26,7 +26,7 @@ func (win *Window) SetCallbacks() {
 func (win *Window) focusCallback(w *glfw.Window, focused bool) {
 	if focused {
 		// fmt.Printf("window: %v is now focused\n", win.windowIndex)
-		win.MakeContextCurrent()
+		win.makeContextCurrent()
 	}
 }
 

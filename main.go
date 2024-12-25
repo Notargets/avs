@@ -35,6 +35,11 @@ func main() {
 	select {}
 }
 
+// func TestFunctionPlot(chart *chart2d.Chart2D) {
+// 	win := chart.NewWindow()
+//
+// }
+
 func TestText() (chart *chart2d.Chart2D) {
 	width, height := 1200, 760
 	// width, height := 1000, 1000
@@ -59,7 +64,9 @@ func TestText() (chart *chart2d.Chart2D) {
 		panic("No option here")
 	}
 
-	chart = chart2d.NewChart2D(XMin, XMax, YMin, YMax, width, height)
+	chart = chart2d.NewChart2D(XMin, XMax, YMin, YMax, width, height,
+		color.RGBA{255, 255, 255, 255}, // Line Color Default
+		color.RGBA{46, 46, 46, 255})    // BG color Default
 
 	tickText := assets.NewTextFormatter("NotoSans", "Regular", 24,
 		color.RGBA{R: 255, G: 255, B: 255, A: 255}, true, false)
@@ -95,10 +102,7 @@ func Test2(chart *chart2d.Chart2D) {
 
 	win1 := chart.GetCurrentWindow()
 
-	win2 := chart.NewWindow(chart.WindowWidth, chart.WindowHeight,
-		chart.XMin, chart.XMax, chart.YMin, chart.YMax, 0.8*chart.Scale,
-		"Second window",
-		[4]float32{46. / 255., 46. / 255., 46. / 255, 1.},
+	win2 := chart.NewWindow("Second Window", 0.8*chart.Scale,
 		gl_thread_objects.AUTO)
 
 	chart.SetDrawWindow(win2)

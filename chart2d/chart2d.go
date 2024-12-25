@@ -26,12 +26,14 @@ type Chart2D struct {
 	Screen       *screen.Screen
 	WindowWidth  uint32
 	WindowHeight uint32
-	LineColor    color.Color
+	LineColor    Color
+	BGColor      Color
 }
 
 type Color [4]float32 // RGBA
 
-func NewChart2D(XMin, XMax, YMin, YMax float32, width, height int, scaleOpt ...float32) (chart *Chart2D) {
+func NewChart2D(XMin, XMax, YMin, YMax float32, width, height int,
+	lineColor, bgColor color.RGBA, scaleOpt ...float32) (chart *Chart2D) {
 	var scale float32
 	if len(scaleOpt) == 0 {
 		scale = 0.90 * float32(height) / float32(width)
@@ -46,11 +48,11 @@ func NewChart2D(XMin, XMax, YMin, YMax float32, width, height int, scaleOpt ...f
 		YMax:         YMax,
 		WindowWidth:  uint32(width),
 		WindowHeight: uint32(height),
-		LineColor:    color.RGBA{R: 255, G: 255, B: 255, A: 255},
+		LineColor:    utils.ColorToFloat32(lineColor),
+		BGColor:      utils.ColorToFloat32(bgColor),
 	}
 	chart.Screen = screen.NewScreen(uint32(width), uint32(height), XMin,
-		XMax, YMin, YMax, scale, [4]float32{46. / 255., 46. / 255.,
-			46. / 255., 1.}, gl_thread_objects.AUTO)
+		XMax, YMin, YMax, scale, chart.BGColor, gl_thread_objects.AUTO)
 	return
 }
 
@@ -118,11 +120,13 @@ func (chart *Chart2D) AddAxis(axisColor color.Color,
 	return chart.AddLine(X, Y, C) // 2 points, so 2 * 3 = 6 colors
 }
 
-func (chart *Chart2D) NewWindow(width, height uint32, xMin, xMax, yMin,
-	yMax, scale float32, title string, bgColor [4]float32,
+func (chart *Chart2D) NewWindow(title string, scale float32,
 	position gl_thread_objects.Position) (win *gl_thread_objects.Window) {
-	win = chart.Screen.NewWindow(width, height, xMin, xMax, yMin, yMax, scale,
-		title, bgColor, position)
+
+	win = chart.Screen.NewWindow(chart.WindowWidth, chart.WindowHeight, chart.XMin,
+		chart.XMax, chart.YMin, chart.YMax, scale, title,
+		chart.BGColor, position)
+
 	return
 }
 

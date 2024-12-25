@@ -55,8 +55,7 @@ type Window struct {
 }
 
 func NewWindow(width, height uint32, xMin, xMax, yMin, yMax, scale float32,
-	title string, renderChannel chan func(), bgColor [4]float32,
-	position Position) (win *Window) {
+	title string, bgColor [4]float32, position Position) (win *Window) {
 
 	var (
 		err error
@@ -126,7 +125,7 @@ func NewWindow(width, height uint32, xMin, xMax, yMin, yMax, scale float32,
 	}
 
 	// Set the window position to the calculated coordinates
-	win.SetPos(windowX, windowY)
+	win.setPos(windowX, windowY)
 
 	win.window.MakeContextCurrent()
 
@@ -144,7 +143,7 @@ func NewWindow(width, height uint32, xMin, xMax, yMin, yMax, scale float32,
 
 	gl.ClearColor(bgColor[0], bgColor[1], bgColor[2], bgColor[3])
 	gl.Clear(gl.COLOR_BUFFER_BIT)
-	win.SwapBuffers()
+	win.swapBuffers()
 
 	// Enable VSync
 	glfw.SwapInterval(1)
@@ -164,12 +163,6 @@ func NewWindow(width, height uint32, xMin, xMax, yMin, yMax, scale float32,
 	return
 }
 
-func (win *Window) MakeContextCurrent() {
-	currentWindow.WindowIndex = win.windowIndex
-	currentWindow.Window = win
-	win.window.MakeContextCurrent()
-}
-
 func (win *Window) NewRenderable(key utils.Key, object interface{}) (
 	rb *Renderable) {
 	rb = &Renderable{
@@ -180,12 +173,41 @@ func (win *Window) NewRenderable(key utils.Key, object interface{}) (
 	return
 }
 
-func (win *Window) SetPos(windowX, windowY int) {
+func (win *Window) Redraw() {
+	win.SetCurrentWindow()
+	win.updateProjectionMatrix()
+	win.FullScreenRender()
+}
+
+func (win *Window) PositionScaleChanged() bool {
+	if win.positionChanged || win.scaleChanged {
+		return true
+	} else {
+		return false
+	}
+}
+
+func (win *Window) ResetPositionScaleTrackers() {
+	win.positionChanged = false
+	win.scaleChanged = false
+}
+
+func (win *Window) ShouldClose() bool {
+	return win.window.ShouldClose()
+}
+
+func (win *Window) makeContextCurrent() {
+	currentWindow.WindowIndex = win.windowIndex
+	currentWindow.Window = win
+	win.window.MakeContextCurrent()
+}
+
+func (win *Window) setPos(windowX, windowY int) {
 	// Set the window position to the calculated coordinates
 	win.window.SetPos(windowX, windowY)
 }
 
-func (win *Window) UpdateProjectionMatrix() {
+func (win *Window) updateProjectionMatrix() {
 	// Get the aspect ratio of the window
 	aspectRatio := float32(win.width) / float32(win.height)
 
@@ -234,29 +256,6 @@ func (win *Window) UpdateProjectionMatrix() {
 	}
 }
 
-func (win *Window) SwapBuffers() {
+func (win *Window) swapBuffers() {
 	win.window.SwapBuffers()
-}
-
-func (win *Window) Redraw() {
-	win.SetCurrentWindow()
-	win.UpdateProjectionMatrix()
-	win.FullScreenRender()
-}
-
-func (win *Window) PositionScaleChanged() bool {
-	if win.positionChanged || win.scaleChanged {
-		return true
-	} else {
-		return false
-	}
-}
-
-func (win *Window) ResetPositionScaleTrackers() {
-	win.positionChanged = false
-	win.scaleChanged = false
-}
-
-func (win *Window) ShouldClose() bool {
-	return win.window.ShouldClose()
 }

@@ -30,7 +30,7 @@ func (win *Window) SetCurrentWindow() (swapped bool, curWin *Window) {
 	curWin = GetCurrentWindow()
 	if win != curWin {
 		swapped = true
-		win.MakeContextCurrent()
+		win.makeContextCurrent()
 		win.window.Focus()
 		currentWindow.WindowIndex = win.windowIndex
 		currentWindow.Window = win
@@ -56,6 +56,6 @@ func (win *Window) FullScreenRender() {
 		}
 	}
 	// Swap buffers to present the frame
-	win.SwapBuffers()
+	win.swapBuffers()
 	glfw.PollEvents()
 }
