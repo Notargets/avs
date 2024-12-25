@@ -103,23 +103,23 @@ type String struct {
 	TextFormatter               *assets.TextFormatter
 }
 
-func NewString(tf *assets.TextFormatter, x, y float32,
-	text string, windowWidth, windowHeight uint32,
-	shaderMap map[utils.RenderType]uint32) (str *String) {
+func NewString(tf *assets.TextFormatter, x, y float32, text string,
+	win *Window) (str *String) {
+
 	str = &String{
 		Text:                   text,
 		Position:               mgl32.Vec2{x, y},
 		TextFormatter:          tf,
 		InitializedFIXEDSTRING: false,
-		WindowWidth:            windowWidth,
-		WindowHeight:           windowHeight,
+		WindowWidth:            win.width,
+		WindowHeight:           win.height,
 	}
 	if tf.ScreenFixed {
 		str.StringType = utils.FIXEDSTRING
 	} else {
 		str.StringType = utils.STRING
 	}
-	str.ShaderProgram = shaderMap[str.StringType]
+	str.ShaderProgram = win.shaders[str.StringType]
 	return
 }
 
@@ -306,7 +306,7 @@ func (str *String) loadHostBuffer(textColor [4]float32,
 		// Correct the vertex coordinates for a FIXEDSTRING if the window size has changed
 		str.fixSTRINGAspectRatio(currentWidth, currentHeight, &NDCVertexCoordinates, lenRow)
 	}
-	// setupVertices string formatter Window dimensions to match the current screen
+	// setupVertices string formatter window dimensions to match the current screen
 	str.WindowWidth = currentWidth
 	str.WindowHeight = currentHeight
 }
@@ -340,7 +340,7 @@ func (str *String) sendHostBufferToGPU() {
 	CheckGLError("After VBO")
 
 	// Load the flat array layout into the VBA
-	// **PositionDelta (location = 0)**
+	// **positionDelta (location = 0)**
 	var stride int32
 	if str.StringType == utils.STRING {
 		// stride = 4 * (2 + 2 + 3)
@@ -351,12 +351,12 @@ func (str *String) sendHostBufferToGPU() {
 	offset := 0
 	if str.StringType == utils.STRING {
 		// Load the transformed vertex coordinates
-		gl.VertexAttribPointer(0, 2, gl.FLOAT, false, stride, unsafe.Pointer(uintptr(offset))) // PositionDelta (2 floats)
+		gl.VertexAttribPointer(0, 2, gl.FLOAT, false, stride, unsafe.Pointer(uintptr(offset))) // positionDelta (2 floats)
 		offset += 2 * 4                                                                        // Advance by 2 floats = 8 bytes
 	} else if str.StringType == utils.FIXEDSTRING {
-		// **Frozen PositionDelta **
+		// **Frozen positionDelta **
 		// Load the NDC fixed vertex coordinates
-		gl.VertexAttribPointer(0, 4, gl.FLOAT, false, stride, unsafe.Pointer(uintptr(offset))) // Fixed PositionDelta (4 floats)
+		gl.VertexAttribPointer(0, 4, gl.FLOAT, false, stride, unsafe.Pointer(uintptr(offset))) // Fixed positionDelta (4 floats)
 		offset += 4 * 4                                                                        // Advance by 2 floats = 8 bytes
 	}
 	gl.EnableVertexAttribArray(0)

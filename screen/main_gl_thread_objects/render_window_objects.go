@@ -31,8 +31,8 @@ func (win *Window) SetCurrentWindow() (swapped bool, curWin *Window) {
 	if win != curWin {
 		swapped = true
 		win.MakeContextCurrent()
-		win.Window.Focus()
-		currentWindow.WindowIndex = win.WindowIndex
+		win.window.Focus()
+		currentWindow.WindowIndex = win.windowIndex
 		currentWindow.Window = win
 	}
 	return
@@ -41,15 +41,15 @@ func (win *Window) SetCurrentWindow() (swapped bool, curWin *Window) {
 func (win *Window) FullScreenRender() {
 	// Clear the screen before rendering
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
-	for _, obj := range win.Objects {
+	for _, obj := range win.objects {
 		renderObjList := obj.Objects
 		for _, object := range renderObjList {
 			switch renderObj := object.(type) {
 			case *Line:
 				renderObj.Render()
 			case *String:
-				renderObj.Render(win.ProjectionMatrix, win.Width, win.Height,
-					win.XMin, win.XMax, win.YMin, win.YMax)
+				renderObj.Render(win.projectionMatrix, win.width, win.height,
+					win.xMin, win.xMax, win.yMin, win.yMax)
 			default:
 				fmt.Printf("Unknown object type: %T\n", renderObj)
 			}

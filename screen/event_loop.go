@@ -14,13 +14,13 @@ import (
 func (scr *Screen) EventLoop() {
 	for {
 		win := main_gl_thread_objects.GetCurrentWindow()
-		if win.Window.ShouldClose() {
+		if win.ShouldClose() {
 			break
 		}
 		// Wait for any input event (mouse, keyboard, resize, etc.)
 		glfw.WaitEventsTimeout(0.02)
 
-		// Process commands from the RenderChannel
+		// Process commands from the renderChannel
 		select {
 		case command := <-scr.RenderChannel:
 			command() // Execute the command (
@@ -31,10 +31,9 @@ func (scr *Screen) EventLoop() {
 
 		// win = main_gl_thread_objects.GetCurrentWindow()
 		// setupVertices the projection matrix if pan/zoom has changed
-		if win.PositionChanged || win.ScaleChanged {
+		if win.PositionScaleChanged() {
 			win.Redraw()
-			win.PositionChanged = false
-			win.ScaleChanged = false
+			win.ResetPositionScaleTrackers()
 		}
 
 	}

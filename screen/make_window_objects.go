@@ -23,7 +23,7 @@ func (scr *Screen) NewLine(X, Y, Colors []float32,
 	scr.RenderChannel <- func() {
 		// Create new line
 		win := scr.drawWindow
-		line := main_gl_thread_objects.NewLine(X, Y, Colors, win.Shaders, rt...)
+		line := main_gl_thread_objects.NewLine(X, Y, Colors, win, rt...)
 		win.NewRenderable(key, line)
 		win.Redraw()
 		scr.DoneChan <- struct{}{}
@@ -47,8 +47,8 @@ func (scr *Screen) NewString(tf *assets.TextFormatter, x,
 
 	scr.RenderChannel <- func() {
 		win := scr.drawWindow
-		str := main_gl_thread_objects.NewString(tf, x, y, text, win.Width,
-			win.Height, win.Shaders)
+		str := main_gl_thread_objects.NewString(tf, x, y, text, win)
+
 		win.NewRenderable(key, str)
 		win.Redraw()
 		scr.DoneChan <- struct{}{}

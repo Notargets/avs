@@ -23,9 +23,9 @@ import (
 // TODO: ... into the object struct so that the Show/Hide functions can toggle the Visible in the Renderable
 // TODO: ... implementation. This allows the event loop to query whether to draw or not before introspecting the object.
 // TODO: ... The Delete() should cleanup any internal references, then delete the ObjectKey from the top level object
-// TODO: ... map for the Window.
-// TODO: Implement a map[WindowKey]Window such that windows can be created and separately managed. Create a "Default"
-// TODO: ... Window at Scene creation time so that any Add() calls are put into the Default window context. If new
+// TODO: ... map for the window.
+// TODO: Implement a map[WindowKey]window such that windows can be created and separately managed. Create a "Default"
+// TODO: ... window at Scene creation time so that any Add() calls are put into the Default window context. If new
 // TODO: ... windows are added to the Scene, the context within Scene's struct can be switched to a keyed windows and
 // TODO: ... new Add() calls will be scoped to the "current" window. At some point, objects could be moved among
 // TODO: ... windows.
@@ -97,7 +97,7 @@ func Test2(chart *chart2d.Chart2D) {
 
 	win2 := chart.NewWindow(chart.WindowWidth, chart.WindowHeight,
 		chart.XMin, chart.XMax, chart.YMin, chart.YMax, 0.8*chart.Scale,
-		"Second Window",
+		"Second window",
 		[4]float32{46. / 255., 46. / 255., 46. / 255, 1.},
 		main_gl_thread_objects.AUTO)
 
@@ -110,7 +110,7 @@ func Test2(chart *chart2d.Chart2D) {
 	yRange := chart.YMax - chart.YMin
 	xpos := float32(0)
 	ypos := chart.YMin + 0.5*yRange
-	chart.Printf(DynamicText, xpos, ypos, "Window 2 Dynamic Text")
+	chart.Printf(DynamicText, xpos, ypos, "window 2 Dynamic Text")
 
 	// Title
 	TitleText := assets.NewTextFormatter("NotoSans", "Bold", 36,
@@ -127,7 +127,7 @@ func Test2(chart *chart2d.Chart2D) {
 	// Draw in first window
 	chart.SetDrawWindow(win1)
 
-	chart.Printf(TitleText, 0, ypos, "Title 3 First Window")
+	chart.Printf(TitleText, 0, ypos, "Title 3 First window")
 
 	X, Y, C := utils.AddSegmentToLine([]float32{}, []float32{}, []float32{},
 		chart.XMin+0.25*xRange, chart.YMin+0.75*yRange,
@@ -138,7 +138,7 @@ func Test2(chart *chart2d.Chart2D) {
 	// Draw in second window
 	chart.SetDrawWindow(win2)
 
-	chart.Printf(TitleText, 0, ypos-0.3*yRange, "Title 4 Second Window")
+	chart.Printf(TitleText, 0, ypos-0.3*yRange, "Title 4 Second window")
 
 	X, Y, C = utils.AddSegmentToLine([]float32{}, []float32{}, []float32{},
 		chart.XMin+0.25*xRange, chart.YMin+0.75*yRange,

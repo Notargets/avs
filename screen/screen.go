@@ -30,7 +30,7 @@ func NewScreen(width, height uint32, xmin, xmax, ymin, ymax, scale float32,
 		runtime.LockOSThread()
 
 		// Open a default window. User needs to GetCurrentWindow before opening
-		// a new Window to return to the default, as the win pointer is not
+		// a new window to return to the default, as the win pointer is not
 		// exposed
 		win := main_gl_thread_objects.NewWindow(width, height,
 			xmin, xmax, ymin, ymax,
@@ -70,7 +70,7 @@ func (scr *Screen) NewWindow(width, height uint32, xmin, xmax, ymin, ymax,
 	position main_gl_thread_objects.Position) (win *main_gl_thread_objects.Window) {
 
 	scr.RenderChannel <- func() {
-		// fmt.Println("[NewWindow] Inside New Window")
+		// fmt.Println("[NewWindow] Inside New window")
 		main_gl_thread_objects.NewWindow(width, height, xmin, xmax,
 			ymin, ymax, scale, title, scr.RenderChannel, bgColor, position)
 		scr.DoneChan <- struct{}{}

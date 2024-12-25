@@ -84,7 +84,7 @@ func (tf *OpenGLTypeFace) RenderFontTextureImg(text string, fontColor color.Colo
 		panic(err)
 	}
 	// SaveDebugImage(img, "debug_image.png")
-	// fmt.Printf("Text Width: %d, Height %d\n", textureWidth, textureHeight)
+	// fmt.Printf("Text width: %d, height %d\n", textureWidth, textureHeight)
 	return
 }
 

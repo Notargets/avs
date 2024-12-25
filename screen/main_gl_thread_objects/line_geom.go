@@ -16,7 +16,7 @@ import (
 )
 
 func AddLineShader(shaderMap map[utils.RenderType]uint32) {
-	// Line Shaders
+	// Line shaders
 	var vertexShader = gl.Str(`
 		#version 450
 		layout (location = 0) in vec2 position;
@@ -47,15 +47,14 @@ type Line struct {
 	ShaderProgram uint32 // Shader program specific to this Line object
 }
 
-func NewLine(X, Y, Colors []float32, shaderMap map[utils.RenderType]uint32,
-	rt ...utils.RenderType) (line *Line) {
+func NewLine(X, Y, Colors []float32, win *Window, rt ...utils.RenderType) (line *Line) {
 	var renderType = utils.LINE
 	if len(rt) != 0 {
 		renderType = utils.POLYLINE
 	}
 	line = &Line{
 		LineType:      renderType,
-		ShaderProgram: shaderMap[renderType],
+		ShaderProgram: win.shaders[renderType],
 	}
 	line.setupVertices(X, Y, Colors)
 	return
