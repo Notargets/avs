@@ -107,29 +107,19 @@ func (win *Window) resizeCallback(w *glfw.Window, width, height int) {
 	// setupVertices OpenGL viewport
 	gl.Viewport(0, 0, int32(width), int32(height))
 
-	// Recompute the projection matrix to maintain the aspect ratio and world bounds
-	win.UpdateProjectionMatrix()
-
 	// Mark that a change occurred so the view is updated
 	win.PositionChanged = true
 	win.ScaleChanged = true
 }
 
 func (win *Window) SetBackgroundColor(screenColor color.Color) {
-	doneChan := make(chan struct{})
-	win.RenderChannel <- func() {
-		fc := utils.ColorToFloat32(screenColor)
-		gl.ClearColor(fc[0], fc[1], fc[2], fc[3])
-		doneChan <- struct{}{}
-	}
-	<-doneChan
+	fc := utils.ColorToFloat32(screenColor)
+	gl.ClearColor(fc[0], fc[1], fc[2], fc[3])
 }
 
 func (win *Window) ChangeScale(scale float32) {
-	win.RenderChannel <- func() {
-		win.Scale = scale
-		win.ScaleChanged = true
-	}
+	win.Scale = scale
+	win.ScaleChanged = true
 }
 
 func (win *Window) SetZoomSpeed(speed float32) {
