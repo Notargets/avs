@@ -9,6 +9,7 @@ package main
 import (
 	"image/color"
 	"math"
+	"time"
 
 	"github.com/notargets/avs/screen"
 
@@ -53,18 +54,31 @@ func TestFunctionPlot(chart *chart2d.Chart2D) {
 	// Make a Sin function for plotting
 	X := make([]float32, 100)
 	Y := make([]float32, 100)
-	xInc := float32(1. / 100.)
-	var x = float32(0)
-	var TwoPi = float32(2. * math.Pi)
-	for i := 0; i < 100; i++ {
-		X[i] = x
-		Y[i] = float32(math.Sin(float64(x * TwoPi)))
-		x += xInc
+	var (
+		linekey          utils.Key
+		TwoPi            = float32(2. * math.Pi)
+		x, xInc, t, tInc float32
+		iter             int
+	)
+	t = 0
+	tInc = 0.05
+	xInc = 1. / 100.
+	for {
+		x = 0
+		for i := 0; i < 100; i++ {
+			X[i] = x
+			Y[i] = float32(math.Sin(float64(x*TwoPi - t)))
+			x += xInc
+		}
+		if iter == 0 {
+			linekey = chart.AddLine(X, Y, screen.BLUE, utils.POLYLINE)
+		} else {
+			chart.UpdateLine(win, linekey, X, Y, screen.BLUE)
+		}
+		time.Sleep(time.Millisecond * 50)
+		t += tInc
+		iter++
 	}
-	chart.AddLine(X, Y, screen.BLUE, utils.POLYLINE)
-
-	_ = win
-
 }
 
 func TestText() (chart *chart2d.Chart2D) {
