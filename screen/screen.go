@@ -164,3 +164,14 @@ func (scr *Screen) eventLoop() {
 
 	}
 }
+
+func (scr *Screen) GetWorldSpaceCharHeight(win *Window, tf *assets.TextFormatter) (
+	height float32) {
+	return tf.GetWorldSpaceCharHeight(win.yMax-win.yMin, win.width, win.height)
+}
+
+func (scr *Screen) GetWorldSpaceCharWidth(win *Window, tf *assets.TextFormatter) (
+	height float32) {
+	return tf.GetWorldSpaceCharWidth(win.xMax-win.xMin, win.yMax-win.yMin,
+		win.width, win.height)
+}

@@ -63,57 +63,9 @@ func (chart *Chart2D) Printf(formatter *assets.TextFormatter, x, y float32,
 
 func (chart *Chart2D) AddAxis(axisColor color.Color,
 	tf *assets.TextFormatter, yAxisLocation float32, nSegs int) (key utils.Key) {
-	var (
-		xMin, xMax           = chart.XMin, chart.XMax
-		yMin, yMax           = chart.YMin, chart.YMax
-		xScale, yScale       = xMax - xMin, yMax - yMin
-		xInc                 = xScale / float32(nSegs-1)
-		yInc                 = yScale / float32(nSegs-1)
-		xTickSize, yTickSize = 0.020 * xScale, 0.020 * yScale
-		tickColor            = axisColor
-		X                    = make([]float32, 0)
-		Y                    = make([]float32, 0)
-		C                    = make([]float32, 0)
-	)
-	if nSegs%2 == 0 {
-		panic("nSegs must be odd")
-	}
-
-	// Generate color array for 2 vertices per axis (X-axis and Y-axis)
-	X, Y, C = utils.AddSegmentToLine(X, Y, C, xMin, 0, xMax, 0, axisColor)
-	X, Y, C = utils.AddSegmentToLine(X, Y, C, yAxisLocation, yMin, yAxisLocation,
-		yMax, axisColor)
-
-	// Draw ticks along X axis
-	var x, y = xMin, float32(0) // X axis is always drawn at Y = 0
-	for i := 0; i < nSegs; i++ {
-		if x == yAxisLocation {
-			x = x + xInc
-			continue
-		}
-		X, Y, C = utils.AddSegmentToLine(X, Y, C, x, y, x, y-yTickSize, tickColor)
-		x = utils.ClampNearZero(x, xScale/1000.)
-		chart.Printf(tf, x, y-(chart.GetWorldSpaceCharHeight(tf)+yTickSize), "%4.1f", x)
-		x = x + xInc
-	}
-	ptfY := *tf
-	tfY := &ptfY
-	tfY.Centered = false
-	x = yAxisLocation
-	y = yMin
-	yTextDelta := utils.CalculateRightJustifiedTextOffset(yMin, chart.GetWorldSpaceCharWidth(tfY))
-	for i := 0; i < nSegs; i++ {
-		if i == nSegs/2 {
-			y = y + yInc
-			continue
-		}
-		X, Y, C = utils.AddSegmentToLine(X, Y, C, x, y, x-xTickSize, y, tickColor)
-		y = utils.ClampNearZero(y, yScale/1000.)
-		chart.Printf(tfY, x-yTextDelta, y, "%4.1f", y)
-		y = y + yInc
-	}
-	// chart.Screen.ChangePosition(0.0, 0.0)
-	return chart.AddLine(X, Y, C) // 2 points, so 2 * 3 = 6 colors
+	win := chart.Screen.GetCurrentWindow()
+	key = chart.Screen.NewAxis(win, axisColor, tf, yAxisLocation, nSegs)
+	return
 }
 
 func (chart *Chart2D) NewWindow(title string, scale float32,
