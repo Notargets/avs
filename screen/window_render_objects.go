@@ -4,7 +4,7 @@
  * // 2024
  */
 
-package gl_thread_objects
+package screen
 
 import (
 	"fmt"
@@ -21,13 +21,13 @@ type currentWindowTracker struct {
 
 var currentWindow currentWindowTracker
 
-func GetCurrentWindow() *Window {
+func getCurrentWindow() *Window {
 	return currentWindow.Window
 }
 
-func (win *Window) SetCurrentWindow() (swapped bool, curWin *Window) {
+func (win *Window) setCurrentWindow() (swapped bool, curWin *Window) {
 	swapped = false
-	curWin = GetCurrentWindow()
+	curWin = getCurrentWindow()
 	if win != curWin {
 		swapped = true
 		win.makeContextCurrent()
@@ -38,7 +38,7 @@ func (win *Window) SetCurrentWindow() (swapped bool, curWin *Window) {
 	return
 }
 
-func (win *Window) FullScreenRender() {
+func (win *Window) fullScreenRender() {
 	// Clear the screen before rendering
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 	for _, obj := range win.objects {
@@ -46,9 +46,9 @@ func (win *Window) FullScreenRender() {
 		for _, object := range renderObjList {
 			switch renderObj := object.(type) {
 			case *Line:
-				renderObj.Render()
+				renderObj.render()
 			case *String:
-				renderObj.Render(win.projectionMatrix, win.width, win.height,
+				renderObj.render(win.projectionMatrix, win.width, win.height,
 					win.xMin, win.xMax, win.yMin, win.yMax)
 			default:
 				fmt.Printf("Unknown object type: %T\n", renderObj)

@@ -4,7 +4,7 @@
  * // 2024
  */
 
-package gl_thread_objects
+package screen
 
 import (
 	"fmt"
@@ -21,7 +21,7 @@ func AddLineShader(shaderMap map[utils.RenderType]uint32) {
 		#version 450
 		layout (location = 0) in vec2 position;
 		layout (location = 1) in vec3 color;
-		uniform mat4 projection; // Add this line
+		uniform mat4 projection; // add this line
 		out vec3 fragColor;
 		void main() {
 			gl_Position = projection * vec4(position, 0.0, 1.0); // Use projection
@@ -47,7 +47,7 @@ type Line struct {
 	ShaderProgram uint32 // Shader program specific to this Line object
 }
 
-func NewLine(X, Y, Colors []float32, win *Window, rt ...utils.RenderType) (line *Line) {
+func newLine(X, Y, Colors []float32, win *Window, rt ...utils.RenderType) (line *Line) {
 	var renderType = utils.LINE
 	if len(rt) != 0 {
 		renderType = utils.POLYLINE
@@ -149,8 +149,8 @@ func (line *Line) loadGPUData() {
 	gl.BindVertexArray(0)
 }
 
-// Render draws the line using the shader program stored in Line
-func (line *Line) Render() {
+// render draws the line using the shader program stored in Line
+func (line *Line) render() {
 	// Ensure shader program is active
 	setShaderProgram(line.ShaderProgram)
 

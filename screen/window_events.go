@@ -4,7 +4,7 @@
  * // 2024
  */
 
-package gl_thread_objects
+package screen
 
 import (
 	"image/color"
@@ -15,7 +15,7 @@ import (
 	"github.com/notargets/avs/utils"
 )
 
-func (win *Window) SetCallbacks() {
+func (win *Window) setCallbacks() {
 	win.window.SetMouseButtonCallback(win.mouseButtonCallback)
 	win.window.SetCursorPosCallback(win.cursorPositionCallback)
 	win.window.SetScrollCallback(win.scrollCallback)
@@ -112,17 +112,17 @@ func (win *Window) resizeCallback(w *glfw.Window, width, height int) {
 	win.scaleChanged = true
 }
 
-func (win *Window) SetBackgroundColor(screenColor color.Color) {
+func (win *Window) setBackgroundColor(screenColor color.Color) {
 	fc := utils.ColorToFloat32(screenColor)
 	gl.ClearColor(fc[0], fc[1], fc[2], fc[3])
 }
 
-func (win *Window) ChangeScale(scale float32) {
+func (win *Window) changeScale(scale float32) {
 	win.scale = scale
 	win.scaleChanged = true
 }
 
-func (win *Window) SetZoomSpeed(speed float32) {
+func (win *Window) setZoomSpeed(speed float32) {
 	if speed <= 0 {
 		log.Println("Zoom speed must be positive, defaulting to 1.0")
 		win.zoomSpeed = 1.0
@@ -131,7 +131,7 @@ func (win *Window) SetZoomSpeed(speed float32) {
 	win.zoomSpeed = speed
 }
 
-func (win *Window) SetPanSpeed(speed float32) {
+func (win *Window) setPanSpeed(speed float32) {
 	if speed <= 0 {
 		log.Println("Pan speed must be positive, defaulting to 1.0")
 		win.panSpeed = 1.0

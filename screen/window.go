@@ -4,7 +4,7 @@
  * // 2024
  */
 
-package gl_thread_objects
+package screen
 
 import (
 	"fmt"
@@ -54,7 +54,7 @@ type Window struct {
 	windowIndex      int
 }
 
-func NewWindow(width, height uint32, xMin, xMax, yMin, yMax, scale float32,
+func newWindow(width, height uint32, xMin, xMax, yMin, yMax, scale float32,
 	title string, bgColor [4]float32, position Position) (win *Window) {
 
 	var (
@@ -139,7 +139,7 @@ func NewWindow(width, height uint32, xMin, xMax, yMin, yMax, scale float32,
 	currentWindow.WindowIndex = windowIndex
 	currentWindow.Window = win
 
-	win.SetCallbacks()
+	win.setCallbacks()
 
 	gl.ClearColor(bgColor[0], bgColor[1], bgColor[2], bgColor[3])
 	gl.Clear(gl.COLOR_BUFFER_BIT)
@@ -152,7 +152,7 @@ func NewWindow(width, height uint32, xMin, xMax, yMin, yMax, scale float32,
 	gl.Viewport(0, 0, int32(width), int32(height))
 
 	// For each object type in Screen, we need to load the shaders here
-	AddStringShaders(win.shaders)
+	addStringShaders(win.shaders)
 	AddLineShader(win.shaders)
 
 	// Force the first frame to render
@@ -163,23 +163,23 @@ func NewWindow(width, height uint32, xMin, xMax, yMin, yMax, scale float32,
 	return
 }
 
-func (win *Window) NewRenderable(key utils.Key, object interface{}) (
+func (win *Window) newRenderable(key utils.Key, object interface{}) (
 	rb *Renderable) {
 	rb = &Renderable{
 		Visible: true,
-		Objects: NewObjectGroup(object),
+		Objects: newObjectGroup(object),
 	}
 	win.objects[key] = rb
 	return
 }
 
-func (win *Window) Redraw() {
-	win.SetCurrentWindow()
+func (win *Window) redraw() {
+	win.setCurrentWindow()
 	win.updateProjectionMatrix()
-	win.FullScreenRender()
+	win.fullScreenRender()
 }
 
-func (win *Window) PositionScaleChanged() bool {
+func (win *Window) positionScaleChanged() bool {
 	if win.positionChanged || win.scaleChanged {
 		return true
 	} else {
@@ -187,12 +187,12 @@ func (win *Window) PositionScaleChanged() bool {
 	}
 }
 
-func (win *Window) ResetPositionScaleTrackers() {
+func (win *Window) resetPositionScaleTrackers() {
 	win.positionChanged = false
 	win.scaleChanged = false
 }
 
-func (win *Window) ShouldClose() bool {
+func (win *Window) shouldClose() bool {
 	return win.window.ShouldClose()
 }
 

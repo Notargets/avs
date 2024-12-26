@@ -41,7 +41,7 @@ func CalculateRightJustifiedTextOffset(yRight float32, charWidth float32) (delta
 	if yRight < 0 {
 		deltaYLeft = charWidth * .5 // Minus sign is about 1/2 char
 	}
-	d := float32(math.Ceil(math.Log10(math.Abs(float64(yRight))))) + 1.1 // Add some for the decimal and the trailing zero
+	d := float32(math.Ceil(math.Log10(math.Abs(float64(yRight))))) + 1.1 // add some for the decimal and the trailing zero
 	// fmt.Printf("y: %v, CharWidth: %v, d: %v\n", y, charWidth, d)
 	deltaYLeft += d * charWidth
 	return

@@ -9,8 +9,6 @@ package chart2d
 import (
 	"image/color"
 
-	"github.com/notargets/avs/screen/gl_thread_objects"
-
 	"github.com/notargets/avs/utils"
 
 	"github.com/notargets/avs/assets"
@@ -50,7 +48,7 @@ func NewChart2D(XMin, XMax, YMin, YMax float32, width, height int,
 		BGColor:      bgColor,
 	}
 	chart.Screen = screen.NewScreen(uint32(width), uint32(height), XMin,
-		XMax, YMin, YMax, scale, chart.BGColor, gl_thread_objects.AUTO)
+		XMax, YMin, YMax, scale, chart.BGColor, screen.AUTO)
 	return
 }
 
@@ -119,7 +117,7 @@ func (chart *Chart2D) AddAxis(axisColor color.Color,
 }
 
 func (chart *Chart2D) NewWindow(title string, scale float32,
-	position gl_thread_objects.Position) (win *gl_thread_objects.Window) {
+	position screen.Position) (win *screen.Window) {
 
 	win = chart.Screen.NewWindow(chart.WindowWidth, chart.WindowHeight, chart.XMin,
 		chart.XMax, chart.YMin, chart.YMax, scale, title,
@@ -136,11 +134,11 @@ func (chart *Chart2D) GetWorldSpaceCharWidth(tf *assets.TextFormatter) (height f
 	return tf.GetWorldSpaceCharWidth(chart.XMax-chart.XMin, chart.YMax-chart.YMin, chart.WindowWidth, chart.WindowHeight)
 }
 
-func (chart *Chart2D) SetDrawWindow(win *gl_thread_objects.Window) {
+func (chart *Chart2D) SetDrawWindow(win *screen.Window) {
 	chart.Screen.SetDrawWindow(win)
 }
 
-func (chart *Chart2D) GetCurrentWindow() (win *gl_thread_objects.Window) {
+func (chart *Chart2D) GetCurrentWindow() (win *screen.Window) {
 	win = chart.Screen.GetCurrentWindow()
 	return
 }

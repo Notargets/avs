@@ -4,7 +4,7 @@
  * // 2024
  */
 
-package gl_thread_objects
+package screen
 
 import (
 	"image"
@@ -18,7 +18,7 @@ import (
 	"github.com/go-gl/mathgl/mgl32"
 )
 
-func AddStringShaders(shaderMap map[utils.RenderType]uint32) {
+func addStringShaders(shaderMap map[utils.RenderType]uint32) {
 	fragmentShaderSource := gl.Str(`
 		#version 450
 		in vec2 fragUV;
@@ -103,7 +103,7 @@ type String struct {
 	TextFormatter               *assets.TextFormatter
 }
 
-func NewString(tf *assets.TextFormatter, x, y float32, text string,
+func newString(tf *assets.TextFormatter, x, y float32, text string,
 	win *Window) (str *String) {
 
 	str = &String{
@@ -123,7 +123,7 @@ func NewString(tf *assets.TextFormatter, x, y float32, text string,
 	return
 }
 
-func (str *String) Render(projectionMatrix mgl32.Mat4, windowWidth,
+func (str *String) render(projectionMatrix mgl32.Mat4, windowWidth,
 	windowHeight uint32, xMin, xMax, yMin, yMax float32) {
 	setShaderProgram(str.ShaderProgram)
 

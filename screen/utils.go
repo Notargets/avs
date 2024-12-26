@@ -4,7 +4,7 @@
  * // 2024
  */
 
-package gl_thread_objects
+package screen
 
 import (
 	"fmt"
@@ -80,8 +80,8 @@ func compileShaderProgram(vertexSource, fragmentSource *uint8) uint32 {
 
 func setShaderProgram(shaderProgram uint32) {
 	if !gl.IsProgram(shaderProgram) {
-		fmt.Printf("[Render] Shader program %d is not valid.\n", shaderProgram)
-		panic("[Render] Invalid shader program")
+		fmt.Printf("[render] Shader program %d is not valid.\n", shaderProgram)
+		panic("[render] Invalid shader program")
 	}
 	gl.UseProgram(shaderProgram)
 	CheckGLError("After UseProgram")
@@ -89,14 +89,14 @@ func setShaderProgram(shaderProgram uint32) {
 	var activeProgram int32
 	gl.GetIntegerv(gl.CURRENT_PROGRAM, &activeProgram)
 	if uint32(activeProgram) != shaderProgram {
-		fmt.Printf("[Render] Shader program mismatch! Visible: %d, "+
+		fmt.Printf("[render] Shader program mismatch! Visible: %d, "+
 			"Expected: %d\n", activeProgram, shaderProgram)
-		panic("[Render] Shader program is not active as expected")
+		panic("[render] Shader program is not active as expected")
 	}
 	if shaderProgram == 0 {
-		fmt.Println("[Render] Shader program handle is 0. " +
+		fmt.Println("[render] Shader program handle is 0. " +
 			"Possible compilation/linking failure.")
-		panic("[Render] Shader program handle is 0")
+		panic("[render] Shader program handle is 0")
 	}
 }
 

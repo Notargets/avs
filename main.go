@@ -9,9 +9,9 @@ package main
 import (
 	"image/color"
 
-	"github.com/notargets/avs/utils"
+	"github.com/notargets/avs/screen"
 
-	"github.com/notargets/avs/screen/gl_thread_objects"
+	"github.com/notargets/avs/utils"
 
 	"github.com/notargets/avs/assets"
 
@@ -19,15 +19,15 @@ import (
 )
 
 // TODO: Alter the object management to add a top level map[WindowKey]map[ObjectKey]Renderable, where the Renderable is
-// TODO: ... an Interface{} with the Methods: Add, Delete, setupVertices, Show, Hide. The Add() will incorporate the ObjectKey
+// TODO: ... an Interface{} with the Methods: add, Delete, setupVertices, Show, Hide. The add() will incorporate the ObjectKey
 // TODO: ... into the object struct so that the Show/Hide functions can toggle the Visible in the Renderable
 // TODO: ... implementation. This allows the event loop to query whether to draw or not before introspecting the object.
 // TODO: ... The Delete() should cleanup any internal references, then delete the ObjectKey from the top level object
 // TODO: ... map for the window.
 // TODO: Implement a map[WindowKey]window such that windows can be created and separately managed. Create a "Default"
-// TODO: ... window at Scene creation time so that any Add() calls are put into the Default window context. If new
+// TODO: ... window at Scene creation time so that any add() calls are put into the Default window context. If new
 // TODO: ... windows are added to the Scene, the context within Scene's struct can be switched to a keyed windows and
-// TODO: ... new Add() calls will be scoped to the "current" window. At some point, objects could be moved among
+// TODO: ... new add() calls will be scoped to the "current" window. At some point, objects could be moved among
 // TODO: ... windows.
 func main() {
 	chart := TestText()
@@ -37,10 +37,10 @@ func main() {
 }
 
 func TestFunctionPlot(chart *chart2d.Chart2D) {
-	// win := chart.NewWindow("Sin function", 0.9, gl_thread_objects.AUTO)
+	// win := chart.newWindow("Sin function", 0.9, gl_thread_objects.AUTO)
 	win := chart.Screen.NewWindow(chart.WindowWidth, chart.WindowHeight,
 		chart.XMin, chart.XMax, chart.YMin, chart.YMax, 0.9, "Sin Function",
-		color.RGBA{46, 46, 46, 255}, gl_thread_objects.AUTO)
+		color.RGBA{46, 46, 46, 255}, screen.AUTO)
 
 	tickText := assets.NewTextFormatter("NotoSans", "Regular", 24,
 		color.RGBA{R: 255, G: 255, B: 255, A: 255}, true, false)
@@ -101,7 +101,7 @@ func TestText() (chart *chart2d.Chart2D) {
 	// Title
 	ypos = 1.1*chart.YMax - titleHeight
 	chart.Printf(TitleText, xpos, ypos, "This is an example of a title text string")
-	// Add a 33% pad for the vertical line spacing between lines
+	// add a 33% pad for the vertical line spacing between lines
 	ypos = ypos - 1.33*titleHeight
 	chart.Printf(TitleText, xpos, ypos, "Title text doesn't move with pan and zoom and remains the same size when window is resized")
 
@@ -113,7 +113,7 @@ func Test2(chart *chart2d.Chart2D) {
 	win1 := chart.GetCurrentWindow()
 
 	win2 := chart.NewWindow("Second Window", 0.8*chart.Scale,
-		gl_thread_objects.AUTO)
+		screen.AUTO)
 
 	chart.SetDrawWindow(win2)
 	// Test text
@@ -134,7 +134,7 @@ func Test2(chart *chart2d.Chart2D) {
 	ypos = 0.6*chart.YMax - titleHeight
 	chart.Printf(TitleText, 0, ypos,
 		"Title 2 first line")
-	// Add a 33% pad for the vertical line spacing between lines
+	// add a 33% pad for the vertical line spacing between lines
 	ypos = ypos - titleHeight
 	chart.Printf(TitleText, 0, ypos, "Title 2 second line")
 

@@ -4,27 +4,27 @@
  * // 2024
  */
 
-package gl_thread_objects
+package screen
 
 import "github.com/notargets/avs/utils"
 
 type ObjectGroup []interface{}
 
-func NewObjectGroup(object interface{}) ObjectGroup {
+func newObjectGroup(object interface{}) ObjectGroup {
 	return ObjectGroup{object}
 }
 
 type Renderable struct {
 	Visible bool
-	Objects ObjectGroup // Any object that has a Render method (e.g., Line,
+	Objects ObjectGroup // Any object that has a render method (e.g., Line,
 	// TriMesh)
 }
 
-func (rb *Renderable) Add(key utils.Key) {
+func (rb *Renderable) add(key utils.Key) {
 	// An object group is append only by design
 	rb.Objects = append(rb.Objects, key)
 }
 
-func (rb *Renderable) SetVisible(isVisible bool) {
+func (rb *Renderable) setVisible(isVisible bool) {
 	rb.Visible = isVisible
 }
