@@ -7,8 +7,6 @@
 package chart2d
 
 import (
-	"image/color"
-
 	"github.com/notargets/avs/utils"
 
 	"github.com/notargets/avs/assets"
@@ -24,13 +22,13 @@ type Chart2D struct {
 	Screen       *screen.Screen
 	WindowWidth  uint32
 	WindowHeight uint32
-	BGColor      color.RGBA
+	BGColor      interface{} // One of [4]float32, [3]float32, color.RGBA
 }
 
 type Color [4]float32 // RGBA
 
 func NewChart2D(XMin, XMax, YMin, YMax float32, width, height int,
-	lineColor, bgColor color.RGBA, scaleOpt ...float32) (chart *Chart2D) {
+	lineColor, bgColor interface{}, scaleOpt ...float32) (chart *Chart2D) {
 	var scale float32
 	if len(scaleOpt) == 0 {
 		scale = 0.90 * float32(height) / float32(width)
@@ -52,10 +50,9 @@ func NewChart2D(XMin, XMax, YMin, YMax float32, width, height int,
 	return
 }
 
-func (chart *Chart2D) AddLine(X, Y []float32, LineColor color.RGBA,
+func (chart *Chart2D) AddLine(X, Y []float32, LineColor interface{},
 	rt ...utils.RenderType) (key utils.Key) {
-	LineColorF32 := utils.ColorToFloat32(LineColor)
-	return chart.Screen.NewLine(X, Y, LineColorF32[:], rt...)
+	return chart.Screen.NewLine(X, Y, LineColor, rt...)
 }
 
 func (chart *Chart2D) Printf(formatter *assets.TextFormatter, x, y float32,
@@ -63,7 +60,7 @@ func (chart *Chart2D) Printf(formatter *assets.TextFormatter, x, y float32,
 	return chart.Screen.Printf(formatter, x, y, format, args...)
 }
 
-func (chart *Chart2D) AddAxis(axisColor color.RGBA, tf *assets.TextFormatter,
+func (chart *Chart2D) AddAxis(axisColor interface{}, tf *assets.TextFormatter,
 	XLabel, YLabel string, xCoordOfYAxis, yCoordOfXAxis float32, nSegs int) (key utils.Key) {
 
 	win := chart.Screen.GetCurrentWindow()

@@ -7,7 +7,6 @@
 package main
 
 import (
-	"fmt"
 	"image/color"
 	"math"
 
@@ -63,8 +62,6 @@ func TestFunctionPlot(chart *chart2d.Chart2D) {
 		x += xInc
 	}
 	chart.AddLine(X, Y, screen.BLUE, utils.POLYLINE)
-	fmt.Println(X)
-	fmt.Println(Y)
 
 	_ = win
 

@@ -7,13 +7,11 @@
 package screen
 
 import (
-	"image/color"
-
 	"github.com/notargets/avs/assets"
 	"github.com/notargets/avs/utils"
 )
 
-func (scr *Screen) NewAxis(win *Window, axisColor color.RGBA,
+func (scr *Screen) NewAxis(win *Window, axisColor interface{},
 	tf *assets.TextFormatter, XLabel, YLabel string, yCoordOfXAxis, xCoordOfYAxis float32,
 	nSegs int) (key utils.Key) {
 
@@ -80,6 +78,5 @@ func (scr *Screen) NewAxis(win *Window, axisColor color.RGBA,
 	// Y Axis Label
 	scr.Printf(tf, xCoordOfYAxis+xTickSize, yMax, "%s",
 		YLabel)
-	fAxisColor := utils.ColorToFloat32(axisColor)
-	return scr.NewLine(X, Y, fAxisColor[:]) // 2 points, so 2 * 3 = 6 colors
+	return scr.NewLine(X, Y, axisColor) // 2 points, so 2 * 3 = 6 colors
 }

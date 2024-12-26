@@ -34,7 +34,7 @@ var (
 )
 
 func NewScreen(width, height uint32, xmin, xmax, ymin, ymax, scale float32,
-	bgColor color.RGBA, position Position) (scr *Screen) {
+	bgColor interface{}, position Position) (scr *Screen) {
 
 	scr = &Screen{
 		RenderChannel: make(chan func(), 100),
@@ -49,7 +49,7 @@ func NewScreen(width, height uint32, xmin, xmax, ymin, ymax, scale float32,
 		// exposed
 		win := newWindow(width, height,
 			xmin, xmax, ymin, ymax,
-			scale, "Chart2D", utils.ColorToFloat32(bgColor), position)
+			scale, "Chart2D", bgColor, position)
 
 		scr.SetDrawWindow(win) // Set default draw window
 
@@ -81,13 +81,13 @@ func (scr *Screen) Redraw(win *Window) {
 }
 
 func (scr *Screen) NewWindow(width, height uint32, xmin, xmax, ymin, ymax,
-	scale float32, title string, bgColor color.RGBA,
+	scale float32, title string, bgColor interface{},
 	position Position) (win *Window) {
 
 	scr.RenderChannel <- func() {
 		// fmt.Println("[newWindow] Inside New window")
 		win = newWindow(width, height, xmin, xmax,
-			ymin, ymax, scale, title, utils.ColorToFloat32(bgColor), position)
+			ymin, ymax, scale, title, bgColor, position)
 		scr.SetDrawWindow(win)
 		scr.DoneChan <- struct{}{}
 	}
@@ -96,18 +96,11 @@ func (scr *Screen) NewWindow(width, height uint32, xmin, xmax, ymin, ymax,
 	return
 }
 
-func (scr *Screen) NewLine(X, Y, Colors []float32,
+func (scr *Screen) NewLine(X, Y []float32, ColorInput interface{},
 	rt ...utils.RenderType) (key utils.Key) {
 	key = utils.NewKey()
 
-	if len(Colors) == 4 {
-		// Expand the single color into an array to match X/Y
-		nColors := make([]float32, len(X)*3)
-		for i, _ := range nColors {
-			nColors[i] = Colors[i%3]
-		}
-		Colors = nColors
-	}
+	Colors := utils.GetColorArray(ColorInput, len(X))
 
 	scr.RenderChannel <- func() {
 		// Create new line
@@ -119,11 +112,26 @@ func (scr *Screen) NewLine(X, Y, Colors []float32,
 	}
 	<-scr.DoneChan
 
-	return key
+	return
 }
 
-func (scr *Screen) NewPolyLine(X, Y, Colors []float32) (key utils.Key) {
-	return scr.NewLine(X, Y, Colors, utils.POLYLINE)
+func (scr *Screen) UpdateLine(win *Window, key utils.Key, X, Y []float32,
+	ColorInput interface{}) {
+	Colors := utils.GetColorArray(ColorInput, len(X))
+	line := win.objects[key].Objects[0].(*Line)
+
+	scr.RenderChannel <- func() {
+		// Create new line
+		line.setupVertices(X, Y, Colors)
+		win.redraw()
+		scr.DoneChan <- struct{}{}
+	}
+	<-scr.DoneChan
+
+}
+
+func (scr *Screen) NewPolyLine(X, Y []float32, ColorInput interface{}) (key utils.Key) {
+	return scr.NewLine(X, Y, ColorInput, utils.POLYLINE)
 }
 
 func (scr *Screen) NewString(tf *assets.TextFormatter, x,

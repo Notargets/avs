@@ -55,7 +55,7 @@ type Window struct {
 }
 
 func newWindow(width, height uint32, xMin, xMax, yMin, yMax, scale float32,
-	title string, bgColor [4]float32, position Position) (win *Window) {
+	title string, bgColor interface{}, position Position) (win *Window) {
 
 	var (
 		err error
@@ -138,7 +138,8 @@ func newWindow(width, height uint32, xMin, xMax, yMin, yMax, scale float32,
 
 	win.setCallbacks()
 
-	gl.ClearColor(bgColor[0], bgColor[1], bgColor[2], bgColor[3])
+	BGColor := utils.GetColorArray(bgColor, 1)
+	gl.ClearColor(BGColor[0], BGColor[1], BGColor[2], 1.)
 	gl.Clear(gl.COLOR_BUFFER_BIT)
 	win.swapBuffers()
 

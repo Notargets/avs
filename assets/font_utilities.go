@@ -11,14 +11,14 @@ import (
 )
 
 type TextFormatter struct {
-	Color       color.Color
+	Color       color.RGBA
 	Centered    bool
 	ScreenFixed bool
 	TypeFace    *OpenGLTypeFace
 }
 
-func NewTextFormatter(fontBaseName, fontOptionName string, fontPitch uint32, color color.Color,
-	centered, screenFixed bool) (tf *TextFormatter) {
+func NewTextFormatter(fontBaseName, fontOptionName string, fontPitch uint32,
+	color color.RGBA, centered, screenFixed bool) (tf *TextFormatter) {
 	tf = &TextFormatter{
 		Color:       color,
 		Centered:    centered,

@@ -7,7 +7,6 @@
 package screen
 
 import (
-	"image/color"
 	"log"
 
 	"github.com/go-gl/gl/v4.5-core/gl"
@@ -112,8 +111,8 @@ func (win *Window) resizeCallback(w *glfw.Window, width, height int) {
 	win.scaleChanged = true
 }
 
-func (win *Window) setBackgroundColor(screenColor color.Color) {
-	fc := utils.ColorToFloat32(screenColor)
+func (win *Window) setBackgroundColor(screenColor interface{}) {
+	fc := utils.GetColorArray(screenColor, 1)
 	gl.ClearColor(fc[0], fc[1], fc[2], fc[3])
 }
 

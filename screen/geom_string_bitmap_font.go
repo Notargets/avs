@@ -131,7 +131,7 @@ func (str *String) render(projectionMatrix mgl32.Mat4, windowWidth,
 	str.setupTextureMap(xMin, xMax, yMin, yMax)
 
 	// Set the color
-	textColor := utils.ColorToFloat32(str.TextFormatter.Color)
+	textColor := utils.GetColorArray(str.TextFormatter.Color, 1)
 
 	str.loadHostBuffer(textColor, projectionMatrix, windowWidth, windowHeight)
 
@@ -255,7 +255,7 @@ func (str *String) fixSTRINGAspectRatio(windowWidth, windowHeight uint32, ndc *[
 	}
 }
 
-func (str *String) loadHostBuffer(textColor [4]float32,
+func (str *String) loadHostBuffer(textColor []float32,
 	projectionMatrix mgl32.Mat4, currentWidth, currentHeight uint32) {
 	var (
 		lenRow int
