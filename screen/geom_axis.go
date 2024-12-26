@@ -14,7 +14,9 @@ import (
 )
 
 func (scr *Screen) NewAxis(win *Window, axisColor color.Color,
-	tf *assets.TextFormatter, yAxisLocation float32, nSegs int) (key utils.Key) {
+	tf *assets.TextFormatter, XLabel, YLabel string, yCoordOfXAxis, xCoordOfYAxis float32,
+	nSegs int) (key utils.Key) {
+
 	var (
 		xMin, xMax           = win.xMin, win.xMax
 		yMin, yMax           = win.yMin, win.yMax
@@ -32,14 +34,20 @@ func (scr *Screen) NewAxis(win *Window, axisColor color.Color,
 	}
 
 	// Generate color array for 2 vertices per axis (X-axis and Y-axis)
-	X, Y, C = utils.AddSegmentToLine(X, Y, C, xMin, 0, xMax, 0, axisColor)
-	X, Y, C = utils.AddSegmentToLine(X, Y, C, yAxisLocation, yMin, yAxisLocation,
+	// Horizontal X Axis line
+	X, Y, C = utils.AddSegmentToLine(X, Y, C, xMin, yCoordOfXAxis, xMax,
+		yCoordOfXAxis, axisColor)
+	// VerticaL Y Axis line
+	X, Y, C = utils.AddSegmentToLine(X, Y, C, xCoordOfYAxis, yMin, xCoordOfYAxis,
 		yMax, axisColor)
 
-	// Draw ticks along X axis
-	var x, y = xMin, float32(0) // X Axis is always drawn at Y = 0
+	// X Axis
+	var x, y = xMin, yCoordOfXAxis
+	if yMin == 0 {
+		y = yMin
+	}
 	for i := 0; i < nSegs; i++ {
-		if x == yAxisLocation {
+		if x == xCoordOfYAxis {
 			x = x + xInc
 			continue
 		}
@@ -49,23 +57,32 @@ func (scr *Screen) NewAxis(win *Window, axisColor color.Color,
 			"%4.1f", x)
 		x = x + xInc
 	}
+	// X Axis label
+	scr.Printf(tf, xMax+yTickSize, yCoordOfXAxis, "%s",
+		XLabel)
+
+	// Y Axis
 	ptfY := *tf
 	tfY := &ptfY
 	tfY.Centered = false
-	x = yAxisLocation
+	x = xCoordOfYAxis
 	y = yMin
 	yTextDelta := utils.CalculateRightJustifiedTextOffset(yMin,
 		scr.GetWorldSpaceCharWidth(win, tfY))
 	for i := 0; i < nSegs; i++ {
-		if i == nSegs/2 {
-			y = y + yInc
-			continue
+		if yMin != 0 {
+			if i == nSegs/2 {
+				y = y + yInc
+				continue
+			}
 		}
 		X, Y, C = utils.AddSegmentToLine(X, Y, C, x, y, x-xTickSize, y, tickColor)
 		y = utils.ClampNearZero(y, yScale/1000.)
 		scr.Printf(tfY, x-yTextDelta, y, "%4.1f", y)
 		y = y + yInc
 	}
-	// chart.Screen.ChangePosition(0.0, 0.0)
+	// Y Axis Label
+	scr.Printf(tf, xCoordOfYAxis+xTickSize, yMax, "%s",
+		YLabel)
 	return scr.NewLine(X, Y, C) // 2 points, so 2 * 3 = 6 colors
 }

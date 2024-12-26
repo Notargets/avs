@@ -99,12 +99,9 @@ func newWindow(width, height uint32, xMin, xMax, yMin, yMax, scale float32,
 
 	// Put the window into a quadrant of the host window depending on window
 	// number
-	// fmt.Printf("window Number: %d\n", windowIndex.Read()+1)
 	if position == AUTO {
 		position = Position((windowIndex + 1) % 4)
 	}
-	// fmt.Printf("window Count+1 (current) = %d, Position = %d\n",
-	// 	windowIndex.Read()+1, position)
 	var windowX, windowY int
 	switch position {
 	case TOPLEFT:
@@ -240,7 +237,6 @@ func (win *Window) updateProjectionMatrix() {
 	// Send the updated projection matrix to all shaders that share the world
 	// view. FIXEDSTRING doesn't
 	for renderType, shaderProgram := range win.shaders {
-		// win.ActiveShaders.Range(func(key, value interface{}) bool {
 		// Type assertion for the key and value
 		if renderType != utils.FIXEDSTRING {
 			projectionUniform := gl.GetUniformLocation(shaderProgram, gl.Str("projection\x00"))

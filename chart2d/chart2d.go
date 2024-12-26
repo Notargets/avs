@@ -61,10 +61,12 @@ func (chart *Chart2D) Printf(formatter *assets.TextFormatter, x, y float32,
 	return chart.Screen.Printf(formatter, x, y, format, args...)
 }
 
-func (chart *Chart2D) AddAxis(axisColor color.Color,
-	tf *assets.TextFormatter, yAxisLocation float32, nSegs int) (key utils.Key) {
+func (chart *Chart2D) AddAxis(axisColor color.Color, tf *assets.TextFormatter,
+	XLabel, YLabel string, xCoordOfYAxis, yCoordOfXAxis float32, nSegs int) (key utils.Key) {
+
 	win := chart.Screen.GetCurrentWindow()
-	key = chart.Screen.NewAxis(win, axisColor, tf, yAxisLocation, nSegs)
+	key = chart.Screen.NewAxis(win, axisColor, tf, XLabel, YLabel, xCoordOfYAxis,
+		yCoordOfXAxis, nSegs)
 	return
 }
 
