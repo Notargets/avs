@@ -42,6 +42,11 @@ func TestFunctionPlot(chart *chart2d.Chart2D) {
 		chart.XMin, chart.XMax, chart.YMin, chart.YMax, 0.9, "Sin Function",
 		color.RGBA{46, 46, 46, 255}, screen.AUTO)
 
+	// TODO: push the XMin/Xmax, etc down to the window level,
+	//  let chart use the window as defaults,
+	//  but enable a screen.Window override so we can define a different
+	//  scaled window. Make AddAxis a Screen level and the Chart level uses
+	//  fixed range for simplicity (the purpose of Chart after all)
 	tickText := assets.NewTextFormatter("NotoSans", "Regular", 24,
 		color.RGBA{R: 255, G: 255, B: 255, A: 255}, true, false)
 	chart.AddAxis(color.RGBA{R: 255, G: 255, B: 255, A: 255}, tickText, 0, 11)
