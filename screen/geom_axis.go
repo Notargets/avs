@@ -47,7 +47,7 @@ func (scr *Screen) NewAxis(win *Window, axisColor color.Color,
 		y = yMin
 	}
 	for i := 0; i < nSegs; i++ {
-		if x == xCoordOfYAxis {
+		if x == xCoordOfYAxis && xCoordOfYAxis != xMin {
 			x = x + xInc
 			continue
 		}
@@ -70,7 +70,7 @@ func (scr *Screen) NewAxis(win *Window, axisColor color.Color,
 	yTextDelta := utils.CalculateRightJustifiedTextOffset(yMin,
 		scr.GetWorldSpaceCharWidth(win, tfY))
 	for i := 0; i < nSegs; i++ {
-		if yMin != 0 {
+		if y == yCoordOfXAxis && yCoordOfXAxis != yMin {
 			if i == nSegs/2 {
 				y = y + yInc
 				continue
