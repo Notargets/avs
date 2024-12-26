@@ -26,8 +26,7 @@ type Chart2D struct {
 	Screen       *screen.Screen
 	WindowWidth  uint32
 	WindowHeight uint32
-	LineColor    Color
-	BGColor      Color
+	BGColor      color.RGBA
 }
 
 type Color [4]float32 // RGBA
@@ -48,8 +47,7 @@ func NewChart2D(XMin, XMax, YMin, YMax float32, width, height int,
 		YMax:         YMax,
 		WindowWidth:  uint32(width),
 		WindowHeight: uint32(height),
-		LineColor:    utils.ColorToFloat32(lineColor),
-		BGColor:      utils.ColorToFloat32(bgColor),
+		BGColor:      bgColor,
 	}
 	chart.Screen = screen.NewScreen(uint32(width), uint32(height), XMin,
 		XMax, YMin, YMax, scale, chart.BGColor, gl_thread_objects.AUTO)

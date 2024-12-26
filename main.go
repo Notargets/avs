@@ -32,13 +32,23 @@ import (
 func main() {
 	chart := TestText()
 	Test2(chart)
+	TestFunctionPlot(chart)
 	select {}
 }
 
-// func TestFunctionPlot(chart *chart2d.Chart2D) {
-// 	win := chart.NewWindow()
-//
-// }
+func TestFunctionPlot(chart *chart2d.Chart2D) {
+	// win := chart.NewWindow("Sin function", 0.9, gl_thread_objects.AUTO)
+	win := chart.Screen.NewWindow(chart.WindowWidth, chart.WindowHeight,
+		chart.XMin, chart.XMax, chart.YMin, chart.YMax, 0.9, "Sin Function",
+		color.RGBA{46, 46, 46, 255}, gl_thread_objects.AUTO)
+
+	tickText := assets.NewTextFormatter("NotoSans", "Regular", 24,
+		color.RGBA{R: 255, G: 255, B: 255, A: 255}, true, false)
+	chart.AddAxis(color.RGBA{R: 255, G: 255, B: 255, A: 255}, tickText, 0, 11)
+
+	_ = win
+
+}
 
 func TestText() (chart *chart2d.Chart2D) {
 	width, height := 1200, 760

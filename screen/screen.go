@@ -7,7 +7,10 @@
 package screen
 
 import (
+	"image/color"
 	"runtime"
+
+	"github.com/notargets/avs/utils"
 
 	"github.com/notargets/avs/screen/gl_thread_objects"
 )
@@ -19,7 +22,7 @@ type Screen struct {
 }
 
 func NewScreen(width, height uint32, xmin, xmax, ymin, ymax, scale float32,
-	bgColor [4]float32, position gl_thread_objects.Position) (scr *Screen) {
+	bgColor color.RGBA, position gl_thread_objects.Position) (scr *Screen) {
 
 	scr = &Screen{
 		RenderChannel: make(chan func(), 100),
@@ -34,7 +37,7 @@ func NewScreen(width, height uint32, xmin, xmax, ymin, ymax, scale float32,
 		// exposed
 		win := gl_thread_objects.NewWindow(width, height,
 			xmin, xmax, ymin, ymax,
-			scale, "Chart2D", bgColor, position)
+			scale, "Chart2D", utils.ColorToFloat32(bgColor), position)
 
 		scr.SetDrawWindow(win) // Set default draw window
 
@@ -66,17 +69,17 @@ func (scr *Screen) Redraw(win *gl_thread_objects.Window) {
 }
 
 func (scr *Screen) NewWindow(width, height uint32, xmin, xmax, ymin, ymax,
-	scale float32, title string, bgColor [4]float32,
+	scale float32, title string, bgColor color.RGBA,
 	position gl_thread_objects.Position) (win *gl_thread_objects.Window) {
 
 	scr.RenderChannel <- func() {
 		// fmt.Println("[NewWindow] Inside New window")
-		gl_thread_objects.NewWindow(width, height, xmin, xmax,
-			ymin, ymax, scale, title, bgColor, position)
+		win = gl_thread_objects.NewWindow(width, height, xmin, xmax,
+			ymin, ymax, scale, title, utils.ColorToFloat32(bgColor), position)
+		scr.SetDrawWindow(win)
 		scr.DoneChan <- struct{}{}
 	}
 	<-scr.DoneChan
-	win = scr.GetCurrentWindow()
 
 	return
 }
