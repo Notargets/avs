@@ -52,16 +52,18 @@ func NewChart2D(XMin, XMax, YMin, YMax float32, width, height int,
 	return
 }
 
-func (chart *Chart2D) AddLine(X, Y, Colors []float32,
+func (chart *Chart2D) AddLine(X, Y []float32, LineColor color.RGBA,
 	rt ...utils.RenderType) (key utils.Key) {
-	return chart.Screen.NewLine(X, Y, Colors, rt...)
+	LineColorF32 := utils.ColorToFloat32(LineColor)
+	return chart.Screen.NewLine(X, Y, LineColorF32[:], rt...)
 }
+
 func (chart *Chart2D) Printf(formatter *assets.TextFormatter, x, y float32,
 	format string, args ...interface{}) (key utils.Key) {
 	return chart.Screen.Printf(formatter, x, y, format, args...)
 }
 
-func (chart *Chart2D) AddAxis(axisColor color.Color, tf *assets.TextFormatter,
+func (chart *Chart2D) AddAxis(axisColor color.RGBA, tf *assets.TextFormatter,
 	XLabel, YLabel string, xCoordOfYAxis, yCoordOfXAxis float32, nSegs int) (key utils.Key) {
 
 	win := chart.Screen.GetCurrentWindow()

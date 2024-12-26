@@ -24,6 +24,15 @@ type Screen struct {
 	drawWindow    *Window
 }
 
+var (
+	BLUE  = color.RGBA{0, 0, 255, 255}
+	RED   = color.RGBA{255, 0, 0, 255}
+	GREEN = color.RGBA{0, 255, 0, 255}
+	WHITE = color.RGBA{255, 255, 255, 255}
+	BLACK = color.RGBA{0, 0, 0, 255}
+	DARK  = color.RGBA{46, 46, 46, 255}
+)
+
 func NewScreen(width, height uint32, xmin, xmax, ymin, ymax, scale float32,
 	bgColor color.RGBA, position Position) (scr *Screen) {
 
@@ -90,6 +99,15 @@ func (scr *Screen) NewWindow(width, height uint32, xmin, xmax, ymin, ymax,
 func (scr *Screen) NewLine(X, Y, Colors []float32,
 	rt ...utils.RenderType) (key utils.Key) {
 	key = utils.NewKey()
+
+	if len(Colors) == 4 {
+		// Expand the single color into an array to match X/Y
+		nColors := make([]float32, len(X)*3)
+		for i, _ := range nColors {
+			nColors[i] = Colors[i%3]
+		}
+		Colors = nColors
+	}
 
 	scr.RenderChannel <- func() {
 		// Create new line

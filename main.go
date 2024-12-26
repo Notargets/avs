@@ -7,7 +7,9 @@
 package main
 
 import (
+	"fmt"
 	"image/color"
+	"math"
 
 	"github.com/notargets/avs/screen"
 
@@ -41,14 +43,28 @@ func main() {
 func TestFunctionPlot(chart *chart2d.Chart2D) {
 	// win := chart.newWindow("Sin function", 0.9, gl_thread_objects.AUTO)
 	win := chart.Screen.NewWindow(chart.WindowWidth, chart.WindowHeight,
-		0, 1, 0, 1, 0.5, "Sin Function",
-		color.RGBA{46, 46, 46, 255}, screen.AUTO)
+		0, 1, -1, 1, 0.5, "Sin Function",
+		screen.DARK, screen.AUTO)
 
 	tickText := assets.NewTextFormatter("NotoSans", "Regular", 24,
-		color.RGBA{R: 255, G: 255, B: 255, A: 255}, true, false)
+		screen.WHITE, true, false)
 
-	chart.AddAxis(color.RGBA{R: 255, G: 255, B: 255, A: 255}, tickText, "X",
-		"Y", 0, 0, 11)
+	chart.AddAxis(screen.WHITE, tickText, "X", "Y", 0, 0, 11)
+
+	// Make a Sin function for plotting
+	X := make([]float32, 100)
+	Y := make([]float32, 100)
+	xInc := float32(1. / 100.)
+	var x = float32(0)
+	var TwoPi = float32(2. * math.Pi)
+	for i := 0; i < 100; i++ {
+		X[i] = x
+		Y[i] = float32(math.Sin(float64(x * TwoPi)))
+		x += xInc
+	}
+	chart.AddLine(X, Y, screen.BLUE, utils.POLYLINE)
+	fmt.Println(X)
+	fmt.Println(Y)
 
 	_ = win
 
@@ -79,18 +95,17 @@ func TestText() (chart *chart2d.Chart2D) {
 	}
 
 	chart = chart2d.NewChart2D(XMin, XMax, YMin, YMax, width, height,
-		color.RGBA{255, 255, 255, 255}, // Line Color Default
-		color.RGBA{46, 46, 46, 255})    // BG color Default
+		screen.WHITE, // Line Color Default
+		screen.DARK)  // BG color Default
 
 	tickText := assets.NewTextFormatter("NotoSans", "Regular", 24,
-		color.RGBA{R: 255, G: 255, B: 255, A: 255}, true, false)
-	chart.AddAxis(color.RGBA{R: 255, G: 255, B: 255, A: 255}, tickText, "X",
-		"Y", 0, 0, 11)
+		screen.WHITE, true, false)
+	chart.AddAxis(screen.WHITE, tickText, "X", "Y", 0, 0, 11)
 
 	DynamicText := assets.NewTextFormatter("NotoSans", "Regular", 24,
-		color.RGBA{R: 255, B: 255, A: 255}, false, false)
+		screen.RED, false, false)
 	TitleText := assets.NewTextFormatter("NotoSans", "Bold", 36,
-		color.RGBA{G: 255, A: 255}, true, true)
+		screen.GREEN, true, true)
 
 	titleHeight := chart.GetWorldSpaceCharHeight(TitleText)
 
@@ -148,22 +163,21 @@ func Test2(chart *chart2d.Chart2D) {
 
 	chart.Printf(TitleText, 0, ypos, "Title 3 First window")
 
-	X, Y, C := utils.AddSegmentToLine([]float32{}, []float32{}, []float32{},
+	X, Y := utils.AddSegmentToLine([]float32{}, []float32{},
 		chart.XMin+0.25*xRange, chart.YMin+0.75*yRange,
-		chart.XMin+0.5*xRange, chart.YMin+0.75*yRange,
-		color.RGBA{255, 0, 0, 255})
-	chart.AddLine(X, Y, C)
+		chart.XMin+0.5*xRange, chart.YMin+0.75*yRange)
+
+	chart.AddLine(X, Y, screen.RED)
 
 	// Draw in second window
 	chart.SetDrawWindow(win2)
 
 	chart.Printf(TitleText, 0, ypos-0.3*yRange, "Title 4 Second window")
 
-	X, Y, C = utils.AddSegmentToLine([]float32{}, []float32{}, []float32{},
+	X, Y = utils.AddSegmentToLine([]float32{}, []float32{},
 		chart.XMin+0.25*xRange, chart.YMin+0.75*yRange,
-		chart.XMin+0.5*xRange, chart.YMin+0.75*yRange,
-		color.RGBA{0, 255, 0, 255})
-	chart.AddLine(X, Y, C)
+		chart.XMin+0.5*xRange, chart.YMin+0.75*yRange)
+	chart.AddLine(X, Y, screen.GREEN)
 
 	_, _ = win1, win2
 

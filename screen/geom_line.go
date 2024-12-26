@@ -37,6 +37,8 @@ func AddLineShader(shaderMap map[utils.RenderType]uint32) {
 		}` + "\x00")
 
 	shaderMap[utils.LINE] = compileShaderProgram(vertexShader, fragmentShader)
+	shaderMap[utils.POLYLINE] = compileShaderProgram(vertexShader,
+		fragmentShader)
 }
 
 type Line struct {
