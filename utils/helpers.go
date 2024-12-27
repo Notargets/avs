@@ -17,7 +17,7 @@ func GetColorArray(ColorAny interface{}, length int) (ColorArray []float32) {
 	switch c := ColorAny.(type) {
 	case color.RGBA:
 		ColorArray = make([]float32, colorArrayLength)
-		ColorFloat := colorToFloat32(c)
+		ColorFloat := ColorToFloat32(c)
 		for i := 0; i < colorArrayLength; i++ {
 			ColorArray[i] = ColorFloat[i%3]
 		}
@@ -55,7 +55,7 @@ func GetColorArray(ColorAny interface{}, length int) (ColorArray []float32) {
 	return
 }
 
-func colorToFloat32(c color.RGBA) [4]float32 {
+func ColorToFloat32(c color.RGBA) [4]float32 {
 	r, g, b, a := c.RGBA()
 	return [4]float32{
 		float32(r) / 65535.0,

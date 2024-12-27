@@ -130,10 +130,8 @@ func (str *String) render(projectionMatrix mgl32.Mat4, windowWidth,
 	// Draw the font into the image, calculate the polygon vertex bounds
 	str.setupTextureMap(xMin, xMax, yMin, yMax)
 
-	// Set the color
-	textColor := utils.GetColorArray(str.TextFormatter.Color, 1)
-
-	str.loadHostBuffer(textColor, projectionMatrix, windowWidth, windowHeight)
+	str.loadHostBuffer(str.TextFormatter.Color, projectionMatrix, windowWidth,
+		windowHeight)
 
 	str.sendHostBufferToGPU()
 
@@ -255,7 +253,7 @@ func (str *String) fixSTRINGAspectRatio(windowWidth, windowHeight uint32, ndc *[
 	}
 }
 
-func (str *String) loadHostBuffer(textColor []float32,
+func (str *String) loadHostBuffer(textColor [4]float32,
 	projectionMatrix mgl32.Mat4, currentWidth, currentHeight uint32) {
 	var (
 		lenRow int

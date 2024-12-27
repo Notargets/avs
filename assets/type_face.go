@@ -14,6 +14,8 @@ import (
 	"image/png"
 	"os"
 
+	"github.com/notargets/avs/utils"
+
 	"golang.org/x/image/font"
 	"golang.org/x/image/font/opentype"
 	"golang.org/x/image/math/fixed"
@@ -72,14 +74,13 @@ func NewOpenGLTypeFace(fontBaseName, fontOptionName string, fontPitch uint32) (t
 	return
 }
 
-// generateHash generates a simple hash using FNV for a filename and font pitch
-
-func (tf *OpenGLTypeFace) RenderFontTextureImg(text string, fontColor color.Color) (img *image.RGBA) {
+func (tf *OpenGLTypeFace) RenderFontTextureImg(text string,
+	fontColor [4]float32) (img *image.RGBA) {
 	var (
 		err error
 	)
 	// Create an image of the proper size to hold the full text
-	img, err = tf.drawText(text, fontColor, color.RGBA{R: 0, G: 0, B: 0, A: 0})
+	img, err = tf.drawText(text, ConvertFloat32ToRGBA(fontColor), utils.BLACKTRANS)
 	if err != nil {
 		panic(err)
 	}
@@ -88,8 +89,17 @@ func (tf *OpenGLTypeFace) RenderFontTextureImg(text string, fontColor color.Colo
 	return
 }
 
+func ConvertFloat32ToRGBA(iColor [4]float32) (c color.RGBA) {
+	c = color.RGBA{uint8(iColor[0] * 255),
+		uint8(iColor[1] * 255),
+		uint8(iColor[2] * 255),
+		uint8(iColor[3] * 255)}
+	return
+}
+
 // DrawText draws the provided text onto an image using OpenType and returns the dimensions of the image and the image itself
-func (tf *OpenGLTypeFace) drawText(text string, fontColor, bgColor color.Color) (*image.RGBA, error) {
+func (tf *OpenGLTypeFace) drawText(text string, fontColor,
+	bgColor color.RGBA) (*image.RGBA, error) {
 
 	// Calculate the pixel dimensions for the text
 	textWidth := CalculateStringPixelWidth(tf.Face, text)

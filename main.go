@@ -46,12 +46,12 @@ func TestFunctionPlot(chart *chart2d.Chart2D) {
 	// win := chart.newWindow("Sin function", 0.9, gl_thread_objects.AUTO)
 	win := chart.Screen.NewWindow(chart.WindowWidth, chart.WindowHeight,
 		0, 1, -1, 1, 0.5, "Sin Function",
-		screen.DARK, screen.AUTO)
+		utils.DARK, screen.AUTO)
 
 	tickText := assets.NewTextFormatter("NotoSans", "Regular", 24,
-		screen.WHITE, true, false)
+		utils.WHITE, true, false)
 
-	chart.AddAxis(screen.WHITE, tickText, "X", "Y", 0, 0, 11)
+	chart.AddAxis(utils.WHITE, tickText, "X", "Y", 0, 0, 11)
 
 	// Make a Sin function for plotting
 	X := make([]float32, 100)
@@ -73,7 +73,7 @@ func TestFunctionPlot(chart *chart2d.Chart2D) {
 			x += xInc
 		}
 		if iter == 0 {
-			linekey = chart.AddLine(X, Y, screen.BLUE, utils.POLYLINE)
+			linekey = chart.AddLine(X, Y, utils.BLUE, utils.POLYLINE)
 		} else {
 			chart.UpdateLine(win, linekey, X, Y, nil)
 		}
@@ -111,17 +111,17 @@ func TestText() (chart *chart2d.Chart2D) {
 	}
 
 	chart = chart2d.NewChart2D(XMin, XMax, YMin, YMax, width, height,
-		screen.WHITE, // Line Color Default
-		screen.DARK)  // BG color Default
+		utils.WHITE, // Line Color Default
+		utils.DARK)  // BG color Default
 
 	tickText := assets.NewTextFormatter("NotoSans", "Regular", 24,
-		screen.WHITE, true, false)
-	chart.AddAxis(screen.WHITE, tickText, "X", "Y", 0, 0, 11)
+		utils.WHITE, true, false)
+	chart.AddAxis(utils.WHITE, tickText, "X", "Y", 0, 0, 11)
 
 	DynamicText := assets.NewTextFormatter("NotoSans", "Regular", 24,
-		screen.RED, false, false)
+		utils.RED, false, false)
 	TitleText := assets.NewTextFormatter("NotoSans", "Bold", 36,
-		screen.GREEN, true, true)
+		utils.GREEN, true, true)
 
 	titleHeight := chart.GetWorldSpaceCharHeight(TitleText)
 
@@ -183,7 +183,7 @@ func Test2(chart *chart2d.Chart2D) {
 		chart.XMin+0.25*xRange, chart.YMin+0.75*yRange,
 		chart.XMin+0.5*xRange, chart.YMin+0.75*yRange)
 
-	chart.AddLine(X, Y, screen.RED)
+	chart.AddLine(X, Y, utils.RED)
 
 	// Draw in second window
 	chart.SetDrawWindow(win2)
@@ -193,7 +193,7 @@ func Test2(chart *chart2d.Chart2D) {
 	X, Y = utils.AddSegmentToLine([]float32{}, []float32{},
 		chart.XMin+0.25*xRange, chart.YMin+0.75*yRange,
 		chart.XMin+0.5*xRange, chart.YMin+0.75*yRange)
-	chart.AddLine(X, Y, screen.GREEN)
+	chart.AddLine(X, Y, utils.GREEN)
 
 	_, _ = win1, win2
 

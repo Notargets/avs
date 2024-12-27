@@ -8,7 +8,6 @@ package screen
 
 import (
 	"fmt"
-	"image/color"
 	"runtime"
 
 	"github.com/go-gl/glfw/v3.3/glfw"
@@ -23,18 +22,6 @@ type Screen struct {
 	DoneChan      chan struct{} // Re-usable synchronization channel
 	drawWindow    *Window
 }
-
-var (
-	BLUE  = color.RGBA{0, 0, 255, 255}
-	RED   = color.RGBA{255, 0, 0, 255}
-	GREEN = color.RGBA{0, 255, 0, 255}
-	WHITE = color.RGBA{255, 255, 255, 255}
-	BLACK = color.RGBA{0, 0, 0, 255}
-	DARK  = color.RGBA{46, 46, 46, 255}
-)
-
-var hostBuffer []float32 /* Scratch buffer for converting input geometry to
-X1,Y1,X2,Y2,... arrays for OGL vertex inputs */
 
 func NewScreen(width, height uint32, xmin, xmax, ymin, ymax, scale float32,
 	bgColor interface{}, position Position) (scr *Screen) {

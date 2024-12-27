@@ -8,19 +8,21 @@ package assets
 
 import (
 	"image/color"
+
+	"github.com/notargets/avs/utils"
 )
 
 type TextFormatter struct {
-	Color       color.RGBA
+	Color       [4]float32
 	Centered    bool
 	ScreenFixed bool
 	TypeFace    *OpenGLTypeFace
 }
 
 func NewTextFormatter(fontBaseName, fontOptionName string, fontPitch uint32,
-	color color.RGBA, centered, screenFixed bool) (tf *TextFormatter) {
+	ColorInput color.RGBA, centered, screenFixed bool) (tf *TextFormatter) {
 	tf = &TextFormatter{
-		Color:       color,
+		Color:       utils.ColorToFloat32(ColorInput),
 		Centered:    centered,
 		ScreenFixed: screenFixed,
 	}
