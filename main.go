@@ -40,6 +40,8 @@ func main() {
 
 // TODO: Implement object sub-groups within ObjectGroup to enable
 // TODO: ... nested objects - e.g. axis is a collection of text objs + line
+// TODO: !!! Find the memory leak in the win.Redraw() path. Redrawing the same
+// TODO: ... objects is leaking memory
 func TestFunctionPlot(chart *chart2d.Chart2D) {
 	// win := chart.newWindow("Sin function", 0.9, gl_thread_objects.AUTO)
 	win := chart.Screen.NewWindow(chart.WindowWidth, chart.WindowHeight,
@@ -73,11 +75,14 @@ func TestFunctionPlot(chart *chart2d.Chart2D) {
 		if iter == 0 {
 			linekey = chart.AddLine(X, Y, screen.BLUE, utils.POLYLINE)
 		} else {
-			chart.UpdateLine(win, linekey, X, Y, screen.BLUE)
+			chart.UpdateLine(win, linekey, X, Y, nil)
 		}
 		time.Sleep(time.Millisecond * 50)
 		t += tInc
 		iter++
+		// if iter > 1 {
+		// 	break
+		// }
 	}
 }
 

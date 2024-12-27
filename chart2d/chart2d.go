@@ -56,8 +56,9 @@ func (chart *Chart2D) AddLine(X, Y []float32, LineColor interface{},
 }
 
 func (chart *Chart2D) UpdateLine(win *screen.Window, key utils.Key,
-	X, Y []float32, LineColor interface{}) {
-	chart.Screen.UpdateLine(win, key, X, Y, LineColor)
+	X, Y, Colors []float32) {
+	chart.Screen.UpdateLine(win, key, X, Y, Colors)
+	return
 }
 
 func (chart *Chart2D) Printf(formatter *assets.TextFormatter, x, y float32,

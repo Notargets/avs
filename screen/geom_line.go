@@ -8,6 +8,7 @@ package screen
 
 import (
 	"fmt"
+	"image/color"
 	"unsafe"
 
 	"github.com/notargets/avs/utils"
@@ -45,32 +46,56 @@ type Line struct {
 	VAO, VBO, CBO uint32    // Vertex Array Object, Vertex Buffer Object, Color Buffer Object
 	Vertices      []float32 // Flat list of vertex positions [x1, y1, x2, y2, ...]
 	Colors        []float32 // Flat list of color data [r1, g1, b1, r2, g2, b2, ...]
+	UniColor      bool      // Set if the line color is singular
 	LineType      utils.RenderType
 	ShaderProgram uint32 // Shader program specific to this Line object
 }
 
-func newLine(X, Y, Colors []float32, win *Window, rt ...utils.RenderType) (line *Line) {
+func newLine(X, Y []float32, ColorInput interface{}, win *Window,
+	rt ...utils.RenderType) (line *Line) {
 	var renderType = utils.LINE
+
 	if len(rt) != 0 {
 		renderType = utils.POLYLINE
 	}
 	line = &Line{
 		LineType:      renderType,
 		ShaderProgram: win.shaders[renderType],
+		Vertices:      make([]float32, len(X)*2),
+		Colors:        make([]float32, len(X)*3),
 	}
-	line.setupVertices(X, Y, Colors)
+	// Determine if we're using a single color for this line
+	var defaultColor [3]float32
+	switch c := ColorInput.(type) {
+	case color.RGBA:
+		line.UniColor = true
+		defaultColor = [3]float32{float32(c.R / 255), float32(c.G / 255), float32(c.B / 255)}
+	case [4]float32:
+		line.UniColor = true
+		defaultColor = [3]float32{c[0], c[1], c[2]}
+	case [3]float32:
+		line.UniColor = true
+		defaultColor = [3]float32{c[0], c[1], c[2]}
+	case []float32:
+		line.UniColor = false
+		if len(c) != 3*len(X) {
+			panic(fmt.Errorf("invalid color input: %v", c))
+		}
+		line.Colors = ColorInput.([]float32)
+	}
+
+	if line.UniColor {
+		line.setupVertices(X, Y, nil, defaultColor)
+	} else {
+		line.setupVertices(X, Y, line.Colors)
+	}
 	return
 }
 
-func (line *Line) setupVertices(X, Y, Colors []float32,
-	defaultColor ...[3]float32) {
+func (line *Line) setupVertices(X, Y, Colors []float32, defaultColor ...[3]float32) {
 	// Error check: Ensure X and Y are of the same length
 	if len(X) > 0 && len(Y) > 0 && len(X) != len(Y) {
 		panic("X and Y must have the same length if both are provided")
-	}
-	if len(Colors) != 0 && len(Colors) != 3*len(X) {
-		panic("Colors must have 3*length(X) if any are provided, " +
-			"one RGB each vertex")
 	}
 
 	// Validate vertex count based on LineType
@@ -92,37 +117,20 @@ func (line *Line) setupVertices(X, Y, Colors []float32,
 
 	// Flatten X and Y into vertex array [x1, y1, x2, y2, ...]
 	if len(X) > 0 && len(Y) > 0 {
-		line.Vertices = make([]float32, len(X)*2)
 		for i := 0; i < len(X); i++ {
 			line.Vertices[2*i] = X[i]
 			line.Vertices[2*i+1] = Y[i]
 		}
 	}
 
-	// Default color logic
-	var colorToUse = [3]float32{1.0, 1.0, 1.0} // Default color is white
+	// Update colors for each vertex
 	if len(defaultColor) > 0 {
-		colorToUse = defaultColor[0]
-	}
-
-	// Error check: Ensure Colors array is a multiple of 3 (RGB per vertex)
-	if len(Colors) > 0 && len(Colors)%3 != 0 {
-		panic(fmt.Sprintf("Invalid color count: %d. "+
-			"Color array must be a multiple of 3 (R, G, B per vertex).", len(Colors)))
-	}
-
-	// Create colors for each vertex
-	if len(Colors) > 0 {
-		line.Colors = make([]float32, len(Colors))
-		copy(line.Colors, Colors)
-	} else {
-		// Assign the default color to each vertex
-		numVertices := len(X)
-		line.Colors = make([]float32, numVertices*3)
-		for i := 0; i < numVertices; i++ {
-			line.Colors[3*i] = colorToUse[0]   // R
-			line.Colors[3*i+1] = colorToUse[1] // G
-			line.Colors[3*i+2] = colorToUse[2] // B
+		for i := 0; i < len(Colors); i++ {
+			line.Colors[i] = defaultColor[0][i%3]
+		}
+	} else if len(Colors) != 0 {
+		for i := 0; i < len(Colors); i++ {
+			line.Colors[i] = Colors[i]
 		}
 	}
 }

@@ -33,6 +33,9 @@ var (
 	DARK  = color.RGBA{46, 46, 46, 255}
 )
 
+var hostBuffer []float32 /* Scratch buffer for converting input geometry to
+X1,Y1,X2,Y2,... arrays for OGL vertex inputs */
+
 func NewScreen(width, height uint32, xmin, xmax, ymin, ymax, scale float32,
 	bgColor interface{}, position Position) (scr *Screen) {
 
@@ -115,14 +118,16 @@ func (scr *Screen) NewLine(X, Y []float32, ColorInput interface{},
 	return
 }
 
-func (scr *Screen) UpdateLine(win *Window, key utils.Key, X, Y []float32,
-	ColorInput interface{}) {
-	Colors := utils.GetColorArray(ColorInput, len(X))
+func (scr *Screen) UpdateLine(win *Window, key utils.Key, X, Y, Colors []float32) {
 	line := win.objects[key].Objects[0].(*Line)
 
 	scr.RenderChannel <- func() {
 		// Create new line
-		line.setupVertices(X, Y, Colors)
+		if line.UniColor {
+			line.setupVertices(X, Y, nil)
+		} else {
+			line.setupVertices(X, Y, Colors)
+		}
 		win.redraw()
 		scr.DoneChan <- struct{}{}
 	}
