@@ -48,8 +48,7 @@ func (win *Window) fullScreenRender() {
 			case *Line:
 				renderObj.render()
 			case *String:
-				renderObj.render(win.projectionMatrix, win.width, win.height,
-					win.xMin, win.xMax, win.yMin, win.yMax)
+				renderObj.render(win)
 			default:
 				fmt.Printf("Unknown object type: %T\n", renderObj)
 			}

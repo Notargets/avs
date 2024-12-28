@@ -7,7 +7,9 @@
 package screen
 
 import (
+	"fmt"
 	"image"
+	"runtime"
 	"unsafe"
 
 	"github.com/notargets/avs/utils"
@@ -123,15 +125,13 @@ func newString(tf *assets.TextFormatter, x, y float32, text string,
 	return
 }
 
-func (str *String) render(projectionMatrix mgl32.Mat4, windowWidth,
-	windowHeight uint32, xMin, xMax, yMin, yMax float32) {
+func (str *String) render(win *Window) {
 	setShaderProgram(str.ShaderProgram)
 
 	// Draw the font into the image, calculate the polygon vertex bounds
-	str.setupTextureMap(xMin, xMax, yMin, yMax)
+	str.setupTextureMap(win)
 
-	str.loadHostBuffer(str.TextFormatter.Color, projectionMatrix, windowWidth,
-		windowHeight)
+	str.loadHostBuffer(win)
 
 	str.sendHostBufferToGPU()
 
@@ -160,7 +160,7 @@ func (str *String) render(projectionMatrix mgl32.Mat4, windowWidth,
 	gl.BindTexture(gl.TEXTURE_2D, 0)
 }
 
-func (str *String) setupTextureMap(xMin, xMax, yMin, yMax float32) {
+func (str *String) setupTextureMap(win *Window) {
 	// Load our texture map with the drawn text if not done already
 	if str.textureImg == nil {
 		var img *image.RGBA
@@ -173,7 +173,7 @@ func (str *String) setupTextureMap(xMin, xMax, yMin, yMax float32) {
 		// This is done every time for STRING, only once for FIXEDSTRING
 		// For STRING, this compensates for resize and pan via the projection matrix
 		// For FIXEDSTRING, the projection is applied once to get to Screen / Pixel fixed coordinates
-		str.calculatePolygonVertices(xMin, xMax, yMin, yMax)
+		str.calculatePolygonVertices(win.xMin, win.xMax, win.yMin, win.yMax)
 	}
 }
 
@@ -207,7 +207,8 @@ func (str *String) calculatePolygonVertices(xMin, xMax, yMin, yMax float32) {
 	}
 }
 
-func (str *String) fixSTRINGAspectRatio(windowWidth, windowHeight uint32, ndc *[4]mgl32.Vec4, lenRow int) {
+func (str *String) fixSTRINGAspectRatio(windowWidth, windowHeight uint32,
+	ndc *[4]mgl32.Vec4, lenRow int) {
 	// Transform the NDC coordinates to accommodate potential changing window dimensions, which will keep the text
 	// ... visually the same size
 	// First, retrieve the previous NDC coordinates from the GPU buffer
@@ -253,12 +254,10 @@ func (str *String) fixSTRINGAspectRatio(windowWidth, windowHeight uint32, ndc *[
 	}
 }
 
-func (str *String) loadHostBuffer(textColor [4]float32,
-	projectionMatrix mgl32.Mat4, currentWidth, currentHeight uint32) {
+func (str *String) loadHostBuffer(win *Window) {
 	var (
 		lenRow int
 	)
-
 	if str.StringType == utils.STRING {
 		lenRow = 2 + 3
 		lenV := 4 * (lenRow)
@@ -268,9 +267,9 @@ func (str *String) loadHostBuffer(textColor [4]float32,
 		for i := 0; i < 4; i++ {
 			str.HostGPUBuffer[i*lenRow] = str.polygonVertices[i][0]
 			str.HostGPUBuffer[i*lenRow+1] = str.polygonVertices[i][1]
-			str.HostGPUBuffer[i*lenRow+2] = textColor[0]
-			str.HostGPUBuffer[i*lenRow+3] = textColor[1]
-			str.HostGPUBuffer[i*lenRow+4] = textColor[2]
+			str.HostGPUBuffer[i*lenRow+2] = str.TextFormatter.Color[0]
+			str.HostGPUBuffer[i*lenRow+3] = str.TextFormatter.Color[1]
+			str.HostGPUBuffer[i*lenRow+4] = str.TextFormatter.Color[2]
 		}
 	} else if str.StringType == utils.FIXEDSTRING {
 		// Calculate fixed position in NDC coordinates once, via the initial projection matrix
@@ -281,7 +280,10 @@ func (str *String) loadHostBuffer(textColor [4]float32,
 		if !str.InitializedFIXEDSTRING {
 			// fmt.Printf("Rendering FIXED STRING...\n")
 			for i := 0; i < 4; i++ {
-				NDCVertexCoordinates[i] = projectionMatrix.Mul4x1(mgl32.Vec4{str.polygonVertices[i].X(), str.polygonVertices[i].Y(), 0.0, 1.0})
+				NDCVertexCoordinates[i] =
+					win.projectionMatrix.Mul4x1(
+						mgl32.Vec4{str.polygonVertices[i].X(),
+							str.polygonVertices[i].Y(), 0.0, 1.0})
 				NDCVertexCoordinates[i] = NDCVertexCoordinates[i].Mul(1.0 / NDCVertexCoordinates[i].W())
 			}
 			if len(str.HostGPUBuffer) == 0 {
@@ -297,16 +299,17 @@ func (str *String) loadHostBuffer(textColor [4]float32,
 		}
 		// Load the current color for each vertex
 		for i := 0; i < 4; i++ {
-			str.HostGPUBuffer[i*lenRow+4] = textColor[0]
-			str.HostGPUBuffer[i*lenRow+5] = textColor[1]
-			str.HostGPUBuffer[i*lenRow+6] = textColor[2]
+			str.HostGPUBuffer[i*lenRow+4] = str.TextFormatter.Color[0]
+			str.HostGPUBuffer[i*lenRow+5] = str.TextFormatter.Color[1]
+			str.HostGPUBuffer[i*lenRow+6] = str.TextFormatter.Color[2]
 		}
 		// Correct the vertex coordinates for a FIXEDSTRING if the window size has changed
-		str.fixSTRINGAspectRatio(currentWidth, currentHeight, &NDCVertexCoordinates, lenRow)
+		str.fixSTRINGAspectRatio(win.width, win.height, &NDCVertexCoordinates,
+			lenRow)
 	}
 	// setupVertices string formatter window dimensions to match the current screen
-	str.WindowWidth = currentWidth
-	str.WindowHeight = currentHeight
+	str.WindowWidth = win.width
+	str.WindowHeight = win.height
 }
 
 func (str *String) sendHostBufferToGPU() {
@@ -388,4 +391,23 @@ func calculateQuadBounds(textureWidth, textureHeight, windowWidth, windowHeight,
 	quadWidth = winRatio * scaleFromDPI * worldSpaceWidth
 	quadHeight = winRatio * scaleFromDPI * worldSpaceHeight
 	return
+}
+
+func printHeapStats(label string) {
+	var m runtime.MemStats
+	runtime.GC()
+	runtime.ReadMemStats(&m)
+	fmt.Printf("[%s] Alloc = %v MiB | TotalAlloc = %v MiB | Sys = %v MiB | NumGC = %v\n",
+		label,
+		m.Alloc,
+		m.TotalAlloc,
+		m.Sys,
+		m.NumGC)
+	// bToMb(m.Alloc),
+	// 	bToMb(m.TotalAlloc),
+	// 	bToMb(m.Sys),
+}
+
+func bToMb(b uint64) uint64 {
+	return b / 1024 / 1024
 }

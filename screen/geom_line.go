@@ -167,13 +167,16 @@ func (line *Line) render() {
 	line.loadGPUData()
 
 	gl.BindVertexArray(line.VAO)
+
+	// printHeapStats("before lineDraw")
 	// Draw the line segments
 	if line.LineType == utils.LINE {
 		gl.DrawArrays(gl.LINES, 0, int32(len(line.Vertices)/2))
-		CheckGLError("After draw")
+		// CheckGLError("After draw")
 	} else if line.LineType == utils.POLYLINE {
 		gl.DrawArrays(gl.LINE_STRIP, 0, int32(len(line.Vertices)/2))
 	}
 	gl.BindVertexArray(0)
-	CheckGLError("After render")
+	// printHeapStats("after lineDraw")
+	// CheckGLError("After render")
 }

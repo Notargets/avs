@@ -8,7 +8,10 @@ package main
 
 import (
 	"image/color"
+	"log"
 	"math"
+	"net/http"
+	_ "net/http/pprof"
 	"time"
 
 	"github.com/notargets/avs/screen"
@@ -26,14 +29,19 @@ import (
 // TODO: ... implementation. This allows the event loop to query whether to draw or not before introspecting the object.
 // TODO: ... The Delete() should cleanup any internal references, then delete the ObjectKey from the top level object
 // TODO: ... map for the window.
-// TODO: Implement a map[WindowKey]window such that windows can be created and separately managed. Create a "Default"
-// TODO: ... window at Scene creation time so that any add() calls are put into the Default window context. If new
-// TODO: ... windows are added to the Scene, the context within Scene's struct can be switched to a keyed windows and
-// TODO: ... new add() calls will be scoped to the "current" window. At some point, objects could be moved among
-// TODO: ... windows.
 func main() {
-	chart := TestText()
-	Test2(chart)
+	// chart := TestText()
+	// Test2(chart)
+	// TestFunctionPlot(chart)
+	// Start pprof for profiling (port can be any free port)
+	go func() {
+		log.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
+
+	chart := chart2d.NewChart2D(0, 1, -1, 1, 1920, 1080,
+		utils.WHITE, // Line Color Default
+		utils.DARK)  // BG color Default
+
 	TestFunctionPlot(chart)
 	select {}
 }
@@ -43,15 +51,16 @@ func main() {
 // TODO: !!! Find the memory leak in the win.Redraw() path. Redrawing the same
 // TODO: ... objects is leaking memory
 func TestFunctionPlot(chart *chart2d.Chart2D) {
-	// win := chart.newWindow("Sin function", 0.9, gl_thread_objects.AUTO)
-	win := chart.Screen.NewWindow(chart.WindowWidth, chart.WindowHeight,
-		0, 1, -1, 1, 0.5, "Sin Function",
-		utils.DARK, screen.AUTO)
+	// win := chart.Screen.NewWindow(chart.WindowWidth, chart.WindowHeight,
+	// 	0, 1, -1, 1, 0.5, "Sin Function",
+	// 	utils.DARK, screen.AUTO)
+
+	win := chart.GetCurrentWindow()
 
 	tickText := assets.NewTextFormatter("NotoSans", "Regular", 24,
 		utils.WHITE, true, false)
 
-	chart.AddAxis(utils.WHITE, tickText, "X", "Y", 0, 0, 11)
+	// chart.AddAxis(utils.WHITE, tickText, "X", "Y", 0, 0, 11)
 
 	// Make a Sin function for plotting
 	X := make([]float32, 100)
@@ -66,16 +75,24 @@ func TestFunctionPlot(chart *chart2d.Chart2D) {
 	tInc = 0.05
 	xInc = 1. / 100.
 	for {
-		x = 0
-		for i := 0; i < 100; i++ {
-			X[i] = x
-			Y[i] = float32(math.Sin(float64(x*TwoPi - t)))
-			x += xInc
-		}
 		if iter == 0 {
-			linekey = chart.AddLine(X, Y, utils.BLUE, utils.POLYLINE)
+			chart.Printf(tickText, 0, 0, "Hello World 1")
+			chart.Printf(tickText, 0, 0.1, "Hello World 2")
+			chart.Printf(tickText, 0, 0.2, "Hello World 3")
+			chart.Printf(tickText, 0, 0.3, "Hello World 4")
+			chart.Printf(tickText, 0, 0.4, "Hello World 5")
+			_ = tickText
+			// chart.AddLine([]float32{0, 1}, []float32{0, 1}, utils.BLUE)
+			x = 0
+			for i := 0; i < 100; i++ {
+				X[i] = x
+				Y[i] = float32(math.Sin(float64(x*TwoPi - t)))
+				x += xInc
+			}
+			// linekey = chart.AddLine(X, Y, utils.BLUE, utils.POLYLINE)
 		} else {
-			chart.UpdateLine(win, linekey, X, Y, nil)
+			chart.Screen.Redraw(win)
+			// chart.UpdateLine(win, linekey, X, Y, nil)
 		}
 		time.Sleep(time.Millisecond * 50)
 		t += tInc
@@ -83,6 +100,7 @@ func TestFunctionPlot(chart *chart2d.Chart2D) {
 		// if iter > 1 {
 		// 	break
 		// }
+		_ = linekey
 	}
 }
 
