@@ -78,8 +78,10 @@ func TestFunctionPlot(chart *chart2d.Chart2D) {
 		x = 0
 		for i := 0; i < 100; i++ {
 			X[i] = x
-			Y[i] = float32(math.Sin(float64(x*TwoPi - t)))
-			Y2[i] = float32(math.Cos(float64(x*TwoPi - t)))
+			Y[i] = float32(math.Sin(float64(x*TwoPi-t)) * math.Cos(float64(
+				0.5*x*TwoPi-0.2*t)))
+			Y2[i] = float32(math.Sin(float64(x*TwoPi-t)) +
+				0.5*math.Cos(float64(2*x*TwoPi-0.5*t)))
 			x += xInc
 		}
 		if iter == 0 {
@@ -90,7 +92,7 @@ func TestFunctionPlot(chart *chart2d.Chart2D) {
 			chart.UpdateLine(win, linekey, X, Y, nil)
 			chart.UpdateLine(win, linekey2, X, Y2, nil)
 		}
-		time.Sleep(time.Millisecond * 50)
+		time.Sleep(time.Millisecond * 25)
 		t += tInc
 		iter++
 		// if iter > 1 {
