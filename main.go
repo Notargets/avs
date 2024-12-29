@@ -8,9 +8,7 @@ package main
 
 import (
 	"image/color"
-	"log"
 	"math"
-	"net/http"
 	_ "net/http/pprof"
 	"time"
 
@@ -30,19 +28,15 @@ import (
 // TODO: ... The Delete() should cleanup any internal references, then delete the ObjectKey from the top level object
 // TODO: ... map for the window.
 func main() {
-	// chart := TestText()
-	// Test2(chart)
-	// TestFunctionPlot(chart)
-	// Start pprof for profiling (port can be any free port)
-	go func() {
-		log.Println(http.ListenAndServe("localhost:6060", nil))
-	}()
-
-	chart := chart2d.NewChart2D(0, 1, -1, 1, 1920, 1080,
-		utils.WHITE, // Line Color Default
-		utils.DARK)  // BG color Default
-
+	chart := TestText()
+	Test2(chart)
 	TestFunctionPlot(chart)
+
+	// chart := chart2d.NewChart2D(0, 1, -1, 1, 1920, 1080,
+	// 	utils.WHITE, // Line Color Default
+	// 	utils.DARK)  // BG color Default
+	// TestFunctionPlot(chart)
+
 	select {}
 }
 
@@ -51,11 +45,11 @@ func main() {
 // TODO: !!! Find the memory leak in the win.Redraw() path. Redrawing the same
 // TODO: ... objects is leaking memory
 func TestFunctionPlot(chart *chart2d.Chart2D) {
-	// win := chart.Screen.NewWindow(chart.WindowWidth, chart.WindowHeight,
-	// 	0, 1, -1, 1, 0.5, "Sin Function",
-	// 	utils.DARK, screen.AUTO)
+	win := chart.Screen.NewWindow(chart.WindowWidth, chart.WindowHeight,
+		0, 1, -1, 1, 0.5, "Sin Function",
+		utils.DARK, screen.AUTO)
 
-	win := chart.GetCurrentWindow()
+	// win := chart.GetCurrentWindow()
 
 	tickText := assets.NewTextFormatter("NotoSans", "Regular", 24,
 		utils.WHITE, true, false)
@@ -92,7 +86,7 @@ func TestFunctionPlot(chart *chart2d.Chart2D) {
 			chart.UpdateLine(win, linekey, X, Y, nil)
 			chart.UpdateLine(win, linekey2, X, Y2, nil)
 		}
-		time.Sleep(time.Millisecond * 25)
+		time.Sleep(time.Millisecond * 15)
 		t += tInc
 		iter++
 		// if iter > 1 {
