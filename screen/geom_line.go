@@ -16,7 +16,7 @@ import (
 	"github.com/go-gl/gl/v4.5-core/gl"
 )
 
-func AddLineShader(shaderMap map[utils.RenderType]uint32) {
+func addLineShader(shaderMap map[utils.RenderType]uint32) {
 	// Line shaders
 	var vertexShader = gl.Str(`
 		#version 450

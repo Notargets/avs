@@ -151,7 +151,7 @@ func newWindow(width, height uint32, xMin, xMax, yMin, yMax, scale float32,
 
 	// For each object type in Screen, we need to load the shaders here
 	addStringShaders(win.shaders)
-	AddLineShader(win.shaders)
+	addLineShader(win.shaders)
 
 	// Force the first frame to render
 	win.positionChanged = true
@@ -241,12 +241,18 @@ func (win *Window) updateProjectionMatrix() {
 		// Type assertion for the key and value
 		if renderType != utils.FIXEDSTRING {
 			projectionUniform := gl.GetUniformLocation(shaderProgram, gl.Str("projection\x00"))
+			CheckGLError("After Get Uniform Location")
 			if projectionUniform < 0 {
 				fmt.Printf("Projection uniform not found for RenderType %v\n", renderType)
 			} else {
+				if DEBUG {
+					fmt.Printf("Processing proj matrix for shader program:: %d\n", shaderProgram)
+				}
 				gl.UseProgram(shaderProgram)
+				CheckGLError("After Activate Shader Program")
 				gl.UniformMatrix4fv(projectionUniform, 1, false,
 					&win.projectionMatrix[0])
+				CheckGLError("After Set Uniform")
 			}
 		}
 

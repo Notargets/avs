@@ -77,10 +77,10 @@ func TestFunctionPlot(chart *chart2d.Chart2D) {
 	for {
 		if iter == 0 {
 			chart.Printf(tickText, 0, 0, "Hello World 1")
-			chart.Printf(tickText, 0, 0.1, "Hello World 2")
-			chart.Printf(tickText, 0, 0.2, "Hello World 3")
-			chart.Printf(tickText, 0, 0.3, "Hello World 4")
-			chart.Printf(tickText, 0, 0.4, "Hello World 5")
+			// chart.Printf(tickText, 0, 0.1, "Hello World 2")
+			// chart.Printf(tickText, 0, 0.2, "Hello World 3")
+			// chart.Printf(tickText, 0, 0.3, "Hello World 4")
+			// chart.Printf(tickText, 0, 0.4, "Hello World 5")
 			_ = tickText
 			// chart.AddLine([]float32{0, 1}, []float32{0, 1}, utils.BLUE)
 			x = 0

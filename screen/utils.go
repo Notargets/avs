@@ -89,6 +89,7 @@ func compileShaderProgram(vertexSource, fragmentSource *uint8) uint32 {
 
 func setShaderProgram(shaderProgram uint32) {
 	if DEBUG {
+		CheckGLError("Before SetShaderProgram")
 		if !gl.IsProgram(shaderProgram) {
 			fmt.Printf("[render] Shader program %d is not valid.\n", shaderProgram)
 			panic("[render] Invalid shader program")

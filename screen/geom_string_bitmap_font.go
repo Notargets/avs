@@ -115,6 +115,8 @@ func newString(tf *assets.TextFormatter, x, y float32, text string,
 		InitializedFIXEDSTRING: false,
 		WindowWidth:            win.width,
 		WindowHeight:           win.height,
+		VAO:                    0,
+		VBO:                    0,
 	}
 	if tf.ScreenFixed {
 		str.StringType = utils.FIXEDSTRING
@@ -122,51 +124,21 @@ func newString(tf *assets.TextFormatter, x, y float32, text string,
 		str.StringType = utils.STRING
 	}
 	str.ShaderProgram = win.shaders[str.StringType]
+
+	// Draw the font into an image for use as the texture
+	str.textureImg = str.TextFormatter.TypeFace.RenderFontTextureImg(str.Text,
+		str.TextFormatter.Color)
+	str.textureWidth, str.textureHeight = uint32(str.textureImg.Bounds().Dx()),
+		uint32(str.textureImg.Bounds().Dy())
+
 	return
 }
 
 func (str *String) render(win *Window) {
-	setShaderProgram(str.ShaderProgram)
-
 	// Draw the font into the image, calculate the polygon vertex bounds
-	str.setupTextureMap(win)
-
-	str.loadHostBuffer(win)
-
-	str.sendHostBufferToGPU()
-
-	// Draw the quad after binding the texture to it
-	// Bind the texture
-	gl.ActiveTexture(gl.TEXTURE0)
-	gl.BindTexture(gl.TEXTURE_2D, str.Texture)
-	CheckGLError("After BindTexture")
-
-	// Bind the VAO and draw the polygon
-	gl.BindVertexArray(str.VAO)
-	CheckGLError("After BindVertexArray")
-
-	// Enable Blending
-	gl.Enable(gl.BLEND)
-	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
-	CheckGLError("After BlendFunc")
-
-	// Draw the quad (TRIANGLE_STRIP for simplicity)
-	gl.DrawArrays(gl.TRIANGLE_STRIP, 0, 4)
-	CheckGLError("After DrawArrays")
-
-	// Clean up
-	gl.Disable(gl.BLEND)
-	gl.BindVertexArray(0)
-	gl.BindTexture(gl.TEXTURE_2D, 0)
-}
-
-func (str *String) setupTextureMap(win *Window) {
-	// Load our texture map with the drawn text if not done already
-	if str.textureImg == nil {
-		var img *image.RGBA
-		img = str.TextFormatter.TypeFace.RenderFontTextureImg(str.Text, str.TextFormatter.Color)
-		str.textureImg = img
-		str.textureWidth, str.textureHeight = uint32(str.textureImg.Bounds().Dx()), uint32(str.textureImg.Bounds().Dy())
+	var bufLen int
+	if str.VAO == 0 {
+		bufLen = str.setupGPUBuffers(win)
 	}
 
 	if str.StringType == utils.STRING || !str.InitializedFIXEDSTRING {
@@ -175,6 +147,111 @@ func (str *String) setupTextureMap(win *Window) {
 		// For FIXEDSTRING, the projection is applied once to get to Screen / Pixel fixed coordinates
 		str.calculatePolygonVertices(win.xMin, win.xMax, win.yMin, win.yMax)
 	}
+
+	str.loadHostBuffer(win)
+
+	if DEBUG {
+		fmt.Printf("Host buffer size: %d, GPU buffer size: %d\n",
+			len(str.HostGPUBuffer)*4, bufLen)
+		// Validate resources
+		if str.VAO == 0 || str.VBO == 0 || str.Texture == 0 || len(str.HostGPUBuffer) == 0 {
+			panic("Invalid OpenGL resources or empty HostGPUBuffer")
+		}
+	}
+
+	setShaderProgram(str.ShaderProgram)
+	gl.BindVertexArray(str.VAO)
+	CheckGLError("After VBA Bind")
+	// Bind VBO and upload vertex data
+	gl.BindBuffer(gl.ARRAY_BUFFER, str.VBO)
+	CheckGLError("After VBO Bind")
+	gl.BufferSubData(gl.ARRAY_BUFFER, 0, len(str.HostGPUBuffer)*4, gl.Ptr(str.HostGPUBuffer))
+	CheckGLError("After BufferSubData")
+
+	// Bind Texture
+	gl.ActiveTexture(gl.TEXTURE0)
+	CheckGLError("After Texture Set Active")
+	gl.BindTexture(gl.TEXTURE_2D, str.Texture)
+	CheckGLError("After BindTexture")
+
+	// Enable Blending
+	gl.Enable(gl.BLEND)
+	CheckGLError("After Enable Blend")
+	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+	CheckGLError("After BlendFunc")
+
+	// Draw
+	gl.DrawArrays(gl.TRIANGLE_STRIP, 0, 4)
+	CheckGLError("After DrawArrays")
+
+	// Cleanup
+	gl.Disable(gl.BLEND)
+	CheckGLError("After Disable Blend")
+	gl.BindVertexArray(0)
+	CheckGLError("After VAO Unbind")
+	gl.BindBuffer(gl.ARRAY_BUFFER, 0)
+	CheckGLError("After VBO Unbind")
+	gl.BindTexture(gl.TEXTURE_2D, 0)
+	CheckGLError("After Texture Unbind")
+}
+
+func (str *String) setupGPUBuffers(win *Window) (bufLen int) {
+	gl.GenTextures(1, &str.Texture)
+	CheckGLError("After Gen Textures")
+	gl.BindTexture(gl.TEXTURE_2D, str.Texture)
+	CheckGLError("After Bind Texture")
+	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, int32(str.textureWidth), int32(str.textureHeight),
+		0, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(str.textureImg.Pix))
+	CheckGLError("After TexImage2D")
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+	CheckGLError("After MIN_FILTER")
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+	CheckGLError("After MAG_FILTER")
+	gl.BindTexture(gl.TEXTURE_2D, 0)
+	CheckGLError("After Unbind Texture")
+
+	// Load the flat array layout into the VBA
+	var stride, ncoords, nbytes, ncolors, nverts, offset int32
+	nbytes = 4
+	ncolors = 3
+	if str.StringType == utils.STRING {
+		ncoords = 2 // 2 coordinates per vertex (X, Y)
+	} else {
+		ncoords = 4 // 4 coordinates per NDC fixed space (X,Y,Z,W)
+	}
+	stride = nbytes * (ncoords + ncolors) // Per each vertex
+	gl.GenVertexArrays(1, &str.VAO)
+	CheckGLError("After VAO Create")
+	gl.GenBuffers(1, &str.VBO)
+	CheckGLError("After VBO Create")
+	gl.BindVertexArray(str.VAO)
+	CheckGLError("After VAO Bind")
+	gl.BindBuffer(gl.ARRAY_BUFFER, str.VBO)
+	CheckGLError("After VBO Bind")
+	gl.VertexAttribPointer(0, ncoords, gl.FLOAT, false, stride,
+		unsafe.Pointer(uintptr(0)))
+	CheckGLError("After VAO Buffer Setup 1")
+	offset = ncoords * 4
+	gl.EnableVertexAttribArray(0)
+	CheckGLError("After VAO Buffer Enable 1")
+	gl.VertexAttribPointer(1, ncolors, gl.FLOAT, false, stride,
+		unsafe.Pointer(uintptr(offset))) // Color (3 floats)
+	CheckGLError("After VAO Buffer Setup 1")
+	gl.EnableVertexAttribArray(1)
+	CheckGLError("After VAO Buffer Enable 2")
+
+	// This next call allocates memory for the OGL vertex buffer, 4 verts
+	// with (2+3) for STRING and (4+3) for FIXEDSTRING x 4 bytes
+	CheckGLError("After VBO Buffer Bind")
+	nverts = 4 // 4 vertices
+	bufLen = int(stride * nverts)
+	gl.BufferData(gl.ARRAY_BUFFER, bufLen, nil, gl.DYNAMIC_DRAW)
+	CheckGLError("After VBO Buffer Allocate")
+	gl.BindBuffer(gl.ARRAY_BUFFER, 0) // Unbind VBO
+	CheckGLError("After VBO Buffer Unbind")
+	gl.BindVertexArray(0) // Unbind VAO
+	CheckGLError("After VAO Buffer Unbind")
+	return
 }
 
 func (str *String) calculatePolygonVertices(xMin, xMax, yMin, yMax float32) {
@@ -310,60 +387,6 @@ func (str *String) loadHostBuffer(win *Window) {
 	// setupVertices string formatter window dimensions to match the current screen
 	str.WindowWidth = win.width
 	str.WindowHeight = win.height
-}
-
-func (str *String) sendHostBufferToGPU() {
-	// Transmit the texture image into the GPU texture buffer
-	var texture uint32
-	gl.GenTextures(1, &texture)
-	gl.BindTexture(gl.TEXTURE_2D, texture)
-	// fmt.Printf("Texture width: %d, Texture height: %d\n", str.textureWidth, str.textureHeight)
-	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, int32(str.textureWidth), int32(str.textureHeight),
-		0, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(str.textureImg.Pix))
-	CheckGLError("After TexImage2D")
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-	gl.BindTexture(gl.TEXTURE_2D, 0)
-	str.Texture = texture
-
-	// Transfer the vertex data into the VBO buffer. Use the VBA to identify the layout of the data
-	// Generate VBO and VAO once
-	gl.GenBuffers(1, &str.VBO)
-	gl.GenVertexArrays(1, &str.VAO)
-
-	// Bind VAO
-	gl.BindVertexArray(str.VAO)
-	// Bind VBO
-	gl.BindBuffer(gl.ARRAY_BUFFER, str.VBO)
-
-	// Upload vertex data into the VBO as a flat array
-	gl.BufferData(gl.ARRAY_BUFFER, len(str.HostGPUBuffer)*4, gl.Ptr(str.HostGPUBuffer), gl.STATIC_DRAW)
-	CheckGLError("After VBO")
-
-	// Load the flat array layout into the VBA
-	// **positionDelta (location = 0)**
-	var stride int32
-	if str.StringType == utils.STRING {
-		// stride = 4 * (2 + 2 + 3)
-		stride = 4 * (2 + 3)
-	} else {
-		stride = 4 * (4 + 3)
-	}
-	offset := 0
-	if str.StringType == utils.STRING {
-		// Load the transformed vertex coordinates
-		gl.VertexAttribPointer(0, 2, gl.FLOAT, false, stride, unsafe.Pointer(uintptr(offset))) // positionDelta (2 floats)
-		offset += 2 * 4                                                                        // Advance by 2 floats = 8 bytes
-	} else if str.StringType == utils.FIXEDSTRING {
-		// **Frozen positionDelta **
-		// Load the NDC fixed vertex coordinates
-		gl.VertexAttribPointer(0, 4, gl.FLOAT, false, stride, unsafe.Pointer(uintptr(offset))) // Fixed positionDelta (4 floats)
-		offset += 4 * 4                                                                        // Advance by 2 floats = 8 bytes
-	}
-	gl.EnableVertexAttribArray(0)
-	// **Color **
-	gl.VertexAttribPointer(1, 3, gl.FLOAT, false, stride, unsafe.Pointer(uintptr(offset))) // Color (3 floats)
-	gl.EnableVertexAttribArray(1)
 }
 
 func calculateQuadBounds(textureWidth, textureHeight, windowWidth, windowHeight, fontDPI uint32,
