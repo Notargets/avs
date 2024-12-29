@@ -59,41 +59,36 @@ func TestFunctionPlot(chart *chart2d.Chart2D) {
 
 	tickText := assets.NewTextFormatter("NotoSans", "Regular", 24,
 		utils.WHITE, true, false)
-
-	// chart.AddAxis(utils.WHITE, tickText, "X", "Y", 0, 0, 11)
+	chart.AddAxis(utils.WHITE, tickText, "X", "Y", 0, 0, 11)
 
 	// Make a Sin function for plotting
 	X := make([]float32, 100)
 	Y := make([]float32, 100)
+	Y2 := make([]float32, 100)
 	var (
-		linekey          utils.Key
-		TwoPi            = float32(2. * math.Pi)
-		x, xInc, t, tInc float32
-		iter             int
+		linekey, linekey2 utils.Key
+		TwoPi             = float32(2. * math.Pi)
+		x, xInc, t, tInc  float32
+		iter              int
 	)
 	t = 0
 	tInc = 0.05
 	xInc = 1. / 100.
 	for {
+		x = 0
+		for i := 0; i < 100; i++ {
+			X[i] = x
+			Y[i] = float32(math.Sin(float64(x*TwoPi - t)))
+			Y2[i] = float32(math.Cos(float64(x*TwoPi - t)))
+			x += xInc
+		}
 		if iter == 0 {
-			// chart.Printf(tickText, 0, 0, "Hello World 1")
-			// chart.Printf(tickText, 0, 0.1, "Hello World 2")
-			// chart.Printf(tickText, 0, 0.2, "Hello World 3")
-			// chart.Printf(tickText, 0, 0.3, "Hello World 4")
-			// chart.Printf(tickText, 0, 0.4, "Hello World 5")
-			_ = tickText
-			chart.AddLine([]float32{0, 1}, []float32{0, 1}, utils.BLUE)
-			chart.AddLine([]float32{1, 0}, []float32{0, 1}, utils.RED)
-			x = 0
-			for i := 0; i < 100; i++ {
-				X[i] = x
-				Y[i] = float32(math.Sin(float64(x*TwoPi - t)))
-				x += xInc
-			}
-			// linekey = chart.AddLine(X, Y, utils.BLUE, utils.POLYLINE)
+			linekey = chart.AddLine(X, Y, utils.BLUE, utils.POLYLINE)
+			linekey2 = chart.AddLine(X, Y2, utils.RED, utils.POLYLINE)
 		} else {
-			chart.Screen.Redraw(win)
-			// chart.UpdateLine(win, linekey, X, Y, nil)
+			// chart.Screen.Redraw(win)
+			chart.UpdateLine(win, linekey, X, Y, nil)
+			chart.UpdateLine(win, linekey2, X, Y2, nil)
 		}
 		time.Sleep(time.Millisecond * 50)
 		t += tInc
