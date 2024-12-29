@@ -135,28 +135,59 @@ func (line *Line) setupVertices(X, Y, Colors []float32, defaultColor ...[3]float
 	}
 }
 
-func (line *Line) loadGPUData() {
-	// Transfer the vertex data into the VBO buffer. Use the VBA to identify the layout of the data
-	// Generate VBO and VAO once
-	gl.GenBuffers(1, &line.VBO)
+func (line *Line) setupGPUBuffers() {
 	gl.GenVertexArrays(1, &line.VAO)
+	CheckGLError("After Gen VAO")
+	gl.GenBuffers(1, &line.VBO)
+	CheckGLError("After Gen VBO")
 	gl.GenBuffers(1, &line.CBO)
+	CheckGLError("After Gen CBO")
 
+	gl.BindVertexArray(line.VAO)
+	CheckGLError("After Bind VAO")
+
+	gl.BindBuffer(gl.ARRAY_BUFFER, line.VBO)
+	CheckGLError("After Bind VBO")
+	gl.BufferData(gl.ARRAY_BUFFER, len(line.Vertices)*4, nil, gl.DYNAMIC_DRAW)
+	CheckGLError("After Allocate VBO")
+	gl.VertexAttribPointer(0, 2, gl.FLOAT, false, 0, unsafe.Pointer(uintptr(0)))
+	CheckGLError("After VAO set 1")
+	gl.EnableVertexAttribArray(0)
+	CheckGLError("After Enable VAO 1")
+
+	gl.BindBuffer(gl.ARRAY_BUFFER, line.CBO)
+	CheckGLError("After Bind CBO")
+	gl.BufferData(gl.ARRAY_BUFFER, len(line.Colors)*4, nil, gl.DYNAMIC_DRAW)
+	CheckGLError("After Allocate CBO")
+	gl.VertexAttribPointer(1, 3, gl.FLOAT, false, 0, unsafe.Pointer(uintptr(0)))
+	CheckGLError("After VAO set 2")
+	gl.EnableVertexAttribArray(1)
+	CheckGLError("After Enable VAO 2")
+
+	gl.BindBuffer(gl.ARRAY_BUFFER, 0)
+	CheckGLError("After Unbind VBO")
+	gl.BindVertexArray(0)
+	CheckGLError("After Unbind VAO")
+}
+
+func (line *Line) loadGPUData() {
 	// Upload vertex positions to GPU
 	gl.BindVertexArray(line.VAO)
+	CheckGLError("After Bind VAO")
 	gl.BindBuffer(gl.ARRAY_BUFFER, line.VBO)
-	gl.BufferData(gl.ARRAY_BUFFER, len(line.Vertices)*4, gl.Ptr(line.Vertices), gl.STATIC_DRAW)
-	gl.VertexAttribPointer(0, 2, gl.FLOAT, false, 0, unsafe.Pointer(uintptr(0)))
-	gl.EnableVertexAttribArray(0)
-
-	// Upload color data to GPU
+	CheckGLError("After Bind VBO")
+	gl.BufferSubData(gl.ARRAY_BUFFER, 0, len(line.Vertices)*4, gl.Ptr(line.Vertices))
+	CheckGLError("After Send Vertex Data")
 	gl.BindBuffer(gl.ARRAY_BUFFER, line.CBO)
-	gl.BufferData(gl.ARRAY_BUFFER, len(line.Colors)*4, gl.Ptr(line.Colors), gl.STATIC_DRAW)
-	gl.VertexAttribPointer(1, 3, gl.FLOAT, false, 0, unsafe.Pointer(uintptr(0)))
-	gl.EnableVertexAttribArray(1)
+	CheckGLError("After Bind CBO")
+	gl.BufferSubData(gl.ARRAY_BUFFER, 0, len(line.Colors)*4, gl.Ptr(line.Colors))
+	CheckGLError("After Send Color Data")
 
 	// Unbind the VAO to avoid unintended modifications
 	gl.BindVertexArray(0)
+	CheckGLError("After Unbind VAO")
+	gl.BindBuffer(gl.ARRAY_BUFFER, 0) // Unbind VBO
+	CheckGLError("After Unbind VBO")
 }
 
 // render draws the line using the shader program stored in Line
@@ -164,19 +195,20 @@ func (line *Line) render() {
 	// Ensure shader program is active
 	setShaderProgram(line.ShaderProgram)
 
+	if line.VAO == 0 {
+		line.setupGPUBuffers()
+	}
+
 	line.loadGPUData()
 
 	gl.BindVertexArray(line.VAO)
-
-	// printHeapStats("before lineDraw")
 	// Draw the line segments
 	if line.LineType == utils.LINE {
 		gl.DrawArrays(gl.LINES, 0, int32(len(line.Vertices)/2))
-		// CheckGLError("After draw")
 	} else if line.LineType == utils.POLYLINE {
 		gl.DrawArrays(gl.LINE_STRIP, 0, int32(len(line.Vertices)/2))
 	}
+	CheckGLError("After draw")
 	gl.BindVertexArray(0)
-	// printHeapStats("after lineDraw")
-	// CheckGLError("After render")
+	CheckGLError("After unbind VAO")
 }
