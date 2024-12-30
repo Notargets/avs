@@ -27,13 +27,16 @@ import (
 // TODO: ... implementation. This allows the event loop to query whether to draw or not before introspecting the object.
 // TODO: ... The Delete() should cleanup any internal references, then delete the ObjectKey from the top level object
 // TODO: ... map for the window.
+// TODO: Find the concurrent access bug when launching NewWindows and drawing
+// TODO: ... in the main thread. Currently worked around in the test using a
+// TODO: ... channel.
 func main() {
 	chart := TestText()
 	Test2(chart)
 	doneChan := make(chan struct{})
-	TestFunctionPlot(chart, doneChan)
+	TestFunctionPlot(chart, doneChan, utils.RED, utils.BLACK)
 	<-doneChan
-	TestFunctionPlot(chart, doneChan)
+	TestFunctionPlot(chart, doneChan, utils.GREEN, utils.BLUE)
 	<-doneChan
 
 	// chart := chart2d.NewChart2D(0, 1, -1, 1, 1920, 1080,
@@ -48,7 +51,8 @@ func main() {
 // TODO: ... nested objects - e.g. axis is a collection of text objs + line
 // TODO: !!! Find the memory leak in the win.Redraw() path. Redrawing the same
 // TODO: ... objects is leaking memory
-func TestFunctionPlot(chart *chart2d.Chart2D, doneChan chan struct{}) {
+func TestFunctionPlot(chart *chart2d.Chart2D, doneChan chan struct{}, color1,
+	color2 color.RGBA) {
 	go func() {
 		win := chart.Screen.NewWindow(chart.WindowWidth, chart.WindowHeight,
 			0, 1, -1, 1, 0.5, "Sin Function",
@@ -83,8 +87,8 @@ func TestFunctionPlot(chart *chart2d.Chart2D, doneChan chan struct{}) {
 				x += xInc
 			}
 			if iter == 0 {
-				linekey = chart.AddLine(X, Y, utils.BLUE, utils.POLYLINE)
-				linekey2 = chart.AddLine(X, Y2, utils.RED, utils.POLYLINE)
+				linekey = chart.AddLine(X, Y, color1, utils.POLYLINE)
+				linekey2 = chart.AddLine(X, Y2, color2, utils.POLYLINE)
 			} else {
 				// chart.Screen.Redraw(win)
 				chart.UpdateLine(win, linekey, X, Y, nil)
