@@ -17,7 +17,9 @@ import (
 	"github.com/go-gl/glfw/v3.3/glfw"
 )
 
-var windowIndex int8
+var (
+	windowIndex int8
+)
 
 func init() {
 	windowIndex = -1
@@ -58,7 +60,8 @@ func newWindow(width, height uint32, xMin, xMax, yMin, yMax, scale float32,
 	title string, bgColor interface{}, position Position) (win *Window) {
 
 	var (
-		err error
+		err           error
+		glInitialized = windowIndex != -1
 	)
 
 	win = &Window{
@@ -83,6 +86,10 @@ func newWindow(width, height uint32, xMin, xMax, yMin, yMax, scale float32,
 		log.Fatalln("Failed to initialize glfw:", err)
 	}
 
+	if windowIndex == -1 {
+		windowIndex = 0
+	}
+
 	win.window, err = glfw.CreateWindow(int(width), int(height), title, nil,
 		nil)
 	if err != nil {
@@ -100,7 +107,7 @@ func newWindow(width, height uint32, xMin, xMax, yMin, yMax, scale float32,
 	// Put the window into a quadrant of the host window depending on window
 	// number
 	if position == AUTO {
-		position = Position((windowIndex + 1) % 4)
+		position = Position(windowIndex % 4)
 	}
 	var windowX, windowY int
 	switch position {
@@ -126,13 +133,12 @@ func newWindow(width, height uint32, xMin, xMax, yMin, yMax, scale float32,
 
 	win.window.MakeContextCurrent()
 
-	if windowIndex == -1 {
+	if !glInitialized {
 		if err := gl.Init(); err != nil {
 			log.Fatalln("Failed to initialize OpenGL context:", err)
 		}
-		windowIndex = 0 // Window index starts at 1
 	}
-	windowIndex++
+	windowIndex++ // WindowIndex starts at 1
 	win.windowIndex = windowIndex
 	currentWindow.WindowIndex = windowIndex
 	currentWindow.Window = win

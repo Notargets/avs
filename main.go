@@ -30,7 +30,11 @@ import (
 func main() {
 	chart := TestText()
 	Test2(chart)
-	TestFunctionPlot(chart)
+	doneChan := make(chan struct{})
+	TestFunctionPlot(chart, doneChan)
+	<-doneChan
+	TestFunctionPlot(chart, doneChan)
+	<-doneChan
 
 	// chart := chart2d.NewChart2D(0, 1, -1, 1, 1920, 1080,
 	// 	utils.WHITE, // Line Color Default
@@ -44,56 +48,57 @@ func main() {
 // TODO: ... nested objects - e.g. axis is a collection of text objs + line
 // TODO: !!! Find the memory leak in the win.Redraw() path. Redrawing the same
 // TODO: ... objects is leaking memory
-func TestFunctionPlot(chart *chart2d.Chart2D) {
-	win := chart.Screen.NewWindow(chart.WindowWidth, chart.WindowHeight,
-		0, 1, -1, 1, 0.5, "Sin Function",
-		utils.DARK, screen.AUTO)
+func TestFunctionPlot(chart *chart2d.Chart2D, doneChan chan struct{}) {
+	go func() {
+		win := chart.Screen.NewWindow(chart.WindowWidth, chart.WindowHeight,
+			0, 1, -1, 1, 0.5, "Sin Function",
+			utils.DARK, screen.AUTO)
 
-	// win := chart.GetCurrentWindow()
+		tickText := assets.NewTextFormatter("NotoSans", "Regular", 24,
+			utils.WHITE, true, false)
+		chart.AddAxis(utils.WHITE, tickText, "X", "Y", 0, 0, 11)
+		doneChan <- struct{}{}
 
-	tickText := assets.NewTextFormatter("NotoSans", "Regular", 24,
-		utils.WHITE, true, false)
-	chart.AddAxis(utils.WHITE, tickText, "X", "Y", 0, 0, 11)
-
-	// Make a Sin function for plotting
-	X := make([]float32, 100)
-	Y := make([]float32, 100)
-	Y2 := make([]float32, 100)
-	var (
-		linekey, linekey2 utils.Key
-		TwoPi             = float32(2. * math.Pi)
-		x, xInc, t, tInc  float32
-		iter              int
-	)
-	t = 0
-	tInc = 0.05
-	xInc = 1. / 100.
-	for {
-		x = 0
-		for i := 0; i < 100; i++ {
-			X[i] = x
-			Y[i] = float32(math.Sin(float64(x*TwoPi-t)) * math.Cos(float64(
-				0.5*x*TwoPi-0.2*t)))
-			Y2[i] = float32(math.Sin(float64(x*TwoPi-t)) +
-				0.5*math.Cos(float64(2*x*TwoPi-0.5*t)))
-			x += xInc
+		// Make a Sin function for plotting
+		X := make([]float32, 100)
+		Y := make([]float32, 100)
+		Y2 := make([]float32, 100)
+		var (
+			linekey, linekey2 utils.Key
+			TwoPi             = float32(2. * math.Pi)
+			x, xInc, t, tInc  float32
+			iter              int
+		)
+		t = 0
+		tInc = 0.05
+		xInc = 1. / 100.
+		for {
+			x = 0
+			for i := 0; i < 100; i++ {
+				X[i] = x
+				Y[i] = float32(math.Sin(float64(x*TwoPi-t)) * math.Cos(float64(
+					0.5*x*TwoPi-0.2*t)))
+				Y2[i] = float32(math.Sin(float64(x*TwoPi-t)) +
+					0.5*math.Cos(float64(2*x*TwoPi-0.5*t)))
+				x += xInc
+			}
+			if iter == 0 {
+				linekey = chart.AddLine(X, Y, utils.BLUE, utils.POLYLINE)
+				linekey2 = chart.AddLine(X, Y2, utils.RED, utils.POLYLINE)
+			} else {
+				// chart.Screen.Redraw(win)
+				chart.UpdateLine(win, linekey, X, Y, nil)
+				chart.UpdateLine(win, linekey2, X, Y2, nil)
+			}
+			time.Sleep(time.Millisecond * 10)
+			t += tInc
+			iter++
+			// if iter > 1 {
+			// 	break
+			// }
+			_ = linekey
 		}
-		if iter == 0 {
-			linekey = chart.AddLine(X, Y, utils.BLUE, utils.POLYLINE)
-			linekey2 = chart.AddLine(X, Y2, utils.RED, utils.POLYLINE)
-		} else {
-			// chart.Screen.Redraw(win)
-			chart.UpdateLine(win, linekey, X, Y, nil)
-			chart.UpdateLine(win, linekey2, X, Y2, nil)
-		}
-		time.Sleep(time.Millisecond * 200)
-		t += tInc
-		iter++
-		// if iter > 1 {
-		// 	break
-		// }
-		_ = linekey
-	}
+	}()
 }
 
 func TestText() (chart *chart2d.Chart2D) {
