@@ -47,10 +47,12 @@ type RRQueues struct {
 }
 
 func NewRRQueues() (rrqs *RRQueues) {
-	return &RRQueues{
-		queues: make([]*Queue, 1),
+	rrqs = &RRQueues{
+		queues: []*Queue{},
 		curPos: 0,
 	}
+	rrqs.AddQueue()
+	return
 }
 
 func (q *RRQueues) Len() int {
