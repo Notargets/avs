@@ -9,13 +9,11 @@ package screen
 import (
 	"fmt"
 
-	"github.com/go-gl/glfw/v3.3/glfw"
-
 	"github.com/go-gl/gl/v4.5-core/gl"
 )
 
 type currentWindowTracker struct {
-	WindowIndex int
+	WindowIndex int8
 	Window      *Window
 }
 
@@ -31,9 +29,6 @@ func (win *Window) setCurrentWindow() (swapped bool, curWin *Window) {
 	if win != curWin {
 		swapped = true
 		win.makeContextCurrent()
-		win.window.Focus()
-		currentWindow.WindowIndex = win.windowIndex
-		currentWindow.Window = win
 	}
 	return
 }
@@ -56,5 +51,5 @@ func (win *Window) fullScreenRender() {
 	}
 	// Swap buffers to present the frame
 	win.swapBuffers()
-	glfw.PollEvents()
+	// glfw.PollEvents()
 }

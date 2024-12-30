@@ -17,7 +17,7 @@ import (
 	"github.com/go-gl/glfw/v3.3/glfw"
 )
 
-var windowIndex int
+var windowIndex int8
 
 func init() {
 	windowIndex = -1
@@ -51,7 +51,7 @@ type Window struct {
 	projectionMatrix mgl32.Mat4
 	shaders          map[utils.RenderType]uint32
 	objects          map[utils.Key]*Renderable
-	windowIndex      int
+	windowIndex      int8
 }
 
 func newWindow(width, height uint32, xMin, xMax, yMin, yMax, scale float32,
@@ -130,6 +130,7 @@ func newWindow(width, height uint32, xMin, xMax, yMin, yMax, scale float32,
 		if err := gl.Init(); err != nil {
 			log.Fatalln("Failed to initialize OpenGL context:", err)
 		}
+		windowIndex = 0 // Window index starts at 1
 	}
 	windowIndex++
 	win.windowIndex = windowIndex

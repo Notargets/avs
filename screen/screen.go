@@ -18,17 +18,27 @@ import (
 )
 
 type Screen struct {
-	RenderChannel chan func()
+	RenderChannel chan Command
 	DoneChan      chan struct{} // Re-usable synchronization channel
 	drawWindow    *Window
+	queues        *utils.RRQueues
 }
+
+type Command struct {
+	queueID    int8 // primary queue
+	subQueueID int8 // allows for finer slicing within a queue
+	command    func()
+}
+
+var adminQueueID = int8(0)
 
 func NewScreen(width, height uint32, xmin, xmax, ymin, ymax, scale float32,
 	bgColor interface{}, position Position) (scr *Screen) {
 
 	scr = &Screen{
-		RenderChannel: make(chan func(), 100),
+		RenderChannel: make(chan Command, 100),
 		DoneChan:      make(chan struct{}),
+		queues:        utils.NewRRQueues(), // Queue 0 is the admin queue
 	}
 
 	go func() {
@@ -42,6 +52,12 @@ func NewScreen(width, height uint32, xmin, xmax, ymin, ymax, scale float32,
 			scale, "Chart2D", bgColor, position)
 
 		scr.SetDrawWindow(win) // Set default draw window
+
+		if qID := scr.queues.AddQueue(); qID != win.windowIndex {
+			panic("queueID doesn't match window index")
+		}
+		fmt.Printf("Screen window %d\n", win.windowIndex)
+		fmt.Printf("Queues Length: %d\n", scr.queues.Len())
 
 		// fmt.Println("[OpenGL] Initialization complete, signaling main thread.")
 		scr.DoneChan <- struct{}{}
@@ -74,13 +90,16 @@ func (scr *Screen) NewWindow(width, height uint32, xmin, xmax, ymin, ymax,
 	scale float32, title string, bgColor interface{},
 	position Position) (win *Window) {
 
-	scr.RenderChannel <- func() {
+	scr.RenderChannel <- Command{adminQueueID, 0, func() {
 		// fmt.Println("[newWindow] Inside New window")
 		win = newWindow(width, height, xmin, xmax,
 			ymin, ymax, scale, title, bgColor, position)
 		scr.SetDrawWindow(win)
+		if qID := scr.queues.AddQueue(); qID != win.windowIndex {
+			panic("queueID doesn't match window index")
+		}
 		scr.DoneChan <- struct{}{}
-	}
+	}}
 	<-scr.DoneChan
 
 	return
@@ -92,14 +111,14 @@ func (scr *Screen) NewLine(X, Y []float32, ColorInput interface{},
 
 	Colors := utils.GetColorArray(ColorInput, len(X))
 
-	scr.RenderChannel <- func() {
+	var win = scr.drawWindow
+	scr.RenderChannel <- Command{win.windowIndex, 0, func() {
 		// Create new line
-		win := scr.drawWindow
 		line := newLine(X, Y, Colors, win, rt...)
 		win.newRenderable(key, line)
 		win.redraw()
 		scr.DoneChan <- struct{}{}
-	}
+	}}
 	<-scr.DoneChan
 
 	return
@@ -108,7 +127,7 @@ func (scr *Screen) NewLine(X, Y []float32, ColorInput interface{},
 func (scr *Screen) UpdateLine(win *Window, key utils.Key, X, Y, Colors []float32) {
 	line := win.objects[key].Objects[0].(*Line)
 
-	scr.RenderChannel <- func() {
+	scr.RenderChannel <- Command{win.windowIndex, 0, func() {
 		// Create new line
 		if line.UniColor {
 			line.setupVertices(X, Y, nil)
@@ -117,7 +136,7 @@ func (scr *Screen) UpdateLine(win *Window, key utils.Key, X, Y, Colors []float32
 		}
 		win.redraw()
 		scr.DoneChan <- struct{}{}
-	}
+	}}
 	<-scr.DoneChan
 
 }
@@ -134,14 +153,14 @@ func (scr *Screen) NewString(tf *assets.TextFormatter, x,
 		panic("textFormatter is nil")
 	}
 
-	scr.RenderChannel <- func() {
-		win := scr.drawWindow
+	var win = scr.drawWindow
+	scr.RenderChannel <- Command{win.windowIndex, 0, func() {
 		str := newString(tf, x, y, text, win)
 
 		win.newRenderable(key, str)
 		win.redraw()
 		scr.DoneChan <- struct{}{}
-	}
+	}}
 	<-scr.DoneChan
 
 	return
@@ -157,29 +176,42 @@ func (scr *Screen) Printf(formatter *assets.TextFormatter, x, y float32,
 
 func (scr *Screen) eventLoop() {
 	for {
+		glfw.WaitEventsTimeout(0.001)
+
 		win := getCurrentWindow()
 		if win.shouldClose() {
 			break
 		}
-		// Wait for any input event (mouse, keyboard, resize, etc.)
-		glfw.WaitEventsTimeout(0.02)
 
-		// Process commands from the renderChannel
-		select {
-		case command := <-scr.RenderChannel:
-			command() // Execute the command (
+		// High-level event categorization
+		switch {
+		// Handle channel commands
+		case func() bool {
+			select {
+			case command := <-scr.RenderChannel:
+				scr.queues.Enqueue(int(command.queueID), command.command)
+				return true
+			default:
+				return false
+			}
+		}():
+			// Channel command handled, continue
+
+		// Handle state change
+		case win.positionScaleChanged():
+			scr.RenderChannel <- Command{win.windowIndex, 0, func() {
+				win.redraw()
+				win.resetPositionScaleTrackers()
+			}}
+		// Fallback case
 		default:
-			// No command, continue
-			break
+			// Idle task or yield CPU
+			runtime.Gosched()
 		}
-
-		// win = gl_thread_objects.getCurrentWindow()
-		// setupVertices the projection matrix if pan/zoom has changed
-		if win.positionScaleChanged() {
-			win.redraw()
-			win.resetPositionScaleTrackers()
+		// Dequeue and run a command
+		if commandI := scr.queues.Dequeue(); commandI != nil {
+			commandI.(func())()
 		}
-
 	}
 }
 

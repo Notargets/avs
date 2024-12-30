@@ -86,7 +86,7 @@ func TestFunctionPlot(chart *chart2d.Chart2D) {
 			chart.UpdateLine(win, linekey, X, Y, nil)
 			chart.UpdateLine(win, linekey2, X, Y2, nil)
 		}
-		time.Sleep(time.Millisecond * 15)
+		time.Sleep(time.Millisecond * 200)
 		t += tInc
 		iter++
 		// if iter > 1 {
