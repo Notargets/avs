@@ -56,8 +56,6 @@ func NewScreen(width, height uint32, xmin, xmax, ymin, ymax, scale float32,
 		if qID := scr.queues.AddQueue(); qID != win.windowIndex {
 			panic("queueID doesn't match window index")
 		}
-		fmt.Printf("Screen window %d\n", win.windowIndex)
-		fmt.Printf("Queues Length: %d\n", scr.queues.Len())
 
 		// fmt.Println("[OpenGL] Initialization complete, signaling main thread.")
 		scr.DoneChan <- struct{}{}

@@ -176,6 +176,7 @@ func (win *Window) redraw() {
 	win.setCurrentWindow()
 	win.updateProjectionMatrix()
 	win.fullScreenRender()
+	win.setFocusWindow()
 }
 
 func (win *Window) positionScaleChanged() bool {

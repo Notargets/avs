@@ -32,6 +32,9 @@ func (win *Window) setCurrentWindow() (swapped bool, curWin *Window) {
 	}
 	return
 }
+func (win *Window) setFocusWindow() {
+	focusedWindow.setCurrentWindow()
+}
 
 func (win *Window) fullScreenRender() {
 	// Clear the screen before rendering

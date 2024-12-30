@@ -8,7 +8,6 @@ package utils
 
 import (
 	"container/list"
-	"fmt"
 )
 
 // FIFO Queue using container/list
@@ -66,7 +65,7 @@ func (q *RRQueues) AddQueue() (queueID int8) {
 }
 
 func (q *RRQueues) Enqueue(queueID int, value interface{}) {
-	fmt.Printf("queueID: %d, curPos: %d, Len: %d\n", queueID, q.curPos, q.Len())
+	// fmt.Printf("queueID: %d, curPos: %d, Len: %d\n", queueID, q.curPos, q.Len())
 	q.queues[queueID].Enqueue(value)
 }
 

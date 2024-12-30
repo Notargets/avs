@@ -14,6 +14,8 @@ import (
 	"github.com/notargets/avs/utils"
 )
 
+var focusedWindow *Window
+
 func (win *Window) setCallbacks() {
 	win.window.SetMouseButtonCallback(win.mouseButtonCallback)
 	win.window.SetCursorPosCallback(win.cursorPositionCallback)
@@ -25,7 +27,8 @@ func (win *Window) setCallbacks() {
 func (win *Window) focusCallback(w *glfw.Window, focused bool) {
 	if focused {
 		// fmt.Printf("window: %v is now focused\n", win.windowIndex)
-		win.makeContextCurrent()
+		focusedWindow = win
+		win.setFocusWindow()
 	}
 }
 
