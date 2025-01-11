@@ -7,6 +7,7 @@
 package chart2d
 
 import (
+	"github.com/notargets/avs/geometry"
 	"github.com/notargets/avs/utils"
 
 	"github.com/notargets/avs/assets"
@@ -72,6 +73,12 @@ func (chart *Chart2D) AddAxis(axisColor interface{}, tf *assets.TextFormatter,
 	win := chart.Screen.GetCurrentWindow()
 	key = chart.Screen.NewAxis(win, axisColor, tf, XLabel, YLabel, xCoordOfYAxis,
 		yCoordOfXAxis, nSegs)
+	return
+}
+
+func (chart *Chart2D) AddTriMesh(mesh geometry.TriMesh) (key utils.Key) {
+	win := chart.Screen.GetCurrentWindow()
+	key = chart.Screen.NewTriMesh(win, mesh)
 	return
 }
 

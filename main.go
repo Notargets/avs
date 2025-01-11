@@ -31,7 +31,8 @@ import (
 // TODO: ... The Delete() should cleanup any internal references, then delete the ObjectKey from the top level object
 // TODO: ... map for the window.
 func main() {
-	TestConcurrency()
+	// TestConcurrency()
+	TestTriMesh()
 	select {}
 }
 
@@ -46,11 +47,14 @@ func TestTriMesh() {
 	}
 
 	XMin, XMax, YMin, YMax := getRange(tMesh.XY)
+	fmt.Printf("XMin, XMax, YMin, YMax: %f, %f, %f, %f\n", XMin, XMax, YMin,
+		YMax)
 	width, height := 1920, 1080
 	chart := chart2d.NewChart2D(XMin, XMax, YMin, YMax, width, height,
 		utils.WHITE, // Line Color Default
 		utils.DARK)  // BG color Default
 	_ = chart
+	chart.AddTriMesh(tMesh)
 }
 
 func getRange(XY []float32) (xmin, xmax, ymin, ymax float32) {
@@ -58,18 +62,20 @@ func getRange(XY []float32) (xmin, xmax, ymin, ymax float32) {
 	xmax = XY[0]
 	ymin = XY[1]
 	ymax = XY[1]
-	for i := range XY {
-		if XY[2*i] < xmin {
-			xmin = XY[2*i]
+	for i := 0; i < len(XY)/2; i++ {
+		X := XY[2*i]
+		Y := XY[2*i+1]
+		if X < xmin {
+			xmin = X
 		}
-		if XY[2*i] > xmax {
-			xmax = XY[2*i]
+		if X > xmax {
+			xmax = X
 		}
-		if XY[2*i+1] < ymin {
-			xmin = XY[2*i+1]
+		if Y < ymin {
+			ymin = Y
 		}
-		if XY[2*i+1] > ymax {
-			xmax = XY[2*i+1]
+		if Y > ymax {
+			ymax = Y
 		}
 	}
 	return xmin, xmax, ymin, ymax
@@ -92,10 +98,6 @@ func TestConcurrency() {
 	select {}
 }
 
-// TODO: Implement object sub-groups within ObjectGroup to enable
-// TODO: ... nested objects - e.g. axis is a collection of text objs + line
-// TODO: !!! Find the memory leak in the win.Redraw() path. Redrawing the same
-// TODO: ... objects is leaking memory
 func TestFunctionPlot(chart *chart2d.Chart2D, doneChan chan struct{}, color1,
 	color2 color.RGBA) {
 	go func() {
