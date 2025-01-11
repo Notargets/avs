@@ -7,10 +7,13 @@
 package main
 
 import (
+	"fmt"
 	"image/color"
 	"math"
 	_ "net/http/pprof"
 	"time"
+
+	"github.com/notargets/avs/readfiles"
 
 	"github.com/notargets/avs/screen"
 
@@ -27,10 +30,52 @@ import (
 // TODO: ... implementation. This allows the event loop to query whether to draw or not before introspecting the object.
 // TODO: ... The Delete() should cleanup any internal references, then delete the ObjectKey from the top level object
 // TODO: ... map for the window.
-// TODO: Find the concurrent access bug when launching NewWindows and drawing
-// TODO: ... in the main thread. Currently worked around in the test using a
-// TODO: ... channel.
 func main() {
+	TestConcurrency()
+	select {}
+}
+
+func TestTriMesh() {
+	tMesh, edges := readfiles.ReadSU2("assets/wedge.su2", true)
+	for _, eg := range edges {
+		fmt.Printf("EdgeGroup [Name, Count]: %s, %d\n", eg.GroupName, len(eg.Edges))
+		for _, edge := range eg.Edges {
+			fmt.Printf("[%d,%d]", edge[0], edge[1])
+		}
+		fmt.Printf("\n")
+	}
+
+	XMin, XMax, YMin, YMax := getRange(tMesh.XY)
+	width, height := 1920, 1080
+	chart := chart2d.NewChart2D(XMin, XMax, YMin, YMax, width, height,
+		utils.WHITE, // Line Color Default
+		utils.DARK)  // BG color Default
+	_ = chart
+}
+
+func getRange(XY []float32) (xmin, xmax, ymin, ymax float32) {
+	xmin = XY[0]
+	xmax = XY[0]
+	ymin = XY[1]
+	ymax = XY[1]
+	for i := range XY {
+		if XY[2*i] < xmin {
+			xmin = XY[2*i]
+		}
+		if XY[2*i] > xmax {
+			xmax = XY[2*i]
+		}
+		if XY[2*i+1] < ymin {
+			xmin = XY[2*i+1]
+		}
+		if XY[2*i+1] > ymax {
+			xmax = XY[2*i+1]
+		}
+	}
+	return xmin, xmax, ymin, ymax
+}
+
+func TestConcurrency() {
 	chart := TestText()
 	Test2(chart)
 	doneChan := make(chan struct{})
@@ -64,9 +109,8 @@ func TestFunctionPlot(chart *chart2d.Chart2D, doneChan chan struct{}, color1,
 		doneChan <- struct{}{}
 
 		// Make a Sin function for plotting
-		X := make([]float32, 100)
-		Y := make([]float32, 100)
-		Y2 := make([]float32, 100)
+		XY := make([]float32, 200)
+		XY2 := make([]float32, 200)
 		var (
 			linekey, linekey2 utils.Key
 			TwoPi             = float32(2. * math.Pi)
@@ -79,20 +123,22 @@ func TestFunctionPlot(chart *chart2d.Chart2D, doneChan chan struct{}, color1,
 		for {
 			x = 0
 			for i := 0; i < 100; i++ {
-				X[i] = x
-				Y[i] = float32(math.Sin(float64(x*TwoPi-t)) * math.Cos(float64(
-					0.5*x*TwoPi-0.2*t)))
-				Y2[i] = float32(math.Sin(float64(x*TwoPi-t)) +
+				XY[2*i] = x
+				XY[2*i+1] = float32(math.Sin(float64(x*TwoPi-t)) * math.Cos(
+					float64(
+						0.5*x*TwoPi-0.2*t)))
+				XY2[2*i] = x
+				XY2[2*i+1] = float32(math.Sin(float64(x*TwoPi-t)) +
 					0.5*math.Cos(float64(2*x*TwoPi-0.5*t)))
 				x += xInc
 			}
 			if iter == 0 {
-				linekey = chart.AddLine(X, Y, color1, utils.POLYLINE)
-				linekey2 = chart.AddLine(X, Y2, color2, utils.POLYLINE)
+				linekey = chart.AddLine(XY, color1, utils.POLYLINE)
+				linekey2 = chart.AddLine(XY2, color2, utils.POLYLINE)
 			} else {
 				// chart.Screen.Redraw(win)
-				chart.UpdateLine(win, linekey, X, Y, nil)
-				chart.UpdateLine(win, linekey2, X, Y2, nil)
+				chart.UpdateLine(win, linekey, XY, nil)
+				chart.UpdateLine(win, linekey2, XY2, nil)
 			}
 			time.Sleep(time.Millisecond * 10)
 			t += tInc
@@ -198,21 +244,21 @@ func Test2(chart *chart2d.Chart2D) {
 
 	chart.Printf(TitleText, 0, ypos, "Title 3 First window")
 
-	X, Y := utils.AddSegmentToLine([]float32{}, []float32{},
+	XY := utils.AddSegmentToLine([]float32{},
 		chart.XMin+0.25*xRange, chart.YMin+0.75*yRange,
 		chart.XMin+0.5*xRange, chart.YMin+0.75*yRange)
 
-	chart.AddLine(X, Y, utils.RED)
+	chart.AddLine(XY, utils.RED)
 
 	// Draw in second window
 	chart.SetDrawWindow(win2)
 
 	chart.Printf(TitleText, 0, ypos-0.3*yRange, "Title 4 Second window")
 
-	X, Y = utils.AddSegmentToLine([]float32{}, []float32{},
+	XY = utils.AddSegmentToLine([]float32{},
 		chart.XMin+0.25*xRange, chart.YMin+0.75*yRange,
 		chart.XMin+0.5*xRange, chart.YMin+0.75*yRange)
-	chart.AddLine(X, Y, utils.GREEN)
+	chart.AddLine(XY, utils.GREEN)
 
 	_, _ = win1, win2
 

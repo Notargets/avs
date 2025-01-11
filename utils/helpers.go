@@ -72,9 +72,8 @@ func ClampNearZero(x, epsilon float32) float32 {
 	return x
 }
 
-func AddSegmentToLine(X, Y []float32, X1, Y1, X2, Y2 float32) (XX, YY []float32) {
-	XX = append(X, X1, X2)
-	YY = append(Y, Y1, Y2)
+func AddSegmentToLine(XY []float32, X1, Y1, X2, Y2 float32) (XXYY []float32) {
+	XXYY = append(XY, X1, Y1, X2, Y2)
 	return
 }
 

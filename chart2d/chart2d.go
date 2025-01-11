@@ -50,14 +50,14 @@ func NewChart2D(XMin, XMax, YMin, YMax float32, width, height int,
 	return
 }
 
-func (chart *Chart2D) AddLine(X, Y []float32, LineColor interface{},
+func (chart *Chart2D) AddLine(XY []float32, LineColor interface{},
 	rt ...utils.RenderType) (key utils.Key) {
-	return chart.Screen.NewLine(X, Y, LineColor, rt...)
+	return chart.Screen.NewLine(XY, LineColor, rt...)
 }
 
 func (chart *Chart2D) UpdateLine(win *screen.Window, key utils.Key,
-	X, Y, Colors []float32) {
-	chart.Screen.UpdateLine(win, key, X, Y, Colors)
+	XY, Colors []float32) {
+	chart.Screen.UpdateLine(win, key, XY, Colors)
 	return
 }
 

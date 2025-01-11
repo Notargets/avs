@@ -51,7 +51,7 @@ type Line struct {
 	ShaderProgram uint32 // Shader program specific to this Line object
 }
 
-func newLine(X, Y []float32, ColorInput interface{}, win *Window,
+func newLine(XY []float32, ColorInput interface{}, win *Window,
 	rt ...utils.RenderType) (line *Line) {
 	var renderType = utils.LINE
 
@@ -61,8 +61,8 @@ func newLine(X, Y []float32, ColorInput interface{}, win *Window,
 	line = &Line{
 		LineType:      renderType,
 		ShaderProgram: win.shaders[renderType],
-		Vertices:      make([]float32, len(X)*2),
-		Colors:        make([]float32, len(X)*3),
+		Vertices:      make([]float32, len(XY)),
+		Colors:        make([]float32, len(XY)*3/2),
 	}
 	// Determine if we're using a single color for this line
 	var defaultColor [3]float32
@@ -78,50 +78,39 @@ func newLine(X, Y []float32, ColorInput interface{}, win *Window,
 		defaultColor = [3]float32{c[0], c[1], c[2]}
 	case []float32:
 		line.UniColor = false
-		if len(c) != 3*len(X) {
+		if len(c) != 3*len(XY)/2 {
 			panic(fmt.Errorf("invalid color input: %v", c))
 		}
 		line.Colors = ColorInput.([]float32)
 	}
 
 	if line.UniColor {
-		line.setupVertices(X, Y, nil, defaultColor)
+		line.setupVertices(XY, nil, defaultColor)
 	} else {
-		line.setupVertices(X, Y, line.Colors)
+		line.setupVertices(XY, line.Colors)
 	}
 	return
 }
 
-func (line *Line) setupVertices(X, Y, Colors []float32, defaultColor ...[3]float32) {
-	// Error check: Ensure X and Y are of the same length
-	if len(X) > 0 && len(Y) > 0 && len(X) != len(Y) {
-		panic("X and Y must have the same length if both are provided")
-	}
-
+func (line *Line) setupVertices(XY, Colors []float32, defaultColor ...[3]float32) {
 	// Validate vertex count based on LineType
 	switch line.LineType {
 	case utils.LINE:
-		if len(X) > 0 && len(Y) > 0 && len(X)%2 != 0 {
+		if len(XY)%4 != 0 {
 			panic(fmt.Sprintf("Invalid vertex count for LINE: %d. "+
 				"Each line segment requires two points (X1, Y1, X2, "+
-				"Y2). Vertex count must be a multiple of 2.", len(X)))
+				"Y2) and vertex count must be a multiple of 2.", len(XY)))
 		}
 	case utils.POLYLINE:
-		if len(X) < 2 {
+		if len(XY) < 4 {
 			panic(fmt.Sprintf("Invalid vertex count for POLYLINE: %d. "+
-				"POLYLINE requires at least two vertices.", len(X)))
+				"POLYLINE requires at least two vertices.", len(XY)))
 		}
 	default:
 		panic(fmt.Sprintf("Unsupported LineType: %v", line.LineType))
 	}
 
-	// Flatten X and Y into vertex array [x1, y1, x2, y2, ...]
-	if len(X) > 0 && len(Y) > 0 {
-		for i := 0; i < len(X); i++ {
-			line.Vertices[2*i] = X[i]
-			line.Vertices[2*i+1] = Y[i]
-		}
-	}
+	line.Vertices = XY
 
 	// Update colors for each vertex
 	if len(defaultColor) > 0 {

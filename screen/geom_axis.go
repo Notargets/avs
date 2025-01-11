@@ -22,8 +22,7 @@ func (scr *Screen) NewAxis(win *Window, axisColor interface{},
 		xInc                 = xScale / float32(nSegs-1)
 		yInc                 = yScale / float32(nSegs-1)
 		xTickSize, yTickSize = 0.020 * xScale, 0.020 * yScale
-		X                    = make([]float32, 0)
-		Y                    = make([]float32, 0)
+		XY                   = make([]float32, 0)
 	)
 	if nSegs%2 == 0 {
 		panic("nSegs must be odd")
@@ -31,9 +30,9 @@ func (scr *Screen) NewAxis(win *Window, axisColor interface{},
 
 	// Generate color array for 2 vertices per axis (X-axis and Y-axis)
 	// Horizontal X Axis line
-	X, Y = utils.AddSegmentToLine(X, Y, xMin, yCoordOfXAxis, xMax, yCoordOfXAxis)
+	XY = utils.AddSegmentToLine(XY, xMin, yCoordOfXAxis, xMax, yCoordOfXAxis)
 	// VerticaL Y Axis line
-	X, Y = utils.AddSegmentToLine(X, Y, xCoordOfYAxis, yMin, xCoordOfYAxis, yMax)
+	XY = utils.AddSegmentToLine(XY, xCoordOfYAxis, yMin, xCoordOfYAxis, yMax)
 
 	// X Axis
 	var x, y = xMin, yCoordOfXAxis
@@ -45,7 +44,7 @@ func (scr *Screen) NewAxis(win *Window, axisColor interface{},
 			x = x + xInc
 			continue
 		}
-		X, Y = utils.AddSegmentToLine(X, Y, x, y, x, y-yTickSize)
+		XY = utils.AddSegmentToLine(XY, x, y, x, y-yTickSize)
 		x = utils.ClampNearZero(x, xScale/1000.)
 		scr.Printf(tf, x, y-(scr.GetWorldSpaceCharHeight(win, tf)+yTickSize),
 			"%4.1f", x)
@@ -70,7 +69,7 @@ func (scr *Screen) NewAxis(win *Window, axisColor interface{},
 				continue
 			}
 		}
-		X, Y = utils.AddSegmentToLine(X, Y, x, y, x-xTickSize, y)
+		XY = utils.AddSegmentToLine(XY, x, y, x-xTickSize, y)
 		y = utils.ClampNearZero(y, yScale/1000.)
 		scr.Printf(tfY, x-yTextDelta, y, "%4.1f", y)
 		y = y + yInc
@@ -78,5 +77,5 @@ func (scr *Screen) NewAxis(win *Window, axisColor interface{},
 	// Y Axis Label
 	scr.Printf(tf, xCoordOfYAxis+xTickSize, yMax, "%s",
 		YLabel)
-	return scr.NewLine(X, Y, axisColor) // 2 points, so 2 * 3 = 6 colors
+	return scr.NewLine(XY, axisColor) // 2 points, so 2 * 3 = 6 colors
 }
