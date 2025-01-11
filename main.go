@@ -39,16 +39,8 @@ func main() {
 }
 
 func TestTriMesh() {
-	// tMesh, edges := readfiles.ReadSU2("assets/nacaAirfoil-base.su2", true)
-	tMesh, edges := readfiles.ReadSU2("assets/wedge.su2", true)
-	for _, eg := range edges {
-		fmt.Printf("EdgeGroup [Name, Count]: %s, %d\n", eg.GroupName, len(eg.Edges))
-		for _, edge := range eg.Edges {
-			fmt.Printf("[%d,%d]", edge[0], edge[1])
-		}
-		fmt.Printf("\n")
-	}
-
+	tMesh, edges := readfiles.ReadSU2("assets/nacaAirfoil-base.su2", true)
+	// tMesh, edges := readfiles.ReadSU2("assets/wedge.su2", true)
 	// XMin, XMax, YMin, YMax := getRange(tMesh.XY)
 	XMin, XMax, YMin, YMax := getSurfaceRange(tMesh.XY, edges)
 	XMin, XMax, YMin, YMax = getSquareBoundingBox(XMin, XMax, YMin, YMax)
