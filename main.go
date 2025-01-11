@@ -13,6 +13,8 @@ import (
 	_ "net/http/pprof"
 	"time"
 
+	"github.com/notargets/avs/geometry"
+
 	"github.com/notargets/avs/readfiles"
 
 	"github.com/notargets/avs/screen"
@@ -37,6 +39,7 @@ func main() {
 }
 
 func TestTriMesh() {
+	// tMesh, edges := readfiles.ReadSU2("assets/nacaAirfoil-base.su2", true)
 	tMesh, edges := readfiles.ReadSU2("assets/wedge.su2", true)
 	for _, eg := range edges {
 		fmt.Printf("EdgeGroup [Name, Count]: %s, %d\n", eg.GroupName, len(eg.Edges))
@@ -46,7 +49,9 @@ func TestTriMesh() {
 		fmt.Printf("\n")
 	}
 
-	XMin, XMax, YMin, YMax := getRange(tMesh.XY)
+	// XMin, XMax, YMin, YMax := getRange(tMesh.XY)
+	XMin, XMax, YMin, YMax := getSurfaceRange(tMesh.XY, edges)
+	XMin, XMax, YMin, YMax = getSquareBoundingBox(XMin, XMax, YMin, YMax)
 	fmt.Printf("XMin, XMax, YMin, YMax: %f, %f, %f, %f\n", XMin, XMax, YMin,
 		YMax)
 	width, height := 1920, 1080
@@ -55,6 +60,51 @@ func TestTriMesh() {
 		utils.DARK)  // BG color Default
 	_ = chart
 	chart.AddTriMesh(tMesh)
+}
+
+func getSurfaceRange(XY []float32, edges []*geometry.EdgeGroup) (xmin, xmax, ymin,
+	ymax float32) {
+	xmin = math.MaxFloat32
+	xmax = -xmin
+	ymin = xmin
+	ymax = xmax
+	for _, edgeGroup := range edges {
+		if edgeGroup.GroupName == "wall" {
+			for _, edge := range edgeGroup.Edges {
+				x1, y1 := XY[2*edge[0]], XY[2*edge[0]+1]
+				x2, y2 := XY[2*edge[1]], XY[2*edge[1]+1]
+				xmin = float32(math.Min(float64(xmin), float64(x1)))
+				ymin = float32(math.Min(float64(ymin), float64(y1)))
+				xmax = float32(math.Max(float64(xmax), float64(x1)))
+				ymax = float32(math.Max(float64(ymax), float64(y1)))
+				xmin = float32(math.Min(float64(xmin), float64(x2)))
+				ymin = float32(math.Min(float64(ymin), float64(y2)))
+				xmax = float32(math.Max(float64(xmax), float64(x2)))
+				ymax = float32(math.Max(float64(ymax), float64(y2)))
+			}
+		}
+	}
+	return xmin, xmax, ymin, ymax
+}
+
+func getSquareBoundingBox(xMin, xMax, yMin, yMax float32) (xBMin,
+	xBMax, yBMin, yBMax float32) {
+	xRange := xMax - xMin
+	yRange := yMax - yMin
+	if yRange > xRange {
+		yBMin = yMin
+		yBMax = yMax
+		xCent := xRange/2. + xMin
+		xBMin = xCent - yRange/2.
+		xBMax = xCent + yRange/2.
+	} else {
+		xBMin = xMin
+		xBMax = xMax
+		yCent := yRange/2. + yMin
+		yBMin = yCent - xRange/2.
+		yBMax = yCent + xRange/2.
+	}
+	return
 }
 
 func getRange(XY []float32) (xmin, xmax, ymin, ymax float32) {
