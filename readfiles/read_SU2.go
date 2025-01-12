@@ -29,7 +29,7 @@ const (
 	ELType_Pyramid                      = 14
 )
 
-func ReadSU2(filename string, verbose bool) (tMesh geometry.TriMesh,
+func ReadSU2Mesh(filename string, verbose bool) (tMesh geometry.TriMesh,
 	BCEdges []*geometry.EdgeGroup) {
 	var (
 		file   *os.File
@@ -37,7 +37,7 @@ func ReadSU2(filename string, verbose bool) (tMesh geometry.TriMesh,
 		reader *bufio.Reader
 	)
 	if verbose {
-		fmt.Printf("Reading SU2 file named: %s\n", filename)
+		fmt.Printf("Reading SU2 Mesh file named: %s\n", filename)
 	}
 	if file, err = os.Open(filename); err != nil {
 		panic(fmt.Errorf("unable to open file %s\n %s", filename, err))

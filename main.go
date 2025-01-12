@@ -39,19 +39,26 @@ func main() {
 }
 
 func TestTriMesh() {
-	tMesh, edges := readfiles.ReadSU2("assets/nacaAirfoil-base.su2", true)
-	// tMesh, edges := readfiles.ReadSU2("assets/wedge.su2", true)
+	tMesh, edges := readfiles.ReadGoCFDMesh("assets/wedge-order0.gcfd", true)
+	// tMesh, edges := readfiles.ReadGoCFDMesh("assets/meshfile.gcfd", true)
+	// tMesh, edges := readfiles.ReadSU2Mesh("assets/nacaAirfoil-base.su2", true)
 	// XMin, XMax, YMin, YMax := getRange(tMesh.XY)
 	XMin, XMax, YMin, YMax := getSurfaceRange(tMesh.XY, edges)
 	XMin, XMax, YMin, YMax = getSquareBoundingBox(XMin, XMax, YMin, YMax)
 	fmt.Printf("XMin, XMax, YMin, YMax: %f, %f, %f, %f\n", XMin, XMax, YMin,
 		YMax)
-	width, height := 1920, 1080
+	width, height := 1080, 1080
 	chart := chart2d.NewChart2D(XMin, XMax, YMin, YMax, width, height,
 		utils.WHITE, // Line Color Default
 		utils.DARK)  // BG color Default
-	_ = chart
 	chart.AddTriMesh(tMesh)
+
+	tMesh2, edges2 := readfiles.ReadSU2Mesh("assets/wedge.su2", true)
+	chart.NewWindow("Original Mesh", chart.Scale, screen.AUTO)
+	chart.AddTriMesh(tMesh2)
+	_ = chart
+	_ = edges
+	_ = edges2
 }
 
 func getSurfaceRange(XY []float32, edges []*geometry.EdgeGroup) (xmin, xmax, ymin,
@@ -61,6 +68,7 @@ func getSurfaceRange(XY []float32, edges []*geometry.EdgeGroup) (xmin, xmax, ymi
 	ymin = xmin
 	ymax = xmax
 	for _, edgeGroup := range edges {
+		// fmt.Printf("BC Group Name: [%s]\n", edgeGroup.GroupName)
 		if edgeGroup.GroupName == "wall" {
 			for _, edge := range edgeGroup.Edges {
 				x1, y1 := XY[2*edge[0]], XY[2*edge[0]+1]
