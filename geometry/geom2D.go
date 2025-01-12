@@ -14,3 +14,8 @@ type TriMesh struct {
 func NewTriMesh(XY []float32, Verts [][3]int64) *TriMesh {
 	return &TriMesh{XY, Verts}
 }
+
+type VertexScalar struct {
+	TMesh       *TriMesh  // Geometry, triangle vertex locations
+	FieldValues []float32 // {F1,F2,F3},{F1,F2,F3}..., value per vertex
+}
