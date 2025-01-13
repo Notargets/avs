@@ -126,7 +126,7 @@ func (scr *Screen) UpdateLine(win *Window, key utils.Key, XY, Colors []float32) 
 	line := win.objects[key].Objects[0].(*Line)
 
 	scr.RenderChannel <- Command{win.windowIndex, 0, func() {
-		// Create new line
+		// Update line data
 		if line.UniColor {
 			line.setupVertices(XY, nil)
 		} else {
