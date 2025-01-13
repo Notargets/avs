@@ -48,21 +48,28 @@ func addShadedTriMeshShader(shaderMap map[utils.RenderType]uint32) {
 
 // ShadedTriMesh represents a batch-rendered triangle mesh
 type ShadedTriMesh struct {
-	VAO, VBO      uint32 // OpenGL buffers: Vertex Array, Vertex Buffer
-	ShaderProgram uint32 // Shader program
-	NumVertices   int32
-	vertexData    []float32
+	VAO, VBO             uint32 // OpenGL buffers: Vertex Array, Vertex Buffer
+	ShaderProgram        uint32 // Shader program
+	NumVertices          int32
+	vertexData           []float32
+	colorMin, colorMax   [3]float32
+	scalarMin, scalarMax float32
 }
 
 // NewShadedTriMesh creates and initializes the OpenGL buffers for a triangle mesh
-func NewShadedTriMesh(vs *geometry.VertexScalar, win *Window) *ShadedTriMesh {
+func newShadedTriMesh(vs *geometry.VertexScalar, win *Window,
+	fMin, fMax float32) *ShadedTriMesh {
 	triMesh := &ShadedTriMesh{
 		ShaderProgram: win.shaders[utils.TRIMESHSMOOTH],
 		// Each vertex has 2 coords + 1 scalar
 		NumVertices: int32(len(vs.TMesh.TriVerts) * 3), // Num tris x 3 verts
+		colorMin:    [3]float32{0, 0, 1},
+		colorMax:    [3]float32{1, 0, 0},
+		scalarMin:   fMin,
+		scalarMax:   fMax,
 	}
 	triMesh.vertexData = make([]float32, triMesh.NumVertices*3)
-	triMesh.UpdateTriMeshData(vs)
+	triMesh.updateTriMeshData(vs)
 
 	// Generate and bind OpenGL buffers
 	gl.GenVertexArrays(1, &triMesh.VAO)
@@ -88,24 +95,23 @@ func NewShadedTriMesh(vs *geometry.VertexScalar, win *Window) *ShadedTriMesh {
 	return triMesh
 }
 
-func (triMesh *ShadedTriMesh) UpdateTriMeshData(vs *geometry.VertexScalar) {
+func (triMesh *ShadedTriMesh) updateTriMeshData(vs *geometry.VertexScalar) {
 	triMesh.vertexData = packShadedTriMeshData(vs)
 }
 
 // Render the triangle mesh
-func (triMesh *ShadedTriMesh) Render(colorMin, colorMax [3]float32, scalarMin,
-	scalarMax float32) {
+func (triMesh *ShadedTriMesh) render() {
 	setShaderProgram(triMesh.ShaderProgram)
 
 	// Set uniforms for color range and scalar range
 	gl.Uniform3fv(gl.GetUniformLocation(triMesh.ShaderProgram,
-		gl.Str("colorMin\x00")), 1, &colorMin[0])
+		gl.Str("colorMin\x00")), 1, &triMesh.colorMin[0])
 	gl.Uniform3fv(gl.GetUniformLocation(triMesh.ShaderProgram,
-		gl.Str("colorMax\x00")), 1, &colorMax[0])
+		gl.Str("colorMax\x00")), 1, &triMesh.colorMax[0])
 	gl.Uniform1f(gl.GetUniformLocation(triMesh.ShaderProgram,
-		gl.Str("scalarMin\x00")), scalarMin)
+		gl.Str("scalarMin\x00")), triMesh.scalarMin)
 	gl.Uniform1f(gl.GetUniformLocation(triMesh.ShaderProgram,
-		gl.Str("scalarMax\x00")), scalarMax)
+		gl.Str("scalarMax\x00")), triMesh.scalarMax)
 
 	// Draw the mesh
 	gl.BindVertexArray(triMesh.VAO)
@@ -130,7 +136,7 @@ func packShadedTriMeshData(vs *geometry.VertexScalar) []float32 {
 		for n := 0; n < 3; n++ {
 			vertexData[vert*3+0] = coordinates[triVert[n]*2]   // x
 			vertexData[vert*3+1] = coordinates[triVert[n]*2+1] // y
-			vertexData[vert*3+2] = fieldValues[vert]           // scalar
+			vertexData[vert*3+2] = fieldValues[triVert[n]]     // scalar
 			vert++
 		}
 	}

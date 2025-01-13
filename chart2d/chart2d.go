@@ -82,6 +82,18 @@ func (chart *Chart2D) AddTriMesh(mesh geometry.TriMesh) (key utils.Key) {
 	return
 }
 
+func (chart *Chart2D) AddShadedTriMesh(vs *geometry.VertexScalar, fMin,
+	fMax float32) (key utils.Key) {
+	key = chart.Screen.NewShadedTriMesh(vs, fMin, fMax)
+	return
+}
+
+func (chart *Chart2D) UpdateShadedTriMesh(win *screen.Window, key utils.Key,
+	vs *geometry.VertexScalar) {
+	chart.Screen.UpdateShadedTriMesh(win, key, vs)
+	return
+}
+
 func (chart *Chart2D) NewWindow(title string, scale float32,
 	position screen.Position) (win *screen.Window) {
 

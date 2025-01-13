@@ -34,11 +34,30 @@ import (
 // TODO: ... map for the window.
 func main() {
 	// TestConcurrency()
-	TestTriMesh()
+	// TestTriMeshCompareMeshes()
+	TestVertexScalar()
 	select {}
 }
 
-func TestTriMesh() {
+func TestVertexScalar() {
+	tMesh, edges := readfiles.ReadGoCFDMesh("assets/wedge-order0.gcfd", true)
+	XMin, XMax, YMin, YMax := getSurfaceRange(tMesh.XY, edges)
+	XMin, XMax, YMin, YMax = getSquareBoundingBox(XMin, XMax, YMin, YMax)
+	fmt.Printf("XMin, XMax, YMin, YMax: %f, %f, %f, %f\n", XMin, XMax, YMin,
+		YMax)
+	width, height := 1080, 1080
+	chart := chart2d.NewChart2D(XMin, XMax, YMin, YMax, width, height,
+		utils.WHITE, // Line Color Default
+		utils.DARK)  // BG color Default
+	// chart.AddTriMesh(tMesh)
+	fI := readfiles.ReadGoCFDSolution("assets/wedge-solution-order0.gcfd", true)
+	vs := &geometry.VertexScalar{
+		TMesh:       &tMesh,
+		FieldValues: fI,
+	}
+	chart.AddShadedTriMesh(vs, 1.9, 2.1)
+}
+func TestTriMeshCompareMeshes() {
 	tMesh, edges := readfiles.ReadGoCFDMesh("assets/wedge-order0.gcfd", true)
 	// tMesh, edges := readfiles.ReadGoCFDMesh("assets/meshfile.gcfd", true)
 	// tMesh, edges := readfiles.ReadSU2Mesh("assets/nacaAirfoil-base.su2", true)

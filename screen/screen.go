@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"runtime"
 
+	"github.com/notargets/avs/geometry"
+
 	"github.com/go-gl/glfw/v3.3/glfw"
 
 	"github.com/notargets/avs/assets"
@@ -132,6 +134,36 @@ func (scr *Screen) UpdateLine(win *Window, key utils.Key, XY, Colors []float32) 
 		} else {
 			line.setupVertices(XY, Colors)
 		}
+		win.redraw()
+		scr.DoneChan <- struct{}{}
+	}}
+	<-scr.DoneChan
+
+}
+
+func (scr *Screen) NewShadedTriMesh(vs *geometry.VertexScalar, fMin,
+	fMax float32) (key utils.Key) {
+	key = utils.NewKey()
+
+	var win = scr.drawWindow
+	scr.RenderChannel <- Command{win.windowIndex, 0, func() {
+		// Create new line
+		shadedTris := newShadedTriMesh(vs, win, fMin, fMax)
+		win.newRenderable(key, shadedTris)
+		win.redraw()
+		scr.DoneChan <- struct{}{}
+	}}
+	<-scr.DoneChan
+
+	return
+}
+
+func (scr *Screen) UpdateShadedTriMesh(win *Window, key utils.Key,
+	vs *geometry.VertexScalar) {
+	shadedTriMesh := win.objects[key].Objects[0].(*ShadedTriMesh)
+
+	scr.RenderChannel <- Command{win.windowIndex, 0, func() {
+		shadedTriMesh.updateTriMeshData(vs)
 		win.redraw()
 		scr.DoneChan <- struct{}{}
 	}}

@@ -46,6 +46,7 @@ func ReadGoCFDMesh(path string, verbose bool) (tMesh geometry.TriMesh,
 
 	// Read XY coordinates
 	binary.Read(file, binary.LittleEndian, &lenXYCoords)
+	fmt.Printf("Number of Coordinates: %d\n", lenXYCoords)
 	xy := make([]float64, lenXYCoords*2)
 	binary.Read(file, binary.LittleEndian, &xy)
 
@@ -78,5 +79,29 @@ func ReadGoCFDMesh(path string, verbose bool) (tMesh geometry.TriMesh,
 			binary.Read(file, binary.LittleEndian, &BCEdges[n].Edges[i])
 		}
 	}
+	return
+}
+
+func ReadGoCFDSolution(path string, verbose bool) (fI []float32) {
+	var (
+		file  *os.File
+		err   error
+		lenFi int64
+	)
+
+	if verbose {
+		fmt.Printf("Reading GoCFD solution file named: %s\n", path)
+	}
+
+	if file, err = os.Open(path); err != nil {
+		panic(fmt.Errorf("unable to open file %s\n %s", path, err))
+	}
+	defer file.Close()
+
+	// For now just read the first field
+	binary.Read(file, binary.LittleEndian, &lenFi)
+	fmt.Printf("Number of Field Elements: %d\n", lenFi)
+	fI = make([]float32, lenFi)
+	binary.Read(file, binary.LittleEndian, &fI)
 	return
 }
