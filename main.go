@@ -50,12 +50,21 @@ func TestVertexScalar() {
 		utils.WHITE, // Line Color Default
 		utils.DARK)  // BG color Default
 	// chart.AddTriMesh(tMesh)
-	fI := readfiles.ReadGoCFDSolution("assets/wedge-solution-order0.gcfd", true)
+	gReader := readfiles.NewGoCFDSolutionReader("assets/wedge-solution-order0.gcfd",
+		true)
+	// fI := readfiles.ReadGoCFDSolution("assets/wedge-solution-order0.gcfd", true)
+	fI, Done := gReader.GetField()
 	vs := &geometry.VertexScalar{
 		TMesh:       &tMesh,
 		FieldValues: fI,
 	}
-	chart.AddShadedTriMesh(vs, 1.9, 2.1)
+	key := chart.AddShadedTriMesh(vs, 1.4, 2.1)
+	for !Done {
+		time.Sleep(100 * time.Millisecond)
+		vs.FieldValues, Done = gReader.GetField()
+		fmt.Printf("Field step: %d\n", gReader.CurStep)
+		chart.UpdateShadedTriMesh(chart.GetCurrentWindow(), key, vs)
+	}
 }
 func TestTriMeshCompareMeshes() {
 	tMesh, edges := readfiles.ReadGoCFDMesh("assets/wedge-order0.gcfd", true)

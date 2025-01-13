@@ -9,6 +9,7 @@ package readfiles
 import (
 	"encoding/binary"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -103,5 +104,71 @@ func ReadGoCFDSolution(path string, verbose bool) (fI []float32) {
 	fmt.Printf("Number of Field Elements: %d\n", lenFi)
 	fI = make([]float32, lenFi)
 	binary.Read(file, binary.LittleEndian, &fI)
+	return
+}
+
+type GoCFDSolutionReader struct {
+	file         *os.File
+	currentField []float32
+	CurStep      int
+	StepsTotal   int
+	lenField     int
+}
+
+func NewGoCFDSolutionReader(path string, verbose bool) (gcfdReader *GoCFDSolutionReader) {
+	var (
+		err    error
+		isDone bool
+	)
+	gcfdReader = &GoCFDSolutionReader{
+		lenField: -1,
+	}
+	if verbose {
+		fmt.Printf("Reading GoCFD solution file named: %s\n", path)
+	}
+	if gcfdReader.file, err = os.Open(path); err != nil {
+		panic(fmt.Errorf("unable to open file %s\n %s", path, err))
+	}
+	// Iterate through file to find the total number of time steps within
+	var lenFieldFile int64
+	for {
+		err = binary.Read(gcfdReader.file, binary.LittleEndian, &lenFieldFile)
+		if gcfdReader.lenField == -1 {
+			gcfdReader.lenField = int(lenFieldFile)
+			fmt.Printf("Length of field: %d\n", gcfdReader.lenField)
+			gcfdReader.currentField = make([]float32, gcfdReader.lenField)
+		}
+		switch {
+		case err == io.EOF:
+			gcfdReader.file.Seek(0, io.SeekStart)
+			isDone = true
+			break
+		case err != nil:
+			panic(err)
+		case int(lenFieldFile) != gcfdReader.lenField:
+			panic(fmt.Errorf("read garbage field length", lenFieldFile))
+		}
+		gcfdReader.file.Seek(lenFieldFile*4, io.SeekCurrent)
+		gcfdReader.StepsTotal++
+		if isDone {
+			break
+		}
+	}
+	fmt.Printf("Number of Entries Per Field: %d\n", gcfdReader.lenField)
+	fmt.Printf("Number of Fields: %d\n", gcfdReader.StepsTotal)
+	return
+}
+
+func (gcfdReader *GoCFDSolutionReader) GetField() (fI []float32, end bool) {
+	var (
+		nEntriesFile int64
+	)
+	binary.Read(gcfdReader.file, binary.LittleEndian, &nEntriesFile)
+	binary.Read(gcfdReader.file, binary.LittleEndian, &gcfdReader.currentField)
+	gcfdReader.CurStep++
+	if gcfdReader.CurStep == gcfdReader.StepsTotal {
+		end = true
+	}
+	fI = gcfdReader.currentField
 	return
 }
