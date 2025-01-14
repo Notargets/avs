@@ -159,7 +159,7 @@ func newWindow(width, height uint32, xMin, xMax, yMin, yMax, scale float32,
 	// For each object type in Screen, we need to load the shaders here
 	addStringShaders(win.shaders)
 	addLineShader(win.shaders)
-	addShadedTriMeshShader(win.shaders)
+	addShadedVertexScalarShader(win.shaders)
 
 	// Force the first frame to render
 	win.positionChanged = true

@@ -47,7 +47,7 @@ func (win *Window) fullScreenRender() {
 				renderObj.render()
 			case *String:
 				renderObj.render(win)
-			case *ShadedTriMesh:
+			case *ShadedVertexScalar:
 				renderObj.render()
 			default:
 				fmt.Printf("Unknown object type: %T\n", renderObj)

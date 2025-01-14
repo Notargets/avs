@@ -15,7 +15,7 @@ import (
 )
 
 // Add shaded triangle mesh shader
-func addShadedTriMeshShader(shaderMap map[utils.RenderType]uint32) {
+func addShadedVertexScalarShader(shaderMap map[utils.RenderType]uint32) {
 	var vertexShader = gl.Str(`
 		#version 450
 		layout (location = 0) in vec2 position;
@@ -64,8 +64,8 @@ func addShadedTriMeshShader(shaderMap map[utils.RenderType]uint32) {
 	shaderMap[utils.TRIMESHSMOOTH] = compileShaderProgram(vertexShader, fragmentShader)
 }
 
-// ShadedTriMesh represents a batch-rendered triangle mesh
-type ShadedTriMesh struct {
+// ShadedVertexScalar represents a batch-rendered triangle mesh
+type ShadedVertexScalar struct {
 	VAO, VBO             uint32 // OpenGL buffers: Vertex Array, Vertex Buffer
 	ShaderProgram        uint32 // Shader program
 	NumVertices          int32
@@ -75,9 +75,9 @@ type ShadedTriMesh struct {
 }
 
 // NewShadedTriMesh creates and initializes the OpenGL buffers for a triangle mesh
-func newShadedTriMesh(vs *geometry.VertexScalar, win *Window,
-	fMin, fMax float32) *ShadedTriMesh {
-	triMesh := &ShadedTriMesh{
+func newShadedVertexScalar(vs *geometry.VertexScalar, win *Window,
+	fMin, fMax float32) *ShadedVertexScalar {
+	triMesh := &ShadedVertexScalar{
 		ShaderProgram: win.shaders[utils.TRIMESHSMOOTH],
 		// Each vertex has 2 coords + 1 scalar
 		NumVertices: int32(len(vs.TMesh.TriVerts) * 3), // Num tris x 3 verts
@@ -114,8 +114,8 @@ func newShadedTriMesh(vs *geometry.VertexScalar, win *Window,
 	return triMesh
 }
 
-func (triMesh *ShadedTriMesh) updateTriMeshData(vs *geometry.VertexScalar) {
-	triMesh.vertexData = packShadedTriMeshData(vs)
+func (triMesh *ShadedVertexScalar) updateTriMeshData(vs *geometry.VertexScalar) {
+	triMesh.vertexData = packVertexScalarData(vs)
 	// Upload vertex data (positions + scalar values)
 	gl.BindVertexArray(triMesh.VAO)
 	gl.BindBuffer(gl.ARRAY_BUFFER, triMesh.VBO)
@@ -125,7 +125,7 @@ func (triMesh *ShadedTriMesh) updateTriMeshData(vs *geometry.VertexScalar) {
 }
 
 // Render the triangle mesh
-func (triMesh *ShadedTriMesh) render() {
+func (triMesh *ShadedVertexScalar) render() {
 	setShaderProgram(triMesh.ShaderProgram)
 
 	// Set uniforms for color range and scalar range
@@ -145,7 +145,7 @@ func (triMesh *ShadedTriMesh) render() {
 }
 
 // Helper function to pack vertex data
-func packShadedTriMeshData(vs *geometry.VertexScalar) []float32 {
+func packVertexScalarData(vs *geometry.VertexScalar) []float32 {
 	tMesh := vs.TMesh
 	coordinates := tMesh.XY
 	fieldValues := vs.FieldValues

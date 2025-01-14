@@ -7,6 +7,8 @@
 package utils
 
 import (
+	"bytes"
+	"encoding/binary"
 	"fmt"
 	"image/color"
 	"math"
@@ -88,4 +90,18 @@ func CalculateRightJustifiedTextOffset(yRight float32, charWidth float32) (delta
 	// fmt.Printf("y: %v, CharWidth: %v, d: %v\n", y, charWidth, d)
 	deltaYLeft += d * charWidth
 	return
+}
+
+// Int32ToBytes converts an int32 to a byte slice in little-endian order.
+func Int32ToBytes(val int32) []byte {
+	buf := new(bytes.Buffer)
+	_ = binary.Write(buf, binary.LittleEndian, val)
+	return buf.Bytes()
+}
+
+// Float32ToBytes converts a float32 to a byte slice in little-endian order.
+func Float32ToBytes(val float32) []byte {
+	buf := new(bytes.Buffer)
+	_ = binary.Write(buf, binary.LittleEndian, val)
+	return buf.Bytes()
 }
