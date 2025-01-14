@@ -49,22 +49,59 @@ func TestVertexScalar() {
 	chart := chart2d.NewChart2D(XMin, XMax, YMin, YMax, width, height,
 		utils.WHITE, // Line Color Default
 		utils.DARK)  // BG color Default
-	// chart.AddTriMesh(tMesh)
-	gReader := readfiles.NewGoCFDSolutionReader("assets/wedge-solution-order0.gcfd",
-		true)
-	// fI := readfiles.ReadGoCFDSolution("assets/wedge-solution-order0.gcfd", true)
-	fI, Done := gReader.GetField()
-	vs := &geometry.VertexScalar{
-		TMesh:       &tMesh,
-		FieldValues: fI,
-	}
-	key := chart.AddShadedTriMesh(vs, 1.4, 2.1)
+	var (
+		first            = true
+		Done             = false
+		fI               []float32
+		key              utils.Key
+		win              *screen.Window
+		vs               *geometry.VertexScalar
+		gReader          *readfiles.GoCFDSolutionReader
+		fMin, fMax, fAve float32
+	)
 	for !Done {
-		time.Sleep(100 * time.Millisecond)
-		vs.FieldValues, Done = gReader.GetField()
-		fmt.Printf("Field step: %d\n", gReader.CurStep)
-		chart.UpdateShadedTriMesh(chart.GetCurrentWindow(), key, vs)
+		if first {
+			gReader = readfiles.NewGoCFDSolutionReader("assets/wedge-solution-order0.gcfd",
+				true)
+			fI, Done = gReader.GetField()
+			vs = &geometry.VertexScalar{
+				TMesh:       &tMesh,
+				FieldValues: fI,
+			}
+			key = chart.AddShadedTriMesh(vs, 1.4, 2.0)
+			win = chart.GetCurrentWindow()
+			first = false
+		} else {
+			vs.FieldValues, Done = gReader.GetField()
+			chart.UpdateShadedTriMesh(win, key, vs)
+		}
+		fMin, fMax, fAve = getFRange(fI)
+		fmt.Printf("Field step: %d, ", gReader.CurStep)
+		fmt.Printf("FMin, FMax, FAve: %f, %f, %f\n", fMin, fMax, fAve)
+		time.Sleep(200 * time.Millisecond)
 	}
+}
+
+func getFRange(F []float32) (fMin, fMax, fAve float32) {
+	var (
+		fSum  float32
+		count float32
+	)
+	fMin = F[0]
+	fMax = fMin
+	fSum = 0
+	for _, f := range F {
+		if f < fMin {
+			fMin = f
+		}
+		if f > fMax {
+			fMax = f
+		}
+		fSum += f
+		count++
+	}
+	fAve = fSum / count
+	return
 }
 func TestTriMeshCompareMeshes() {
 	tMesh, edges := readfiles.ReadGoCFDMesh("assets/wedge-order0.gcfd", true)

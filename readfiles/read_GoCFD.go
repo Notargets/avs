@@ -140,7 +140,6 @@ func NewGoCFDSolutionReader(path string, verbose bool) (gcfdReader *GoCFDSolutio
 		}
 		switch {
 		case err == io.EOF:
-			gcfdReader.file.Seek(0, io.SeekStart)
 			isDone = true
 			break
 		case err != nil:
@@ -148,11 +147,15 @@ func NewGoCFDSolutionReader(path string, verbose bool) (gcfdReader *GoCFDSolutio
 		case int(lenFieldFile) != gcfdReader.lenField:
 			panic(fmt.Errorf("read garbage field length", lenFieldFile))
 		}
-		gcfdReader.file.Seek(lenFieldFile*4, io.SeekCurrent)
-		gcfdReader.StepsTotal++
 		if isDone {
 			break
 		}
+		gcfdReader.file.Seek(int64(gcfdReader.lenField)*4, io.SeekCurrent)
+		gcfdReader.StepsTotal++
+	}
+	_, err = gcfdReader.file.Seek(0, io.SeekStart)
+	if err != nil {
+		panic(err)
 	}
 	fmt.Printf("Number of Entries Per Field: %d\n", gcfdReader.lenField)
 	fmt.Printf("Number of Fields: %d\n", gcfdReader.StepsTotal)
@@ -164,6 +167,9 @@ func (gcfdReader *GoCFDSolutionReader) GetField() (fI []float32, end bool) {
 		nEntriesFile int64
 	)
 	binary.Read(gcfdReader.file, binary.LittleEndian, &nEntriesFile)
+	if int(nEntriesFile) != gcfdReader.lenField {
+		panic(fmt.Errorf("read garbage field length %d", nEntriesFile))
+	}
 	binary.Read(gcfdReader.file, binary.LittleEndian, &gcfdReader.currentField)
 	gcfdReader.CurStep++
 	if gcfdReader.CurStep == gcfdReader.StepsTotal {

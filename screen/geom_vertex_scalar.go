@@ -69,7 +69,6 @@ func newShadedTriMesh(vs *geometry.VertexScalar, win *Window,
 		scalarMax:   fMax,
 	}
 	triMesh.vertexData = make([]float32, triMesh.NumVertices*3)
-	triMesh.updateTriMeshData(vs)
 
 	// Generate and bind OpenGL buffers
 	gl.GenVertexArrays(1, &triMesh.VAO)
@@ -77,10 +76,10 @@ func newShadedTriMesh(vs *geometry.VertexScalar, win *Window,
 
 	gl.BindVertexArray(triMesh.VAO)
 
-	// Upload vertex data (positions + scalar values)
+	// Allocate Buffers
 	gl.BindBuffer(gl.ARRAY_BUFFER, triMesh.VBO)
 	gl.BufferData(gl.ARRAY_BUFFER, len(triMesh.vertexData)*4,
-		gl.Ptr(triMesh.vertexData), gl.STATIC_DRAW)
+		nil, gl.DYNAMIC_DRAW)
 
 	// Define vertex attributes
 	gl.VertexAttribPointer(0, 2, gl.FLOAT, false, 3*4,
@@ -92,11 +91,19 @@ func newShadedTriMesh(vs *geometry.VertexScalar, win *Window,
 
 	gl.BindVertexArray(0)
 
+	triMesh.updateTriMeshData(vs)
+
 	return triMesh
 }
 
 func (triMesh *ShadedTriMesh) updateTriMeshData(vs *geometry.VertexScalar) {
 	triMesh.vertexData = packShadedTriMeshData(vs)
+	// Upload vertex data (positions + scalar values)
+	gl.BindVertexArray(triMesh.VAO)
+	gl.BindBuffer(gl.ARRAY_BUFFER, triMesh.VBO)
+	gl.BufferSubData(gl.ARRAY_BUFFER, 0, len(triMesh.vertexData)*4,
+		gl.Ptr(triMesh.vertexData))
+	gl.BindVertexArray(0)
 }
 
 // Render the triangle mesh

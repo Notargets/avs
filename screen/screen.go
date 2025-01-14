@@ -160,7 +160,15 @@ func (scr *Screen) NewShadedTriMesh(vs *geometry.VertexScalar, fMin,
 
 func (scr *Screen) UpdateShadedTriMesh(win *Window, key utils.Key,
 	vs *geometry.VertexScalar) {
-	shadedTriMesh := win.objects[key].Objects[0].(*ShadedTriMesh)
+	var (
+		rb      *Renderable
+		present bool
+	)
+	if rb, present = win.objects[key]; !present {
+		panic("object not present")
+	}
+	// shadedTriMesh := win.objects[key].Objects[0].(*ShadedTriMesh)
+	shadedTriMesh := rb.Objects[0].(*ShadedTriMesh)
 
 	scr.RenderChannel <- Command{win.windowIndex, 0, func() {
 		shadedTriMesh.updateTriMeshData(vs)
