@@ -34,7 +34,7 @@ func addContourVertexScalarShader(shaderMap map[utils.RenderType]uint32) {
 		#version 450
 		in float v_scalar;              // Normalized scalar value from the vertex shader
 		out vec4 outColor;              // Output fragment color
-		
+
 		layout(std140) uniform IsoData {
     		int numIsoContours;         // Number of iso-contours
     		float isoLevels[256];       // Iso-level values
@@ -52,9 +52,9 @@ func addContourVertexScalarShader(shaderMap map[utils.RenderType]uint32) {
 		);
 
 		void main() {
-    		vec3 baseColor = vec3(0.0);  // Default background color
+    		vec3 baseColor = vec3(0.0);  // Default background color (black)
 
-    		// 1. Perform colormap interpolation based on v_scalar
+    		// 1. Interpolate colormap color based on v_scalar
     		for (int i = 0; i < 4; i++) {
         		float lowerBound = float(i) / 4.0;
         		float upperBound = float(i + 1) / 4.0;
@@ -66,17 +66,21 @@ func addContourVertexScalarShader(shaderMap map[utils.RenderType]uint32) {
         		}
     		}
 
-    		// 2. Check if the scalar value is near any iso-level
-    		vec4 color = vec4(baseColor, 1.0); // Default to base color
+    		// 2. Detect iso-lines and override color if near an iso-level
+    		float thickness = isoThickness * fwidth(v_scalar); // Device-independent thickness
     		for (int i = 0; i < numIsoContours; i++) {
         		float distance = abs(v_scalar - isoLevels[i]);
-        		if (distance < isoThickness) {
-            		color = vec4(1.0, 1.0, 1.0, 1.0); // White for iso-lines
-            		break;  // Exit the loop after finding a matching iso-level
+        		if (distance < thickness) {
+            		// Linearly interpolate iso-level to color using the colormap
+            		float t = clamp(isoLevels[i], 0.0, 1.0) * 4.0; // Normalize isoLevel to [0, 4]
+            		int index = int(floor(t));                    // Lower colormap index
+            		float mixFactor = t - float(index);           // Interpolation factor
+            		baseColor = mix(colormapPoints[index], colormapPoints[index + 1], mixFactor);
+            		break; // Exit after finding the closest iso-level
         		}
     		}
 
-    		outColor = color;  // Final output color
+    		outColor = vec4(baseColor, 1.0); // Output the final color
 		}` + "\x00")
 
 	shaderMap[utils.TRIMESHCONTOURS] = compileShaderProgram(vertexShader, fragmentShader)
@@ -154,7 +158,8 @@ func (triMesh *ContourVertexScalar) render() {
 	// Update scalar range uniforms
 	gl.Uniform1f(gl.GetUniformLocation(triMesh.ShaderProgram, gl.Str("scalarMin\x00")), triMesh.scalarMin)
 	gl.Uniform1f(gl.GetUniformLocation(triMesh.ShaderProgram, gl.Str("scalarMax\x00")), triMesh.scalarMax)
-	gl.Uniform1f(gl.GetUniformLocation(triMesh.ShaderProgram, gl.Str("isoThickness\x00")), 0.2) // Example thickness
+	gl.Uniform1f(gl.GetUniformLocation(triMesh.ShaderProgram,
+		gl.Str("isoThickness\x00")), 1) // Example thickness
 
 	// Bind UBO
 	gl.BindBufferBase(gl.UNIFORM_BUFFER, 0, triMesh.ContourUBO.UBO)

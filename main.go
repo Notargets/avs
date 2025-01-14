@@ -69,10 +69,9 @@ func TestVertexScalar() {
 				FieldValues: fI,
 			}
 			// key = chart.AddShadedVertexScalar(vs, 1.4, 2.0)
-			key = chart.AddContourVertexScalar(vs, 1.6, 2.0)
+			key = chart.AddContourVertexScalar(vs, 1.4, 2.0)
 			win = chart.GetCurrentWindow()
 			first = false
-			// Done = true
 		} else {
 			vs.FieldValues, Done = gReader.GetField()
 			// chart.UpdateShadedVertexScalar(win, key, vs)
