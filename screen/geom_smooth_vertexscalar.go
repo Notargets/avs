@@ -74,10 +74,10 @@ type ShadedVertexScalar struct {
 	scalarMin, scalarMax float32
 }
 
-// NewShadedTriMesh creates and initializes the OpenGL buffers for a triangle mesh
+// NewShadedVertexScalar creates and initializes the OpenGL buffers for a triangle mesh
 func newShadedVertexScalar(vs *geometry.VertexScalar, win *Window,
-	fMin, fMax float32) *ShadedVertexScalar {
-	triMesh := &ShadedVertexScalar{
+	fMin, fMax float32) (triMesh *ShadedVertexScalar) {
+	triMesh = &ShadedVertexScalar{
 		ShaderProgram: win.shaders[utils.TRIMESHSMOOTH],
 		// Each vertex has 2 coords + 1 scalar
 		NumVertices: int32(len(vs.TMesh.TriVerts) * 3), // Num tris x 3 verts
@@ -109,12 +109,12 @@ func newShadedVertexScalar(vs *geometry.VertexScalar, win *Window,
 
 	gl.BindVertexArray(0)
 
-	triMesh.updateTriMeshData(vs)
+	triMesh.updateVertexScalarData(vs)
 
-	return triMesh
+	return
 }
 
-func (triMesh *ShadedVertexScalar) updateTriMeshData(vs *geometry.VertexScalar) {
+func (triMesh *ShadedVertexScalar) updateVertexScalarData(vs *geometry.VertexScalar) {
 	triMesh.vertexData = packVertexScalarData(vs)
 	// Upload vertex data (positions + scalar values)
 	gl.BindVertexArray(triMesh.VAO)

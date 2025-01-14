@@ -54,7 +54,7 @@ func addContourVertexScalarShader(shaderMap map[utils.RenderType]uint32) {
 			outColor = color;          // Output the fragment color
 		}` + "\x00")
 
-	shaderMap[utils.TRIMESHSMOOTH] = compileShaderProgram(vertexShader, fragmentShader)
+	shaderMap[utils.TRIMESHCONTOURS] = compileShaderProgram(vertexShader, fragmentShader)
 }
 
 type ContourVertexScalar struct {
@@ -71,7 +71,7 @@ type ContourVertexScalar struct {
 func newContourVertexScalar(vs *geometry.VertexScalar, win *Window,
 	fMin, fMax float32) *ContourVertexScalar {
 	triMesh := &ContourVertexScalar{
-		ShaderProgram: win.shaders[utils.TRIMESHSMOOTH],
+		ShaderProgram: win.shaders[utils.TRIMESHCONTOURS],
 		// Each vertex has 2 coords + 1 scalar
 		NumVertices: int32(len(vs.TMesh.TriVerts) * 3), // Num tris x 3 verts
 		colorMin:    [3]float32{0, 0, 1},
@@ -83,7 +83,7 @@ func newContourVertexScalar(vs *geometry.VertexScalar, win *Window,
 
 	// Create UBO for iso-contours
 	numContours := 20
-	fStep := (triMesh.scalarMax - triMesh.scalarMin) / float32(numContours)
+	fStep := (triMesh.scalarMax - triMesh.scalarMin) / float32(numContours-1)
 	isoLevels := make([]float32, numContours)
 	for i := 0; i < numContours; i++ {
 		isoLevels[i] = triMesh.scalarMin + float32(i)*fStep
@@ -118,12 +118,12 @@ func newContourVertexScalar(vs *geometry.VertexScalar, win *Window,
 
 	gl.BindVertexArray(0)
 
-	triMesh.updateTriMeshData(vs)
+	triMesh.updateVertexScalarData(vs)
 
 	return triMesh
 }
 
-func (triMesh *ContourVertexScalar) updateTriMeshData(vs *geometry.VertexScalar) {
+func (triMesh *ContourVertexScalar) updateVertexScalarData(vs *geometry.VertexScalar) {
 	triMesh.vertexData = packVertexScalarData(vs)
 	// Upload vertex data (positions + scalar values)
 	gl.BindVertexArray(triMesh.VAO)
@@ -139,7 +139,7 @@ func (triMesh *ContourVertexScalar) render() {
 	// Update scalar range uniforms
 	gl.Uniform1f(gl.GetUniformLocation(triMesh.ShaderProgram, gl.Str("scalarMin\x00")), triMesh.scalarMin)
 	gl.Uniform1f(gl.GetUniformLocation(triMesh.ShaderProgram, gl.Str("scalarMax\x00")), triMesh.scalarMax)
-	gl.Uniform1f(gl.GetUniformLocation(triMesh.ShaderProgram, gl.Str("isoThickness\x00")), 0.02) // Example thickness
+	gl.Uniform1f(gl.GetUniformLocation(triMesh.ShaderProgram, gl.Str("isoThickness\x00")), 0.2) // Example thickness
 
 	// Bind UBO
 	gl.BindBufferBase(gl.UNIFORM_BUFFER, 0, triMesh.ContourUBO.UBO)

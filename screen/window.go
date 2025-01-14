@@ -160,6 +160,7 @@ func newWindow(width, height uint32, xMin, xMax, yMin, yMax, scale float32,
 	addStringShaders(win.shaders)
 	addLineShader(win.shaders)
 	addShadedVertexScalarShader(win.shaders)
+	addContourVertexScalarShader(win.shaders)
 
 	// Force the first frame to render
 	win.positionChanged = true

@@ -141,7 +141,7 @@ func (scr *Screen) UpdateLine(win *Window, key utils.Key, XY, Colors []float32) 
 
 }
 
-func (scr *Screen) NewShadedTriMesh(vs *geometry.VertexScalar, fMin,
+func (scr *Screen) NewShadedVertexScalar(vs *geometry.VertexScalar, fMin,
 	fMax float32) (key utils.Key) {
 	key = utils.NewKey()
 
@@ -158,7 +158,7 @@ func (scr *Screen) NewShadedTriMesh(vs *geometry.VertexScalar, fMin,
 	return
 }
 
-func (scr *Screen) UpdateShadedTriMesh(win *Window, key utils.Key,
+func (scr *Screen) UpdateShadedVertexScalar(win *Window, key utils.Key,
 	vs *geometry.VertexScalar) {
 	var (
 		rb      *Renderable
@@ -167,11 +167,49 @@ func (scr *Screen) UpdateShadedTriMesh(win *Window, key utils.Key,
 	if rb, present = win.objects[key]; !present {
 		panic("object not present")
 	}
-	// shadedTriMesh := win.objects[key].Objects[0].(*ShadedVertexScalar)
-	shadedTriMesh := rb.Objects[0].(*ShadedVertexScalar)
+	// shadedVertexScalar := win.objects[key].Objects[0].(*ShadedVertexScalar)
+	shadedVertexScalar := rb.Objects[0].(*ShadedVertexScalar)
 
 	scr.RenderChannel <- Command{win.windowIndex, 0, func() {
-		shadedTriMesh.updateTriMeshData(vs)
+		shadedVertexScalar.updateVertexScalarData(vs)
+		win.redraw()
+		scr.DoneChan <- struct{}{}
+	}}
+	<-scr.DoneChan
+
+}
+
+func (scr *Screen) NewContourVertexScalar(vs *geometry.VertexScalar, fMin,
+	fMax float32) (key utils.Key) {
+	key = utils.NewKey()
+
+	var win = scr.drawWindow
+	scr.RenderChannel <- Command{win.windowIndex, 0, func() {
+		// Create new line
+		shadedTris := newContourVertexScalar(vs, win, fMin, fMax)
+		win.newRenderable(key, shadedTris)
+		win.redraw()
+		scr.DoneChan <- struct{}{}
+	}}
+	<-scr.DoneChan
+
+	return
+}
+
+func (scr *Screen) UpdateContourVertexScalar(win *Window, key utils.Key,
+	vs *geometry.VertexScalar) {
+	var (
+		rb      *Renderable
+		present bool
+	)
+	if rb, present = win.objects[key]; !present {
+		panic("object not present")
+	}
+	// shadedVertexScalar := win.objects[key].Objects[0].(*ShadedVertexScalar)
+	contourVertexScalar := rb.Objects[0].(*ContourVertexScalar)
+
+	scr.RenderChannel <- Command{win.windowIndex, 0, func() {
+		contourVertexScalar.updateVertexScalarData(vs)
 		win.redraw()
 		scr.DoneChan <- struct{}{}
 	}}

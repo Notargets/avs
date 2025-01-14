@@ -82,15 +82,27 @@ func (chart *Chart2D) AddTriMesh(mesh geometry.TriMesh) (key utils.Key) {
 	return
 }
 
-func (chart *Chart2D) AddShadedTriMesh(vs *geometry.VertexScalar, fMin,
+func (chart *Chart2D) AddShadedVertexScalar(vs *geometry.VertexScalar, fMin,
 	fMax float32) (key utils.Key) {
-	key = chart.Screen.NewShadedTriMesh(vs, fMin, fMax)
+	key = chart.Screen.NewShadedVertexScalar(vs, fMin, fMax)
 	return
 }
 
-func (chart *Chart2D) UpdateShadedTriMesh(win *screen.Window, key utils.Key,
+func (chart *Chart2D) UpdateShadedVertexScalar(win *screen.Window, key utils.Key,
 	vs *geometry.VertexScalar) {
-	chart.Screen.UpdateShadedTriMesh(win, key, vs)
+	chart.Screen.UpdateShadedVertexScalar(win, key, vs)
+	return
+}
+
+func (chart *Chart2D) AddContourVertexScalar(vs *geometry.VertexScalar, fMin,
+	fMax float32) (key utils.Key) {
+	key = chart.Screen.NewContourVertexScalar(vs, fMin, fMax)
+	return
+}
+
+func (chart *Chart2D) UpdateContourVertexScalar(win *screen.Window,
+	key utils.Key, vs *geometry.VertexScalar) {
+	chart.Screen.UpdateContourVertexScalar(win, key, vs)
 	return
 }
 

@@ -49,6 +49,8 @@ func (win *Window) fullScreenRender() {
 				renderObj.render(win)
 			case *ShadedVertexScalar:
 				renderObj.render()
+			case *ContourVertexScalar:
+				renderObj.render()
 			default:
 				fmt.Printf("Unknown object type: %T\n", renderObj)
 			}
