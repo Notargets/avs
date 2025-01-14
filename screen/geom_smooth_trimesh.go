@@ -21,18 +21,36 @@ func addShadedTriMeshShader(shaderMap map[utils.RenderType]uint32) {
 		layout (location = 0) in vec2 position;
 		layout (location = 1) in float scalarValue;
 		uniform mat4 projection;
-		uniform vec3 colorMin;
-		uniform vec3 colorMax;
 		uniform float scalarMin;
 		uniform float scalarMax;
 		out vec3 fragColor;
 
+		vec3 colormap(float t) {
+			t = clamp(t, 0.0, 1.0); // Normalize t to [0, 1]
+
+			if (t < 0.25) {
+				// Quadrant 1: Blue to Cyan
+				return mix(vec3(0.0, 0.0, 1.0), vec3(0.0, 1.0, 1.0), t / 0.25);
+			} else if (t < 0.5) {
+				// Quadrant 2: Cyan to Green
+				return mix(vec3(0.0, 1.0, 1.0), vec3(0.0, 1.0, 0.0), (t - 0.25) / 0.25);
+			} else if (t < 0.75) {
+				// Quadrant 3: Green to Yellow
+				return mix(vec3(0.0, 1.0, 0.0), vec3(1.0, 1.0, 0.0), (t - 0.5) / 0.25);
+			} else {
+				// Quadrant 4: Yellow to Red
+				return mix(vec3(1.0, 1.0, 0.0), vec3(1.0, 0.0, 0.0), (t - 0.75) / 0.25);
+			}
+		}
+
 		void main() {
 			gl_Position = projection * vec4(position, 0.0, 1.0);
 
-			// Interpolate scalar value into RGB color
+			// Normalize scalarValue to [0, 1]
 			float t = clamp((scalarValue - scalarMin) / (scalarMax - scalarMin), 0.0, 1.0);
-			fragColor = mix(colorMin, colorMax, t);
+
+			// Use colormap function to calculate color
+			fragColor = colormap(t);
 		}` + "\x00")
 
 	var fragmentShader = gl.Str(`
