@@ -17,7 +17,8 @@ var DEBUG = false
 
 // compileShaderProgram takes pointers to C-style uint8 strings for vertex and fragment shader sources.
 // It compiles the shaders, links them into a shader program, and returns the program ID.
-func compileShaderProgram(vertexSource, fragmentSource *uint8) uint32 {
+func compileShaderProgram(vertexSource, fragmentSource,
+	geomSource *uint8) uint32 {
 	// Compile vertex shader
 	vertexShader := gl.CreateShader(gl.VERTEX_SHADER)
 	CheckGLError("After CreateShader (vertex)")
@@ -54,34 +55,67 @@ func compileShaderProgram(vertexSource, fragmentSource *uint8) uint32 {
 		}
 	}
 
+	var geomShader uint32
+	if geomSource != nil {
+		// Compile fragment shader
+		geomShader = gl.CreateShader(gl.GEOMETRY_SHADER)
+		CheckGLError("After CreateShader (GEOM)")
+		gl.ShaderSource(geomShader, 1, &geomSource, nil)
+		gl.CompileShader(geomShader)
+
+		if DEBUG {
+			// Check for fragment shader compile errors
+			gl.GetShaderiv(geomShader, gl.COMPILE_STATUS, &status)
+			if status == gl.FALSE {
+				var logLength int32
+				gl.GetShaderiv(geomShader, gl.INFO_LOG_LENGTH, &logLength)
+				log := strings.Repeat("\x00", int(logLength+1))
+				gl.GetShaderInfoLog(geomShader, logLength, nil, gl.Str(log))
+				fmt.Printf("Geom Shader Compile Error: %s\n", log)
+			}
+		}
+	}
+
 	// Link the shader program
 	shaderProgram := gl.CreateProgram()
-	CheckGLError("After CreateProgram")
 	gl.AttachShader(shaderProgram, vertexShader)
+	if geomSource != nil {
+		gl.AttachShader(shaderProgram, geomShader)
+	}
 	gl.AttachShader(shaderProgram, fragmentShader)
 	gl.LinkProgram(shaderProgram)
+	CheckGLError("After LinkProgram")
 
-	if DEBUG {
-		// Check for linking errors
-		gl.GetProgramiv(shaderProgram, gl.LINK_STATUS, &status)
-		if status == gl.FALSE {
-			var logLength int32
-			gl.GetProgramiv(shaderProgram, gl.INFO_LOG_LENGTH, &logLength)
-			log := strings.Repeat("\x00", int(logLength+1))
-			gl.GetProgramInfoLog(shaderProgram, logLength, nil, gl.Str(log))
-			fmt.Printf("Shader Link Error: %s\n", log)
-		}
+	// Check for linking errors
+	gl.GetProgramiv(shaderProgram, gl.LINK_STATUS, &status)
+	if status == gl.FALSE {
+		var logLength int32
+		gl.GetProgramiv(shaderProgram, gl.INFO_LOG_LENGTH, &logLength)
+		log := strings.Repeat("\x00", int(logLength+1))
+		gl.GetProgramInfoLog(shaderProgram, logLength, nil, gl.Str(log))
+		fmt.Printf("Shader Link Error: %s\n", log)
+
+	}
+	if !gl.IsProgram(shaderProgram) {
+		fmt.Printf("Invalid shader program: %d\n", shaderProgram)
+		panic("Shader program validation failed")
+	}
+	gl.ValidateProgram(shaderProgram)
+	var validateStatus int32
+	gl.GetProgramiv(shaderProgram, gl.VALIDATE_STATUS, &validateStatus)
+	if validateStatus == gl.FALSE {
+		var logLength int32
+		gl.GetProgramiv(shaderProgram, gl.INFO_LOG_LENGTH, &logLength)
+		log := strings.Repeat("\x00", int(logLength+1))
+		gl.GetProgramInfoLog(shaderProgram, logLength, nil, gl.Str(log))
+		panic(fmt.Sprintf("Program validation failed: %s", log))
 	}
 
 	// Clean up the compiled shaders after linking
 	gl.DeleteShader(vertexShader)
 	gl.DeleteShader(fragmentShader)
-
-	if DEBUG {
-		if !gl.IsProgram(shaderProgram) {
-			fmt.Printf("Invalid shader program: %d\n", shaderProgram)
-			panic("Shader program validation failed")
-		}
+	if geomSource != nil {
+		gl.DeleteShader(geomShader)
 	}
 
 	return shaderProgram
@@ -116,36 +150,35 @@ func setShaderProgram(shaderProgram uint32) {
 
 // CheckGLError checkGLError decodes OpenGL error codes into human-readable form and panics if an error occurs
 func CheckGLError(message string) {
-	if DEBUG {
-		errCode := gl.GetError()
-		if errCode != gl.NO_ERROR {
-			switch errCode {
-			case gl.INVALID_ENUM:
-				panic("GL_INVALID_ENUM: An unacceptable value is" +
-					" specified  for an enumerated argument.")
-			case gl.INVALID_VALUE:
-				panic("GL_INVALID_VALUE: A numeric argument is out of" +
-					"  range.")
-			case gl.INVALID_OPERATION:
-				panic("GL_INVALID_OPERATION: The specified operation" +
-					" is not allowed in the current state.")
-			case gl.INVALID_FRAMEBUFFER_OPERATION:
-				panic("GL_INVALID_FRAMEBUFFER_OPERATION: The" +
-					" framebuffer object is not complete.")
-			case gl.OUT_OF_MEMORY:
-				panic("GL_OUT_OF_MEMORY: There is not enough memory" +
-					" left to execute the command.")
-			case gl.STACK_UNDERFLOW:
-				panic("GL_STACK_UNDERFLOW: An attempt has been made to" +
-					" perform an operation that would cause an internal stack to" +
-					" underflow.")
-			case gl.STACK_OVERFLOW:
-				panic("GL_STACK_OVERFLOW: An attempt has been made to" +
-					" perform an operation that would cause an internal stack to" +
-					" overflow.")
-			default:
-				panic("Unknown OpenGL error code")
-			}
+	errCode := gl.GetError()
+	if errCode != gl.NO_ERROR {
+		fmt.Printf("%s: ", message)
+		switch errCode {
+		case gl.INVALID_ENUM:
+			panic("GL_INVALID_ENUM: An unacceptable value is" +
+				" specified  for an enumerated argument.")
+		case gl.INVALID_VALUE:
+			panic("GL_INVALID_VALUE: A numeric argument is out of" +
+				"  range.")
+		case gl.INVALID_OPERATION:
+			panic("GL_INVALID_OPERATION: The specified operation" +
+				" is not allowed in the current state.")
+		case gl.INVALID_FRAMEBUFFER_OPERATION:
+			panic("GL_INVALID_FRAMEBUFFER_OPERATION: The" +
+				" framebuffer object is not complete.")
+		case gl.OUT_OF_MEMORY:
+			panic("GL_OUT_OF_MEMORY: There is not enough memory" +
+				" left to execute the command.")
+		case gl.STACK_UNDERFLOW:
+			panic("GL_STACK_UNDERFLOW: An attempt has been made to" +
+				" perform an operation that would cause an internal stack to" +
+				" underflow.")
+		case gl.STACK_OVERFLOW:
+			panic("GL_STACK_OVERFLOW: An attempt has been made to" +
+				" perform an operation that would cause an internal stack to" +
+				" overflow.")
+		default:
+			panic("Unknown OpenGL error code")
 		}
 	}
 }

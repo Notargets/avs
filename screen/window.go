@@ -9,6 +9,7 @@ package screen
 import (
 	"fmt"
 	"log"
+	"unsafe"
 
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/notargets/avs/utils"
@@ -137,6 +138,12 @@ func newWindow(width, height uint32, xMin, xMax, yMin, yMax, scale float32,
 		if err := gl.Init(); err != nil {
 			log.Fatalln("Failed to initialize OpenGL context:", err)
 		}
+		// Enable debug output
+		gl.Enable(gl.DEBUG_OUTPUT)
+		gl.DebugMessageCallback(func(source uint32, msgType uint32, id uint32, severity uint32, length int32, message string, userParam unsafe.Pointer) {
+			fmt.Printf("OpenGL Debug: %s\n", message)
+		}, nil)
+
 	}
 	windowIndex++ // WindowIndex starts at 1
 	win.windowIndex = windowIndex
@@ -250,14 +257,15 @@ func (win *Window) updateProjectionMatrix() {
 	for renderType, shaderProgram := range win.shaders {
 		// Type assertion for the key and value
 		if renderType != utils.FIXEDSTRING {
+			if DEBUG {
+				fmt.Printf("Processing proj matrix for RenderType"+
+					": %s, shader program: %d\n", renderType, shaderProgram)
+			}
 			projectionUniform := gl.GetUniformLocation(shaderProgram, gl.Str("projection\x00"))
 			CheckGLError("After Get Uniform Location")
 			if projectionUniform < 0 {
 				fmt.Printf("Projection uniform not found for RenderType %v\n", renderType)
 			} else {
-				if DEBUG {
-					fmt.Printf("Processing proj matrix for shader program:: %d\n", shaderProgram)
-				}
 				gl.UseProgram(shaderProgram)
 				CheckGLError("After Activate Shader Program")
 				gl.UniformMatrix4fv(projectionUniform, 1, false,

@@ -95,8 +95,8 @@ func (chart *Chart2D) UpdateShadedVertexScalar(win *screen.Window, key utils.Key
 }
 
 func (chart *Chart2D) AddContourVertexScalar(vs *geometry.VertexScalar, fMin,
-	fMax float32) (key utils.Key) {
-	key = chart.Screen.NewContourVertexScalar(vs, fMin, fMax)
+	fMax float32, numContours int) (key utils.Key) {
+	key = chart.Screen.NewContourVertexScalar(vs, fMin, fMax, numContours)
 	return
 }
 

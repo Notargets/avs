@@ -180,13 +180,13 @@ func (scr *Screen) UpdateShadedVertexScalar(win *Window, key utils.Key,
 }
 
 func (scr *Screen) NewContourVertexScalar(vs *geometry.VertexScalar, fMin,
-	fMax float32) (key utils.Key) {
+	fMax float32, numContours int) (key utils.Key) {
 	key = utils.NewKey()
 
 	var win = scr.drawWindow
 	scr.RenderChannel <- Command{win.windowIndex, 0, func() {
 		// Create new line
-		contourTris := newContourVertexScalar(vs, win, fMin, fMax)
+		contourTris := newContourVertexScalar(vs, win, fMin, fMax, numContours)
 		win.newRenderable(key, contourTris)
 		win.redraw()
 		scr.DoneChan <- struct{}{}

@@ -37,9 +37,10 @@ func addLineShader(shaderMap map[utils.RenderType]uint32) {
 			outColor = vec4(fragColor, 1.0);
 		}` + "\x00")
 
-	shaderMap[utils.LINE] = compileShaderProgram(vertexShader, fragmentShader)
+	shaderMap[utils.LINE] = compileShaderProgram(vertexShader,
+		fragmentShader, nil)
 	shaderMap[utils.POLYLINE] = compileShaderProgram(vertexShader,
-		fragmentShader)
+		fragmentShader, nil)
 }
 
 type Line struct {

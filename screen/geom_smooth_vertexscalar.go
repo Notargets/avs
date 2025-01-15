@@ -61,7 +61,8 @@ func addShadedVertexScalarShader(shaderMap map[utils.RenderType]uint32) {
 			outColor = vec4(fragColor, 1.0);
 		}` + "\x00")
 
-	shaderMap[utils.TRIMESHSMOOTH] = compileShaderProgram(vertexShader, fragmentShader)
+	shaderMap[utils.TRIMESHSMOOTH] = compileShaderProgram(vertexShader,
+		fragmentShader, nil)
 }
 
 // ShadedVertexScalar represents a batch-rendered triangle mesh

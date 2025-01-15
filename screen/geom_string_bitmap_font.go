@@ -58,7 +58,7 @@ func addStringShaders(shaderMap map[utils.RenderType]uint32) {
     			fragColor = color;
 			}` + "\x00")
 	shaderMap[utils.STRING] = compileShaderProgram(vertexShaderSource,
-		fragmentShaderSource)
+		fragmentShaderSource, nil)
 	CheckGLError("After String compileShaderProgram")
 
 	vertexShaderSource = gl.Str(`
@@ -84,8 +84,9 @@ func addStringShaders(shaderMap map[utils.RenderType]uint32) {
 					                              // on gl_VertexID ( assumes quads)
     				fragColor = color;
 				}` + "\x00")
+
 	shaderMap[utils.FIXEDSTRING] = compileShaderProgram(vertexShaderSource,
-		fragmentShaderSource)
+		fragmentShaderSource, nil)
 	CheckGLError("After FixedString compileShaderProgram")
 }
 

@@ -40,7 +40,7 @@ func main() {
 }
 
 func TestVertexScalar() {
-	tMesh, edges := readfiles.ReadGoCFDMesh("assets/wedge-order0.gcfd", true)
+	tMesh, edges := readfiles.ReadGoCFDMesh("assets/wedge-order2.gcfd", true)
 	XMin, XMax, YMin, YMax := getSurfaceRange(tMesh.XY, edges)
 	XMin, XMax, YMin, YMax = getSquareBoundingBox(XMin, XMax, YMin, YMax)
 	fmt.Printf("XMin, XMax, YMin, YMax: %f, %f, %f, %f\n", XMin, XMax, YMin,
@@ -61,7 +61,7 @@ func TestVertexScalar() {
 	)
 	for !Done {
 		if first {
-			gReader = readfiles.NewGoCFDSolutionReader("assets/wedge-solution-order0.gcfd",
+			gReader = readfiles.NewGoCFDSolutionReader("assets/wedge-solution-order2.gcfd",
 				true)
 			fI, Done = gReader.GetField()
 			vs = &geometry.VertexScalar{
@@ -69,7 +69,8 @@ func TestVertexScalar() {
 				FieldValues: fI,
 			}
 			// key = chart.AddShadedVertexScalar(vs, 1.4, 2.0)
-			key = chart.AddContourVertexScalar(vs, 1.4, 2.0)
+			// chart.AddTriMesh(tMesh)
+			key = chart.AddContourVertexScalar(vs, 1.20, 2.0, 100)
 			win = chart.GetCurrentWindow()
 			first = false
 		} else {

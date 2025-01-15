@@ -7,83 +7,112 @@
 package screen
 
 import (
+	"fmt"
 	"unsafe"
 
 	"github.com/go-gl/gl/v4.5-core/gl"
 	"github.com/notargets/avs/geometry"
-	utils "github.com/notargets/avs/utils"
+	"github.com/notargets/avs/utils"
 )
 
 func addContourVertexScalarShader(shaderMap map[utils.RenderType]uint32) {
 	var vertexShader = gl.Str(`
-		#version 450
-		layout (location = 0) in vec2 position;
-		layout (location = 1) in float scalarValue;
-		uniform mat4 projection;
-		uniform float scalarMin;
-		uniform float scalarMax;
-		out float v_scalar;
+			#version 450
+			layout (location = 0) in vec2 position;
+			layout (location = 1) in float scalarValue;
+			uniform mat4 projection;
+			out float v_scalar;        // Interpolated scalar value
+			out vec2 v_position;       // Vertex position
 
-		void main() {
-			gl_Position = projection * vec4(position, 0.0, 1.0);
-			// Normalize scalarValue to [0, 1] and pass to the fragment shader
-			v_scalar = clamp((scalarValue - scalarMin) / (scalarMax - scalarMin), 0.0, 1.0);
+			void main() {
+    			gl_Position = projection * vec4(position, 0.0, 1.0);
+    			v_scalar = scalarValue;  // Pass the scalar value
+    			v_position = position;   // Pass the position
+		}` + "\x00")
+
+	var geometryShader = gl.Str(`
+			#version 450
+			layout (triangles) in;
+			layout (line_strip, max_vertices = 4) out;
+
+			uniform IsoData {
+    			int numIsoContours;         // Number of iso-contours
+    			float isoLevels[256];       // Iso-level values
+			};
+
+			uniform float scalarMin;       // Minimum scalar value in the field
+			uniform float scalarMax;       // Maximum scalar value in the field
+
+			in float v_scalar[];            // Scalars passed from vertex shader
+			out vec4 lineColor;             // Line color output
+
+			const vec3 colormap[5] = vec3[](
+    			vec3(0.0, 0.0, 1.0), // Blue
+    			vec3(0.0, 1.0, 1.0), // Cyan
+    			vec3(0.0, 1.0, 0.0), // Green
+    			vec3(1.0, 1.0, 0.0), // Yellow
+    			vec3(1.0, 0.0, 0.0)  // Red
+			);
+
+			void main() {
+    			for (int isoIndex = 0; isoIndex < numIsoContours; isoIndex++) {
+        			float isoLevel = isoLevels[isoIndex];
+
+        			vec4 crossingPoints[2];
+        			int crossingCount = 0;
+
+        			// Check all edges for iso-level crossings
+        			for (int edge = 0; edge < 3; edge++) {
+            			int v1 = edge;
+            			int v2 = (edge + 1) % 3;
+
+            			float scalar1 = v_scalar[v1];
+            			float scalar2 = v_scalar[v2];
+
+            			// Check if iso-level crosses the edge
+            			if ((scalar1 > isoLevel) != (scalar2 > isoLevel)) {
+                			float t = (isoLevel - scalar1) / (scalar2 - scalar1); // Linear interpolation
+                			crossingPoints[crossingCount++] = mix(gl_in[v1].gl_Position, gl_in[v2].gl_Position, t);
+            			}
+        			}
+
+        			// Emit a line if exactly two crossings are found
+        			if (crossingCount == 2) {
+            			// Normalize the iso-level to [0, 1]
+            			float normalizedIso = (isoLevel - scalarMin) / (scalarMax - scalarMin);
+            			normalizedIso = clamp(normalizedIso, 0.0, 1.0);
+
+            			// Determine colormap color
+            			float t = normalizedIso * 4.0; // Map to [0, 4]
+            			int index = int(floor(t));    // Lower index
+            			float mixFactor = t - float(index); // Fractional part for interpolation
+            			vec3 color = mix(colormap[index], colormap[index + 1], mixFactor);
+
+            			// Pass color to fragment shader
+            			lineColor = vec4(color, 1.0);
+
+            			gl_Position = crossingPoints[0];
+            			EmitVertex();
+
+            			gl_Position = crossingPoints[1];
+            			EmitVertex();
+
+            			EndPrimitive();
+        			}
+    			}
 		}` + "\x00")
 
 	var fragmentShader = gl.Str(`
-		#version 450
-		in float v_scalar;              // Normalized scalar value from the vertex shader
-		out vec4 outColor;              // Output fragment color
+			#version 450
+			in vec4 lineColor;  // Color passed from the geometry shader
+			out vec4 outColor;
 
-		layout(std140) uniform IsoData {
-    		int numIsoContours;         // Number of iso-contours
-    		float isoLevels[256];       // Iso-level values
-		};
-
-		uniform float isoThickness;     // Thickness of iso-contours
-
-		// Hardcoded 5-point linear colormap
-		const vec3 colormapPoints[5] = vec3[](
-    		vec3(1.0, 0.0, 0.0), // Red
-    		vec3(1.0, 1.0, 0.0), // Yellow
-    		vec3(0.0, 1.0, 0.0), // Green
-    		vec3(0.0, 1.0, 1.0), // Cyan
-    		vec3(0.0, 0.0, 1.0)  // Blue
-		);
-
-		void main() {
-    		vec3 baseColor = vec3(0.0);  // Default background color (black)
-
-    		// 1. Interpolate colormap color based on v_scalar
-    		for (int i = 0; i < 4; i++) {
-        		float lowerBound = float(i) / 4.0;
-        		float upperBound = float(i + 1) / 4.0;
-
-        		if (v_scalar >= lowerBound && v_scalar <= upperBound) {
-            		float t = (v_scalar - lowerBound) / (upperBound - lowerBound);
-            		baseColor = mix(colormapPoints[i], colormapPoints[i + 1], t);
-            		break;
-        		}
-    		}
-
-    		// 2. Detect iso-lines and override color if near an iso-level
-    		float thickness = isoThickness * fwidth(v_scalar); // Device-independent thickness
-    		for (int i = 0; i < numIsoContours; i++) {
-        		float distance = abs(v_scalar - isoLevels[i]);
-        		if (distance < thickness) {
-            		// Linearly interpolate iso-level to color using the colormap
-            		float t = clamp(isoLevels[i], 0.0, 1.0) * 4.0; // Normalize isoLevel to [0, 4]
-            		int index = int(floor(t));                    // Lower colormap index
-            		float mixFactor = t - float(index);           // Interpolation factor
-            		baseColor = mix(colormapPoints[index], colormapPoints[index + 1], mixFactor);
-            		break; // Exit after finding the closest iso-level
-        		}
-    		}
-
-    		outColor = vec4(baseColor, 1.0); // Output the final color
+			void main() {
+    			outColor = lineColor;
 		}` + "\x00")
 
-	shaderMap[utils.TRIMESHCONTOURS] = compileShaderProgram(vertexShader, fragmentShader)
+	shaderMap[utils.TRIMESHCONTOURS] = compileShaderProgram(vertexShader,
+		fragmentShader, geometryShader)
 }
 
 type ContourVertexScalar struct {
@@ -97,7 +126,7 @@ type ContourVertexScalar struct {
 
 // NewContourVertexScalar creates and initializes the OpenGL buffers for a triangle mesh
 func newContourVertexScalar(vs *geometry.VertexScalar, win *Window,
-	fMin, fMax float32) *ContourVertexScalar {
+	fMin, fMax float32, numContours int) *ContourVertexScalar {
 	triMesh := &ContourVertexScalar{
 		ShaderProgram: win.shaders[utils.TRIMESHCONTOURS],
 		// Each vertex has 2 coords + 1 scalar
@@ -108,12 +137,12 @@ func newContourVertexScalar(vs *geometry.VertexScalar, win *Window,
 	triMesh.vertexData = make([]float32, triMesh.NumVertices*3)
 
 	// Create UBO for iso-contours
-	numContours := 20
-	fStep := (triMesh.scalarMax - triMesh.scalarMin) / float32(numContours-1)
+	fStep := (fMax - fMin) / float32(numContours-1)
 	isoLevels := make([]float32, numContours)
 	for i := 0; i < numContours; i++ {
-		isoLevels[i] = triMesh.scalarMin + float32(i)*fStep
+		isoLevels[i] = fMin + float32(i)*fStep
 	}
+	fmt.Println(isoLevels)
 	triMesh.ContourUBO = newIsoContourUBO(isoLevels)
 
 	// Generate and bind OpenGL buffers
@@ -158,10 +187,8 @@ func (triMesh *ContourVertexScalar) render() {
 	// Update scalar range uniforms
 	gl.Uniform1f(gl.GetUniformLocation(triMesh.ShaderProgram, gl.Str("scalarMin\x00")), triMesh.scalarMin)
 	gl.Uniform1f(gl.GetUniformLocation(triMesh.ShaderProgram, gl.Str("scalarMax\x00")), triMesh.scalarMax)
-	gl.Uniform1f(gl.GetUniformLocation(triMesh.ShaderProgram,
-		gl.Str("isoThickness\x00")), 1) // Example thickness
 
-	// Bind UBO
+	// Bind UBO for iso-levels
 	gl.BindBufferBase(gl.UNIFORM_BUFFER, 0, triMesh.ContourUBO.UBO)
 
 	// Draw the mesh
