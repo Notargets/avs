@@ -7,7 +7,6 @@
 package screen
 
 import (
-	"fmt"
 	"unsafe"
 
 	"github.com/go-gl/gl/v4.5-core/gl"
@@ -142,7 +141,6 @@ func newContourVertexScalar(vs *geometry.VertexScalar, win *Window,
 	for i := 0; i < numContours; i++ {
 		isoLevels[i] = fMin + float32(i)*fStep
 	}
-	fmt.Println(isoLevels)
 	triMesh.ContourUBO = newIsoContourUBO(isoLevels)
 
 	// Generate and bind OpenGL buffers

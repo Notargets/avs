@@ -68,14 +68,11 @@ func TestVertexScalar() {
 				TMesh:       &tMesh,
 				FieldValues: fI,
 			}
-			// key = chart.AddShadedVertexScalar(vs, 1.4, 2.0)
-			// chart.AddTriMesh(tMesh)
 			key = chart.AddContourVertexScalar(vs, 1.20, 2.0, 100)
 			win = chart.GetCurrentWindow()
 			first = false
 		} else {
 			vs.FieldValues, Done = gReader.GetField()
-			// chart.UpdateShadedVertexScalar(win, key, vs)
 			chart.UpdateContourVertexScalar(win, key, vs)
 		}
 		fMin, fMax, fAve = getFRange(fI)
