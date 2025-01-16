@@ -43,12 +43,15 @@ func TestVertexScalar() {
 	tMesh, edges := readfiles.ReadGoCFDMesh("assets/wedge-order2.gcfd", true)
 	XMin, XMax, YMin, YMax := getSurfaceRange(tMesh.XY, edges)
 	XMin, XMax, YMin, YMax = getSquareBoundingBox(XMin, XMax, YMin, YMax)
+	XYSurf := getSurfaceLines(tMesh.XY, edges)
 	fmt.Printf("XMin, XMax, YMin, YMax: %f, %f, %f, %f\n", XMin, XMax, YMin,
 		YMax)
 	width, height := 1080, 1080
 	chart := chart2d.NewChart2D(XMin, XMax, YMin, YMax, width, height,
 		utils.WHITE, // Line Color Default
 		utils.DARK)  // BG color Default
+	chart.AddLine(XYSurf, utils.WHITE)
+
 	var (
 		first            = true
 		Done             = false
@@ -68,7 +71,7 @@ func TestVertexScalar() {
 				TMesh:       &tMesh,
 				FieldValues: fI,
 			}
-			key = chart.AddContourVertexScalar(vs, 1.20, 2.0, 100)
+			key = chart.AddContourVertexScalar(vs, 1.20, 2.0, 20)
 			win = chart.GetCurrentWindow()
 			first = false
 		} else {
@@ -126,18 +129,34 @@ func TestTriMeshCompareMeshes() {
 	_ = edges2
 }
 
+func getSurfaceLines(XY []float32, edges []*geometry.EdgeGroup) (
+	XYSurf []float32) {
+	var x1, y1, x2, y2 float32
+	for _, edgeGroup := range edges {
+		// fmt.Printf("BC Group Name: [%s]\n", edgeGroup.GroupName)
+		// if edgeGroup.GroupName == "wall" {
+		for _, edgeXY := range edgeGroup.EdgeXYs {
+			x1, y1 = edgeXY[0], edgeXY[1]
+			x2, y2 = edgeXY[2], edgeXY[3]
+			XYSurf = append(XYSurf, x1, y1, x2, y2)
+		}
+		// }
+	}
+	return
+}
+
 func getSurfaceRange(XY []float32, edges []*geometry.EdgeGroup) (xmin, xmax, ymin,
 	ymax float32) {
 	xmin = math.MaxFloat32
 	xmax = -xmin
 	ymin = xmin
 	ymax = xmax
+	var x1, y1, x2, y2 float32
 	for _, edgeGroup := range edges {
-		// fmt.Printf("BC Group Name: [%s]\n", edgeGroup.GroupName)
 		if edgeGroup.GroupName == "wall" {
-			for _, edge := range edgeGroup.Edges {
-				x1, y1 := XY[2*edge[0]], XY[2*edge[0]+1]
-				x2, y2 := XY[2*edge[1]], XY[2*edge[1]+1]
+			for _, edgeXY := range edgeGroup.EdgeXYs {
+				x1, y1 = edgeXY[0], edgeXY[1]
+				x2, y2 = edgeXY[2], edgeXY[3]
 				xmin = float32(math.Min(float64(xmin), float64(x1)))
 				ymin = float32(math.Min(float64(ymin), float64(y1)))
 				xmax = float32(math.Max(float64(xmax), float64(x1)))
@@ -149,6 +168,7 @@ func getSurfaceRange(XY []float32, edges []*geometry.EdgeGroup) (xmin, xmax, ymi
 			}
 		}
 	}
+	fmt.Printf("\n")
 	return xmin, xmax, ymin, ymax
 }
 

@@ -76,8 +76,8 @@ func ReadGoCFDMesh(path string, verbose bool) (tMesh geometry.TriMesh,
 		var bcLen int64
 		binary.Read(file, binary.LittleEndian, &bcLen)
 		BCEdges[n] = geometry.NewEdgeGroup(bcName, int(bcLen))
-		for i := range BCEdges[n].Edges {
-			binary.Read(file, binary.LittleEndian, &BCEdges[n].Edges[i])
+		for i, _ := range BCEdges[n].EdgeXYs {
+			binary.Read(file, binary.LittleEndian, &BCEdges[n].EdgeXYs[i])
 		}
 	}
 	return

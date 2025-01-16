@@ -6,16 +6,16 @@
 
 package geometry
 
-type Edge [2]int64
+type EdgeXY [4]float32
 
 type EdgeGroup struct {
 	GroupName string
-	Edges     []Edge
+	EdgeXYs   []EdgeXY
 }
 
 func NewEdgeGroup(groupName string, nEdges int) *EdgeGroup {
 	return &EdgeGroup{
 		GroupName: groupName,
-		Edges:     make([]Edge, nEdges),
+		EdgeXYs:   make([]EdgeXY, nEdges),
 	}
 }

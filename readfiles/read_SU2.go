@@ -51,11 +51,11 @@ func ReadSU2Mesh(filename string, verbose bool) (tMesh geometry.TriMesh,
 		TriVerts: readElements(reader),
 		XY:       readGeometry(reader),
 	}
-	BCEdges = readBCs(reader)
+	BCEdges = readBCs(reader, tMesh.XY)
 	return
 }
 
-func readBCs(reader *bufio.Reader) (BCEdges []*geometry.EdgeGroup) {
+func readBCs(reader *bufio.Reader, XY []float32) (BCEdges []*geometry.EdgeGroup) {
 	var (
 		nType  int
 		v1, v2 int
@@ -76,7 +76,10 @@ func readBCs(reader *bufio.Reader) (BCEdges []*geometry.EdgeGroup) {
 			if SU2ElementType(nType) != ELType_LINE {
 				panic("BCs should only contain line elements in 2D")
 			}
-			EdgeGroup.Edges[i] = [2]int64{int64(v1), int64(v2)}
+			EdgeGroup.EdgeXYs[i][0] = XY[2*v1]
+			EdgeGroup.EdgeXYs[i][1] = XY[2*v1+1]
+			EdgeGroup.EdgeXYs[i][2] = XY[2*v2]
+			EdgeGroup.EdgeXYs[i][3] = XY[2*v2+1]
 		}
 	}
 	return
