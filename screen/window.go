@@ -138,11 +138,13 @@ func newWindow(width, height uint32, xMin, xMax, yMin, yMax, scale float32,
 		if err := gl.Init(); err != nil {
 			log.Fatalln("Failed to initialize OpenGL context:", err)
 		}
-		// Enable debug output
-		gl.Enable(gl.DEBUG_OUTPUT)
-		gl.DebugMessageCallback(func(source uint32, msgType uint32, id uint32, severity uint32, length int32, message string, userParam unsafe.Pointer) {
-			fmt.Printf("OpenGL Debug: %s\n", message)
-		}, nil)
+		if DEBUG {
+			// Enable debug output
+			gl.Enable(gl.DEBUG_OUTPUT)
+			gl.DebugMessageCallback(func(source uint32, msgType uint32, id uint32, severity uint32, length int32, message string, userParam unsafe.Pointer) {
+				fmt.Printf("OpenGL Debug: %s\n", message)
+			}, nil)
+		}
 
 	}
 	windowIndex++ // WindowIndex starts at 1
@@ -191,7 +193,7 @@ func (win *Window) redraw() {
 	win.setCurrentWindow()
 	win.updateProjectionMatrix()
 	win.fullScreenRender()
-	win.setFocusWindow()
+	//win.setFocusWindow()
 }
 
 func (win *Window) positionScaleChanged() bool {
