@@ -145,7 +145,7 @@ func NewGoCFDSolutionReader(path string, verbose bool) (gcfdReader *GoCFDSolutio
 		case err != nil:
 			panic(err)
 		case int(lenFieldFile) != gcfdReader.lenField:
-			panic(fmt.Errorf("read garbage field length", lenFieldFile))
+			panic(fmt.Errorf("read garbage field length: %d", lenFieldFile))
 		}
 		if isDone {
 			break
