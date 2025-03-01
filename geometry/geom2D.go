@@ -11,8 +11,8 @@ type TriMesh struct {
 	TriVerts [][3]int64 // Every corner index specified for each of Kx3 tris
 }
 
-func NewTriMesh(XY []float32, Verts [][3]int64) *TriMesh {
-	return &TriMesh{XY, Verts}
+func NewTriMesh(XY []float32, Verts [][3]int64) TriMesh {
+	return TriMesh{XY, Verts}
 }
 
 type VertexScalar struct {
