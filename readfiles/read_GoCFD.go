@@ -178,3 +178,15 @@ func (gcfdReader *GoCFDSolutionReader) GetField() (fI []float32, end bool) {
 	fI = gcfdReader.currentField
 	return
 }
+
+func (gcfdReader *GoCFDSolutionReader) Reset() {
+	var (
+		err error
+	)
+	_, err = gcfdReader.file.Seek(0, io.SeekStart)
+	if err != nil {
+		panic(err)
+	}
+	gcfdReader.CurStep = 0
+	return
+}
