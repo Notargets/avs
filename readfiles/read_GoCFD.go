@@ -83,30 +83,6 @@ func ReadGoCFDMesh(path string, verbose bool) (tMesh geometry.TriMesh,
 	return
 }
 
-func ReadGoCFDSolution(path string, verbose bool) (fI []float32) {
-	var (
-		file  *os.File
-		err   error
-		lenFi int64
-	)
-
-	if verbose {
-		fmt.Printf("Reading GoCFD solution file named: %s\n", path)
-	}
-
-	if file, err = os.Open(path); err != nil {
-		panic(fmt.Errorf("unable to open file %s\n %s", path, err))
-	}
-	defer file.Close()
-
-	// For now just read the first field
-	binary.Read(file, binary.LittleEndian, &lenFi)
-	fmt.Printf("Number of Field Elements: %d\n", lenFi)
-	fI = make([]float32, lenFi)
-	binary.Read(file, binary.LittleEndian, &fI)
-	return
-}
-
 type GoCFDSolutionReader struct {
 	file         *os.File
 	currentField []float32
@@ -170,6 +146,8 @@ func (gcfdReader *GoCFDSolutionReader) GetField() (fI []float32, end bool) {
 	if int(nEntriesFile) != gcfdReader.lenField {
 		panic(fmt.Errorf("read garbage field length %d", nEntriesFile))
 	}
+	// TODO: Amend this format to include the step number, maybe other meta info
+
 	binary.Read(gcfdReader.file, binary.LittleEndian, &gcfdReader.currentField)
 	gcfdReader.CurStep++
 	if gcfdReader.CurStep == gcfdReader.StepsTotal {
