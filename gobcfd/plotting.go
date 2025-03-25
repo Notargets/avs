@@ -20,10 +20,12 @@ func PlotMesh(gm geometry.TriMesh) {
 		yMin, yMax = float32(math.MaxFloat32), float32(-math.MaxFloat32)
 	)
 	xMin, xMax, yMin, yMax = getMinMax(gm.XY, xMin, xMax, yMin, yMax)
-	ch := chart2d.NewChart2D(xMin, xMax, yMin, yMax,
-		1024, 1024, utils.WHITE, utils.BLACK)
+	GC.SetActiveChart(
+		chart2d.NewChart2D(xMin, xMax, yMin, yMax,
+			1024, 1024, utils.WHITE, utils.BLACK))
+	GC.SetActiveWindow(GC.GetActiveChart().GetCurrentWindow())
 	// Create a vector field including the three vertices
-	ch.AddTriMesh(gm)
+	GC.SetActiveMesh(GC.GetActiveChart().AddTriMesh(gm))
 	for {
 	}
 }

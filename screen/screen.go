@@ -123,6 +123,20 @@ func (scr *Screen) NewLine(XY []float32, ColorInput interface{},
 
 	return
 }
+func (scr *Screen) ToggleVisible(win *Window, key utils.Key) {
+	scr.RenderChannel <- Command{win.windowIndex, 0, func() {
+		rb := win.GetObject(key)
+		if rb.Visible {
+			rb.Visible = false
+		} else {
+			rb.Visible = true
+		}
+		win.redraw()
+		scr.DoneChan <- struct{}{}
+	}}
+	<-scr.DoneChan
+	return
+}
 
 func (scr *Screen) UpdateLine(win *Window, key utils.Key, XY, Colors []float32) {
 	line := win.objects[key].Objects[0].(*Line)

@@ -129,6 +129,12 @@ func (chart *Chart2D) SetDrawWindow(win *screen.Window) {
 }
 
 func (chart *Chart2D) GetCurrentWindow() (win *screen.Window) {
+	if chart == nil {
+		panic("chart is nil")
+	}
+	if chart.Screen == nil {
+		panic("Screen is nil")
+	}
 	win = chart.Screen.GetCurrentWindow()
 	return
 }

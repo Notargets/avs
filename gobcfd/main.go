@@ -6,18 +6,59 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
+
+	"github.com/notargets/avs/screen"
+
+	"github.com/notargets/avs/chart2d"
+
+	"github.com/notargets/avs/utils"
 
 	"github.com/eiannone/keyboard"
 )
 
-type FlowFunction int
+type GraphContext struct {
+	activeMesh   utils.Key
+	activeChart  *chart2d.Chart2D
+	activeWindow *screen.Window
+	mu           sync.RWMutex
+}
 
-const (
-	// Dummy constants for illustration.
-	Density FlowFunction = iota
-	XMomentum
-	// ... other constants ...
+func (gc *GraphContext) SetActiveMesh(mesh utils.Key) {
+	gc.mu.Lock()
+	defer gc.mu.Unlock()
+	gc.activeMesh = mesh
+}
+
+func (gc *GraphContext) SetActiveChart(chart *chart2d.Chart2D) {
+	gc.mu.Lock()
+	defer gc.mu.Unlock()
+	gc.activeChart = chart
+}
+func (gc *GraphContext) SetActiveWindow(window *screen.Window) {
+	gc.mu.Lock()
+	defer gc.mu.Unlock()
+	gc.activeWindow = window
+}
+func (gc *GraphContext) GetActiveMesh() utils.Key {
+	gc.mu.RLock()
+	defer gc.mu.RUnlock()
+	return gc.activeMesh
+}
+func (gc *GraphContext) GetActiveChart() *chart2d.Chart2D {
+	gc.mu.RLock()
+	defer gc.mu.RUnlock()
+	return gc.activeChart
+}
+func (gc *GraphContext) GetActiveWindow() *screen.Window {
+	gc.mu.RLock()
+	defer gc.mu.RUnlock()
+	return gc.activeWindow
+}
+
+var (
+	GC = GraphContext{}
 )
 
 func main() {
@@ -93,6 +134,7 @@ func keyboardLoop(quit chan<- struct{}) {
 	fmt.Println(" - Use the up arrow to speed up the frame rate")
 	fmt.Println(" - Use the down arrow to slow down the frame rate")
 	fmt.Println(" - Press the space bar to toggle animation")
+	fmt.Println(" - Press the m key to toggle mesh visibility")
 	fmt.Println(" - Press 'q' to quit the app")
 
 	for {
@@ -108,12 +150,19 @@ func keyboardLoop(quit chan<- struct{}) {
 			decreaseFrameRate()
 		case key == keyboard.KeySpace:
 			toggleAnimation()
+		case char == 'm' || char == 'M':
+			toggleMeshVisible()
 		case char == 'q' || char == 'Q':
 			fmt.Println("Quit command received. Exiting interactive loop.")
 			close(quit)
 			return
 		}
 	}
+}
+
+func toggleMeshVisible() {
+	fmt.Println("Toggling mesh visibility")
+	GC.GetActiveChart().Screen.ToggleVisible(GC.GetActiveWindow(), GC.GetActiveMesh())
 }
 
 // Dummy callbacks:

@@ -9,6 +9,8 @@ package screen
 import (
 	"fmt"
 
+	"github.com/go-gl/glfw/v3.3/glfw"
+
 	"github.com/go-gl/gl/v4.5-core/gl"
 )
 
@@ -40,23 +42,26 @@ func (win *Window) fullScreenRender() {
 	// Clear the screen before rendering
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 	for _, obj := range win.objects {
-		renderObjList := obj.Objects
-		for _, object := range renderObjList {
-			switch renderObj := object.(type) {
-			case *Line:
-				renderObj.render()
-			case *String:
-				renderObj.render(win)
-			case *ShadedVertexScalar:
-				renderObj.render()
-			case *ContourVertexScalar:
-				renderObj.render()
-			default:
-				fmt.Printf("Unknown object type: %T\n", renderObj)
+		if obj.Visible {
+			renderObjList := obj.Objects
+			for _, object := range renderObjList {
+				switch renderObj := object.(type) {
+				case *Line:
+					renderObj.render()
+				case *String:
+					renderObj.render(win)
+				case *ShadedVertexScalar:
+					renderObj.render()
+				case *ContourVertexScalar:
+					renderObj.render()
+				default:
+					fmt.Printf("Unknown object type: %T\n", renderObj)
+				}
 			}
 		}
 	}
+	gl.Flush()
 	// Swap buffers to present the frame
 	win.swapBuffers()
-	// glfw.PollEvents()
+	glfw.PollEvents()
 }

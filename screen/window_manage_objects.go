@@ -24,7 +24,3 @@ func (rb *Renderable) add(key utils.Key) {
 	// An object group is append only by design
 	rb.Objects = append(rb.Objects, key)
 }
-
-func (rb *Renderable) setVisible(isVisible bool) {
-	rb.Visible = isVisible
-}

@@ -179,6 +179,14 @@ func newWindow(width, height uint32, xMin, xMax, yMin, yMax, scale float32,
 	return
 }
 
+func (win *Window) GetObject(k utils.Key) (ro *Renderable) {
+	ro, ok := win.objects[k]
+	if !ok {
+		panic(fmt.Sprintf("object not found for key: %v", k))
+	}
+	return
+}
+
 func (win *Window) newRenderable(key utils.Key, object interface{}) (
 	rb *Renderable) {
 	rb = &Renderable{
@@ -193,7 +201,7 @@ func (win *Window) redraw() {
 	win.setCurrentWindow()
 	win.updateProjectionMatrix()
 	win.fullScreenRender()
-	//win.setFocusWindow()
+	// win.setFocusWindow()
 }
 
 func (win *Window) positionScaleChanged() bool {
