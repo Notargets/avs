@@ -187,12 +187,22 @@ func toggleAnimation() {
 		name := SR.FMD.FieldNames[0]
 		fmt.Printf("Reading %s\n", name)
 		fMin, fMax := getFminFmax(fields[name])
-		GC.SetActiveField(GC.GetActiveChart().AddShadedVertexScalar(
-			&geometry.VertexScalar{
-				TMesh:       &GM,
-				FieldValues: fields[name],
-			}, fMin, fMax))
 		fmt.Printf("fMin = %f, fMax = %f\n", fMin, fMax)
+		fMin, fMax = 1, 2.5
+		if GC.GetActiveField().IsNil() {
+			GC.SetActiveField(GC.GetActiveChart().AddShadedVertexScalar(
+				&geometry.VertexScalar{
+					TMesh:       &GM,
+					FieldValues: fields[name],
+				}, fMin, fMax))
+		} else {
+			GC.GetActiveChart().UpdateShadedVertexScalar(
+				GC.GetActiveWindow(), GC.GetActiveField(),
+				&geometry.VertexScalar{
+					TMesh:       &GM,
+					FieldValues: fields[name],
+				})
+		}
 	} else {
 		fmt.Println("No solution data")
 	}

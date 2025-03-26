@@ -37,6 +37,13 @@ func NewKey() Key {
 	return Key(uuid.New())
 }
 
+func (key Key) IsNil() bool {
+	if key == Key(uuid.Nil) {
+		return true
+	}
+	return false
+}
+
 const (
 	LINE RenderType = iota
 	POLYLINE
