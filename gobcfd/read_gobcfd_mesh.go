@@ -47,21 +47,6 @@ func (mmd *MeshMetadata) String() string {
 		mmd.NumPerElement, mmd.LenXY, mmd.GitVersion)
 }
 
-type FieldMetadata struct {
-	NumFields        int // How many fields are in the [][]float32
-	FieldNames       []string
-	SolutionMetadata map[string]interface{} // Fields like ReynoldsNumber,
-	// gamma...
-	GitVersion string
-}
-
-type SingleFieldMetadata struct {
-	Iterations int
-	Time       float32
-	Count      int // Number of fields
-	Length     int // of each field, for skipping / readahead
-}
-
 // Function to write MeshMetadata and TriMesh sequentially
 func WriteMesh(filename string, metadata *MeshMetadata,
 	mesh geometry.TriMesh, BCXY map[string][][]float32) error {

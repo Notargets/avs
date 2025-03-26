@@ -7,7 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
-	"time"
+
+	"github.com/notargets/avs/geometry"
 
 	"github.com/notargets/avs/screen"
 
@@ -20,6 +21,7 @@ import (
 
 type GraphContext struct {
 	activeMesh   utils.Key
+	activeField  utils.Key
 	activeChart  *chart2d.Chart2D
 	activeWindow *screen.Window
 	mu           sync.RWMutex
@@ -31,6 +33,11 @@ func (gc *GraphContext) SetActiveMesh(mesh utils.Key) {
 	gc.activeMesh = mesh
 }
 
+func (gc *GraphContext) SetActiveField(k utils.Key) {
+	gc.mu.Lock()
+	defer gc.mu.Unlock()
+	gc.activeField = k
+}
 func (gc *GraphContext) SetActiveChart(chart *chart2d.Chart2D) {
 	gc.mu.Lock()
 	defer gc.mu.Unlock()
@@ -40,6 +47,11 @@ func (gc *GraphContext) SetActiveWindow(window *screen.Window) {
 	gc.mu.Lock()
 	defer gc.mu.Unlock()
 	gc.activeWindow = window
+}
+func (gc *GraphContext) GetActiveField() utils.Key {
+	gc.mu.RLock()
+	defer gc.mu.RUnlock()
+	return gc.activeField
 }
 func (gc *GraphContext) GetActiveMesh() utils.Key {
 	gc.mu.RLock()
@@ -59,6 +71,8 @@ func (gc *GraphContext) GetActiveWindow() *screen.Window {
 
 var (
 	GC = GraphContext{}
+	SR *SolutionReader
+	GM geometry.TriMesh
 )
 
 func main() {
@@ -78,8 +92,13 @@ func main() {
 	}
 
 	// Validate solution file if provided.
-	if *solutionFile != "" && filepath.Ext(*solutionFile) != ".gobcfd" {
-		log.Fatalf("Solution file must have a .gobcfd extension: got %s", *solutionFile)
+	if *solutionFile != "" {
+		if filepath.Ext(*solutionFile) != ".gobcfd" {
+			log.Fatalf("Solution file must have a .gobcfd extension: got %s", *solutionFile)
+		}
+		SR = NewSolutionReader(*solutionFile)
+		fmt.Printf("Mesh Metadata from Solution File\n%s", SR.MMD.String())
+		fmt.Printf("Solution Metadata\n%s", SR.FMD.String())
 	}
 
 	// Open the keyboard in main and defer its closure.
@@ -99,33 +118,19 @@ func main() {
 	go keyboardLoop(quit)
 
 	// Read the mesh
-	mmd, gm, BCXY, err := ReadMesh(*meshFile)
+	var err error
+	var mmd MeshMetadata
+	var BCXY map[string][][]float32
+	mmd, GM, BCXY, err = ReadMesh(*meshFile)
 	if err != nil {
 		panic(err)
 	}
+	_ = BCXY
 	fmt.Printf("Mesh Info =================\n%s", mmd.String())
-	_, _ = gm, BCXY
 	// Start the dummy rendering loop on the main thread.
 	fmt.Println("Starting rendering pipeline on main thread...")
-	// ch := chart2d.NewChart2D()
-	go PlotMesh(gm)
-	renderingLoop(quit)
+	PlotMesh(GM, quit)
 	fmt.Println("Rendering pipeline terminated. Exiting application.")
-}
-
-// renderingLoop simulates a rendering loop running on the main thread.
-func renderingLoop(quit <-chan struct{}) {
-	ticker := time.NewTicker(time.Second / 60) // 60 fps simulation
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-quit:
-			return
-		case <-ticker.C:
-			// Here you would invoke your avs package rendering code.
-		}
-	}
 }
 
 // keyboardLoop listens for key events and triggers dummy callbacks.
@@ -175,5 +180,36 @@ func decreaseFrameRate() {
 }
 
 func toggleAnimation() {
-	fmt.Println("Toggling animation (dummy callback).")
+	if SR != nil {
+		fmt.Println("Toggling animation")
+		fields := SR.getFields()
+		fmt.Printf("Single Field Metadata\n%s", SR.SFMD.String())
+		name := SR.FMD.FieldNames[0]
+		fmt.Printf("Reading %s\n", name)
+		fMin, fMax := getFminFmax(fields[name])
+		GC.SetActiveField(GC.GetActiveChart().AddShadedVertexScalar(
+			&geometry.VertexScalar{
+				TMesh:       &GM,
+				FieldValues: fields[name],
+			}, fMin, fMax))
+		fmt.Printf("fMin = %f, fMax = %f\n", fMin, fMax)
+	} else {
+		fmt.Println("No solution data")
+	}
+}
+
+func getFminFmax(F []float32) (fMin, fMax float32) {
+	for i, f := range F {
+		if i == 0 {
+			fMin = f
+			fMax = f
+		}
+		if f > fMax {
+			fMax = f
+		}
+		if f < fMin {
+			fMin = f
+		}
+	}
+	return
 }

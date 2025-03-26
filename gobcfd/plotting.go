@@ -7,14 +7,24 @@
 package main
 
 import (
+	"log"
 	"math"
+	"time"
+
+	"github.com/eiannone/keyboard"
 
 	"github.com/notargets/avs/chart2d"
 	"github.com/notargets/avs/geometry"
 	"github.com/notargets/avs/utils"
 )
 
-func PlotMesh(gm geometry.TriMesh) {
+func PlotMesh(gm geometry.TriMesh, quit <-chan struct{}) {
+	defer func() {
+		if err := keyboard.Close(); err != nil {
+			log.Println("error closing keyboard:", err)
+		}
+	}()
+
 	var (
 		xMin, xMax = float32(math.MaxFloat32), float32(-math.MaxFloat32)
 		yMin, yMax = float32(math.MaxFloat32), float32(-math.MaxFloat32)
@@ -26,7 +36,21 @@ func PlotMesh(gm geometry.TriMesh) {
 	GC.SetActiveWindow(GC.GetActiveChart().GetCurrentWindow())
 	// Create a vector field including the three vertices
 	GC.SetActiveMesh(GC.GetActiveChart().AddTriMesh(gm))
+	waitLoop(quit)
+}
+
+// waitLoop simulates a rendering loop running on the main thread.
+func waitLoop(quit <-chan struct{}) {
+	ticker := time.NewTicker(time.Second / 60) // 60 fps simulation
+	defer ticker.Stop()
+
 	for {
+		select {
+		case <-quit:
+			return
+		case <-ticker.C:
+			// do nothing
+		}
 	}
 }
 
