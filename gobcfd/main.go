@@ -70,10 +70,21 @@ func (gc *GraphContext) GetActiveWindow() *screen.Window {
 }
 
 var (
-	GC = GraphContext{}
-	SR *SolutionReader
-	GM geometry.TriMesh
+	GC            = GraphContext{}
+	SR            *SolutionReader
+	GM            geometry.TriMesh
+	IsMinMaxFixed bool
+	FMin, FMax    float32 // Fixed field min/max
 )
+
+func fixFieldMinMax(fMin, fMax float64) {
+	FMin, FMax = float32(fMin), float32(fMax)
+	IsMinMaxFixed = true
+}
+
+func unFixFieldMinMax() {
+	IsMinMaxFixed = false
+}
 
 func main() {
 	// Command-line flags.
@@ -102,14 +113,8 @@ func main() {
 	}
 
 	// Open the keyboard in main and defer its closure.
-	if err := keyboard.Open(); err != nil {
-		log.Fatal(err)
-	}
-	defer func() {
-		if err := keyboard.Close(); err != nil {
-			log.Println("error closing keyboard:", err)
-		}
-	}()
+	kbOpen()
+	defer kbClose()
 
 	// Channel to signal quitting.
 	quit := make(chan struct{})
@@ -133,13 +138,27 @@ func main() {
 	fmt.Println("Rendering pipeline terminated. Exiting application.")
 }
 
+func kbOpen() {
+	// Temporarily close the keyboard to disable raw mode.
+	if err := keyboard.Open(); err != nil {
+		log.Fatalf("Failed to open keyboard: %v", err)
+	}
+}
+
+func kbClose() {
+	if err := keyboard.Close(); err != nil {
+		log.Fatalf("Failed to close keyboard: %v", err)
+	}
+}
+
 // keyboardLoop listens for key events and triggers dummy callbacks.
 func keyboardLoop(quit chan<- struct{}) {
-	defer CleanupKB()
+	defer kbClose()
 	fmt.Println("Interactive command loop started:")
-	fmt.Println(" - Use the up arrow to speed up the frame rate")
-	fmt.Println(" - Use the down arrow to slow down the frame rate")
-	fmt.Println(" - Press the space bar to toggle animation")
+	// fmt.Println(" - Use the up arrow to speed up the frame rate")
+	// fmt.Println(" - Use the down arrow to slow down the frame rate")
+	fmt.Println(" - Press the y key to set/unset a global field range")
+	fmt.Println(" - Press the space bar to advance animation")
 	fmt.Println(" - Press the m key to toggle mesh visibility")
 	fmt.Println(" - Press 'q' to quit the app")
 
@@ -155,14 +174,38 @@ func keyboardLoop(quit chan<- struct{}) {
 		case key == keyboard.KeyArrowDown:
 			decreaseFrameRate()
 		case key == keyboard.KeySpace:
-			toggleAnimation()
+			advanceAnimation()
 		case char == 'm' || char == 'M':
 			toggleMeshVisible()
+		case char == 'y' || char == 'Y':
+			kbClose()
+			setUnsetMinMaxRange()
+			kbOpen()
 		case char == 'q' || char == 'Q':
 			fmt.Println("Quit command received. Exiting interactive loop.")
 			close(quit)
 			return
 		}
+	}
+}
+
+func setUnsetMinMaxRange() {
+	if IsMinMaxFixed {
+		fmt.Printf("Field Min/Max will be auto scaled per frame\n")
+		unFixFieldMinMax()
+		return
+	} else {
+		var fMin, fMax float64
+		for {
+			fmt.Printf("Enter the min and max field range: ")
+			n, err := fmt.Scan(&fMin, &fMax)
+			if err != nil || n != 2 {
+				continue
+			}
+			break
+		}
+		fixFieldMinMax(fMin, fMax)
+		return
 	}
 }
 
@@ -180,29 +223,10 @@ func decreaseFrameRate() {
 	fmt.Println("Decreasing frame rate (dummy callback).")
 }
 
-func toggleAnimation() {
+func advanceAnimation() {
 	if SR != nil {
-		fmt.Println("Toggling animation")
-		fields := SR.getFields()
-		fmt.Printf("Single Field Metadata\n%s", SR.SFMD.String())
-		name := SR.FMD.FieldNames[0]
-		fmt.Printf("Reading %s\n", name)
-		fMin, fMax := getFminFmax(fields[name])
-		fmt.Printf("fMin = %f, fMax = %f\n", fMin, fMax)
-		if GC.GetActiveField().IsNil() {
-			GC.SetActiveField(GC.GetActiveChart().AddShadedVertexScalar(
-				&geometry.VertexScalar{
-					TMesh:       &GM,
-					FieldValues: fields[name],
-				}, fMin, fMax))
-		} else {
-			GC.GetActiveChart().UpdateShadedVertexScalar(
-				GC.GetActiveWindow(), GC.GetActiveField(),
-				&geometry.VertexScalar{
-					TMesh:       &GM,
-					FieldValues: fields[name],
-				}, fMin, fMax)
-		}
+		fmt.Println("Advancing animation")
+		AdvanceSolution()
 	} else {
 		fmt.Println("No solution data")
 	}

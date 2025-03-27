@@ -79,7 +79,7 @@ func (sr *SolutionReader) getFields() (fields map[string][]float32) {
 			} else {
 				// fmt.Printf("Unexpected EOF reading field data\n")
 				fmt.Printf("Unexpected error reading field data\n")
-				CleanupKB()
+				kbClose()
 				panic(err)
 			}
 			// } else {
@@ -91,7 +91,7 @@ func (sr *SolutionReader) getFields() (fields map[string][]float32) {
 	}
 	err := sr.decoder.Decode(&fields)
 	if err != nil {
-		CleanupKB()
+		kbClose()
 		panic(err)
 	}
 	return

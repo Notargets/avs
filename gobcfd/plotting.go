@@ -7,25 +7,17 @@
 package main
 
 import (
-	"log"
+	"fmt"
 	"math"
 	"time"
-
-	"github.com/eiannone/keyboard"
 
 	"github.com/notargets/avs/chart2d"
 	"github.com/notargets/avs/geometry"
 	"github.com/notargets/avs/utils"
 )
 
-func CleanupKB() {
-	if err := keyboard.Close(); err != nil {
-		log.Println("error closing keyboard:", err)
-	}
-}
-
 func PlotMesh(gm geometry.TriMesh, quit <-chan struct{}) {
-	defer CleanupKB()
+	defer kbClose()
 
 	var (
 		xMin, xMax = float32(math.MaxFloat32), float32(-math.MaxFloat32)
@@ -39,6 +31,32 @@ func PlotMesh(gm geometry.TriMesh, quit <-chan struct{}) {
 	// Create a vector field including the three vertices
 	GC.SetActiveMesh(GC.GetActiveChart().AddTriMesh(gm))
 	waitLoop(quit)
+}
+
+func AdvanceSolution() {
+	fields := SR.getFields()
+	fmt.Printf("Single Field Metadata\n%s", SR.SFMD.String())
+	name := SR.FMD.FieldNames[0]
+	fmt.Printf("Reading %s\n", name)
+	fMin, fMax := getFminFmax(fields[name])
+	fmt.Printf("fMin = %f, fMax = %f\n", fMin, fMax)
+	if IsMinMaxFixed {
+		fMin, fMax = FMax, FMin
+	}
+	if GC.GetActiveField().IsNil() {
+		GC.SetActiveField(GC.GetActiveChart().AddShadedVertexScalar(
+			&geometry.VertexScalar{
+				TMesh:       &GM,
+				FieldValues: fields[name],
+			}, fMin, fMax))
+	} else {
+		GC.GetActiveChart().UpdateShadedVertexScalar(
+			GC.GetActiveWindow(), GC.GetActiveField(),
+			&geometry.VertexScalar{
+				TMesh:       &GM,
+				FieldValues: fields[name],
+			}, fMin, fMax)
+	}
 }
 
 // waitLoop simulates a rendering loop running on the main thread.
