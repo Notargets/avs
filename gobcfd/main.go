@@ -188,7 +188,6 @@ func toggleAnimation() {
 		fmt.Printf("Reading %s\n", name)
 		fMin, fMax := getFminFmax(fields[name])
 		fmt.Printf("fMin = %f, fMax = %f\n", fMin, fMax)
-		fMin, fMax = 1, 2.5
 		if GC.GetActiveField().IsNil() {
 			GC.SetActiveField(GC.GetActiveChart().AddShadedVertexScalar(
 				&geometry.VertexScalar{
@@ -201,7 +200,7 @@ func toggleAnimation() {
 				&geometry.VertexScalar{
 					TMesh:       &GM,
 					FieldValues: fields[name],
-				})
+				}, fMin, fMax)
 		}
 	} else {
 		fmt.Println("No solution data")

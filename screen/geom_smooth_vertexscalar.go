@@ -58,7 +58,8 @@ func addShadedVertexScalarShader(shaderMap map[utils.RenderType]uint32) {
 		in vec3 fragColor;
 		out vec4 outColor;
 		void main() {
-			outColor = vec4(fragColor, 1.0);
+			outColor = vec4(fragColor, 0.75);
+			//outColor = vec4(fragColor, 1.0);
 		}` + "\x00")
 
 	shaderMap[utils.TRIMESHSMOOTH] = compileShaderProgram(vertexShader,
@@ -141,6 +142,8 @@ func (triMesh *ShadedVertexScalar) render() {
 
 	// Draw the mesh
 	gl.BindVertexArray(triMesh.VAO)
+	gl.Enable(gl.BLEND)
+	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 	gl.DrawArrays(gl.TRIANGLES, 0, triMesh.NumVertices)
 	gl.BindVertexArray(0)
 }

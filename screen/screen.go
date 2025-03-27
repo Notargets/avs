@@ -173,7 +173,7 @@ func (scr *Screen) NewShadedVertexScalar(vs *geometry.VertexScalar, fMin,
 }
 
 func (scr *Screen) UpdateShadedVertexScalar(win *Window, key utils.Key,
-	vs *geometry.VertexScalar) {
+	vs *geometry.VertexScalar, fMin, fMax float32) {
 	var (
 		rb      *Renderable
 		present bool
@@ -183,6 +183,8 @@ func (scr *Screen) UpdateShadedVertexScalar(win *Window, key utils.Key,
 	}
 	// shadedVertexScalar := win.objects[key].Objects[0].(*ShadedVertexScalar)
 	shadedVertexScalar := rb.Objects[0].(*ShadedVertexScalar)
+	shadedVertexScalar.scalarMin = fMin
+	shadedVertexScalar.scalarMax = fMax
 
 	scr.RenderChannel <- Command{win.windowIndex, 0, func() {
 		shadedVertexScalar.updateVertexScalarData(vs)

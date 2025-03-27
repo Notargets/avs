@@ -89,8 +89,8 @@ func (chart *Chart2D) AddShadedVertexScalar(vs *geometry.VertexScalar, fMin,
 }
 
 func (chart *Chart2D) UpdateShadedVertexScalar(win *screen.Window, key utils.Key,
-	vs *geometry.VertexScalar) {
-	chart.Screen.UpdateShadedVertexScalar(win, key, vs)
+	vs *geometry.VertexScalar, fMin, fMax float32) {
+	chart.Screen.UpdateShadedVertexScalar(win, key, vs, fMin, fMax)
 	return
 }
 
