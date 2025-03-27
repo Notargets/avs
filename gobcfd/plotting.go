@@ -39,9 +39,12 @@ func AdvanceSolution() {
 	name := SR.FMD.FieldNames[0]
 	fmt.Printf("Reading %s\n", name)
 	fMin, fMax := getFminFmax(fields[name])
-	fmt.Printf("fMin = %f, fMax = %f\n", fMin, fMax)
 	if IsMinMaxFixed {
+		fmt.Printf("Fixed Scale: FMin/FMax:%.2f/%.2f Range: %.2f/%.2f\n", FMin,
+			FMax, fMin, fMax)
 		fMin, fMax = FMax, FMin
+	} else {
+		fmt.Printf("Autoscale: fMin/fMax:%.2f/%.2f\n", fMin, fMax)
 	}
 	if GC.GetActiveField().IsNil() {
 		GC.SetActiveField(GC.GetActiveChart().AddShadedVertexScalar(
