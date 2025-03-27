@@ -53,8 +53,9 @@ type Window struct {
 	panSpeed         float32
 	projectionMatrix mgl32.Mat4
 	shaders          map[utils.RenderType]uint32
-	objects          map[utils.Key]*Renderable
-	windowIndex      int8
+	// objects          map[utils.Key]*Renderable
+	objects     RenderableMap
+	windowIndex int8
 }
 
 func newWindow(width, height uint32, xMin, xMax, yMin, yMax, scale float32,
@@ -80,7 +81,7 @@ func newWindow(width, height uint32, xMin, xMax, yMin, yMax, scale float32,
 		positionDelta: [2]float32{0, 0},
 		scaleChanged:  false,
 		shaders:       make(map[utils.RenderType]uint32),
-		objects:       make(map[utils.Key]*Renderable),
+		objects:       NewRenderableMap(),
 	}
 	// Launch the OpenGL thread
 	if err := glfw.Init(); err != nil {
@@ -187,11 +188,12 @@ func (win *Window) GetObject(k utils.Key) (ro *Renderable) {
 	return
 }
 
-func (win *Window) newRenderable(key utils.Key, object interface{}) (
+func (win *Window) newRenderable(key utils.Key, object interface{}, typ utils.RenderType) (
 	rb *Renderable) {
 	rb = &Renderable{
 		Visible: true,
 		Objects: newObjectGroup(object),
+		Type:    typ,
 	}
 	win.objects[key] = rb
 	return

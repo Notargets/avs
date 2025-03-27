@@ -115,7 +115,7 @@ func (scr *Screen) NewLine(XY []float32, ColorInput interface{},
 	scr.RenderChannel <- Command{win.windowIndex, 0, func() {
 		// Create new line
 		line := newLine(XY, Colors, win, rt...)
-		win.newRenderable(key, line)
+		win.newRenderable(key, line, utils.LINE)
 		win.redraw()
 		scr.DoneChan <- struct{}{}
 	}}
@@ -163,7 +163,7 @@ func (scr *Screen) NewShadedVertexScalar(vs *geometry.VertexScalar, fMin,
 	scr.RenderChannel <- Command{win.windowIndex, 0, func() {
 		// Create new line
 		shadedTris := newShadedVertexScalar(vs, win, fMin, fMax)
-		win.newRenderable(key, shadedTris)
+		win.newRenderable(key, shadedTris, utils.TRIMESHSMOOTH)
 		win.redraw()
 		scr.DoneChan <- struct{}{}
 	}}
@@ -203,7 +203,7 @@ func (scr *Screen) NewContourVertexScalar(vs *geometry.VertexScalar, fMin,
 	scr.RenderChannel <- Command{win.windowIndex, 0, func() {
 		// Create new line
 		contourTris := newContourVertexScalar(vs, win, fMin, fMax, numContours)
-		win.newRenderable(key, contourTris)
+		win.newRenderable(key, contourTris, utils.TRIMESHCONTOURS)
 		win.redraw()
 		scr.DoneChan <- struct{}{}
 	}}
@@ -249,7 +249,7 @@ func (scr *Screen) NewString(tf *assets.TextFormatter, x,
 	scr.RenderChannel <- Command{win.windowIndex, 0, func() {
 		str := newString(tf, x, y, text, win)
 
-		win.newRenderable(key, str)
+		win.newRenderable(key, str, utils.STRING)
 		win.redraw()
 		scr.DoneChan <- struct{}{}
 	}}

@@ -29,8 +29,6 @@ func (si *SafeInt) Read() int {
 	return *(*int)(ptr)
 }
 
-type RenderType uint16
-
 type Key uuid.UUID
 
 func NewKey() Key {
@@ -44,20 +42,23 @@ func (key Key) IsNil() bool {
 	return false
 }
 
+type RenderType uint16
+
+// These are ordered in the intended drawing/rendering order
 const (
 	LINE RenderType = iota
 	POLYLINE
-	STRING
-	FIXEDSTRING
-	TRIMESHEDGESUNICOLOR
-	TRIMESHEDGES
-	TRIMESHCONTOURS
-	TRIMESHSMOOTH
 	LINE3D
+	TRIMESHCONTOURS
+	TRIMESHEDGESUNICOLOR
 	TRIMESHEDGESUNICOLOR3D
 	TRIMESHEDGES3D
 	TRIMESHCONTOURS3D
+	TRIMESHEDGES
+	TRIMESHSMOOTH
 	TRIMESHSMOOTH3D
+	STRING
+	FIXEDSTRING
 )
 
 func (r RenderType) String() string {

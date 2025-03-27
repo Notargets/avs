@@ -8,6 +8,7 @@ package screen
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/go-gl/glfw/v3.3/glfw"
 
@@ -41,9 +42,13 @@ func (win *Window) setFocusWindow() {
 func (win *Window) fullScreenRender() {
 	// Clear the screen before rendering
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
-	for _, obj := range win.objects {
+	gl.Disable(gl.DEPTH_TEST)
+	for _, key := range win.objects.GetKeys() {
+		obj := win.objects[key]
+		// for _, obj := range win.objects {
 		if obj.Visible {
 			renderObjList := obj.Objects
+			sort.Sort(renderObjList)
 			for _, object := range renderObjList {
 				switch renderObj := object.(type) {
 				case *Line:
