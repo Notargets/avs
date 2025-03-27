@@ -135,6 +135,7 @@ func main() {
 
 // keyboardLoop listens for key events and triggers dummy callbacks.
 func keyboardLoop(quit chan<- struct{}) {
+	defer CleanupKB()
 	fmt.Println("Interactive command loop started:")
 	fmt.Println(" - Use the up arrow to speed up the frame rate")
 	fmt.Println(" - Use the down arrow to slow down the frame rate")

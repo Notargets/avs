@@ -18,12 +18,14 @@ import (
 	"github.com/notargets/avs/utils"
 )
 
+func CleanupKB() {
+	if err := keyboard.Close(); err != nil {
+		log.Println("error closing keyboard:", err)
+	}
+}
+
 func PlotMesh(gm geometry.TriMesh, quit <-chan struct{}) {
-	defer func() {
-		if err := keyboard.Close(); err != nil {
-			log.Println("error closing keyboard:", err)
-		}
-	}()
+	defer CleanupKB()
 
 	var (
 		xMin, xMax = float32(math.MaxFloat32), float32(-math.MaxFloat32)

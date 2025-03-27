@@ -8,9 +8,7 @@ package main
 
 import (
 	"encoding/gob"
-	"errors"
 	"fmt"
-	"io"
 	"os"
 )
 
@@ -46,31 +44,23 @@ func (sfm *SingleFieldMetadata) String() string {
 }
 
 type SolutionReader struct {
-	file    *os.File
-	decoder *gob.Decoder
-	MMD     *MeshMetadata
-	FMD     *FieldMetadata       // Global field metadata
-	SFMD    *SingleFieldMetadata // Current field metadata
-	dataLoc int64                // beginning of field data
-}
-
-func (sr *SolutionReader) getCurPos() int64 {
-	pos, err := sr.file.Seek(0, io.SeekCurrent)
-	if err != nil {
-		panic(err)
-	}
-	return pos
-}
-
-func (sr *SolutionReader) seekTo(pos int64) {
-	pos, err := sr.file.Seek(pos, io.SeekStart)
-	if err != nil {
-		panic(err)
-	}
+	fileName   string
+	file       *os.File
+	fileOpened bool
+	decoder    *gob.Decoder
+	MMD        *MeshMetadata
+	FMD        *FieldMetadata       // Global field metadata
+	SFMD       *SingleFieldMetadata // Current field metadata
+	dataLoc    int64                // beginning of field data
 }
 
 func (sr *SolutionReader) gotoFieldData() {
-	sr.seekTo(0)
+	if sr.fileOpened {
+		// fmt.Printf("resetting file\n")
+		sr.file.Close()
+	}
+	sr.openFile()
+	sr.fileOpened = true
 	sr.decoder = gob.NewDecoder(sr.file)
 	sr.readSolutionMetadata()
 }
@@ -80,35 +70,44 @@ func (sr *SolutionReader) getFields() (fields map[string][]float32) {
 	for {
 		err := sr.decoder.Decode(&sr.SFMD)
 		if err != nil {
-			if errors.Is(err, io.EOF) {
-				// It's an EOF error
-				if firstError {
-					firstError = false
-					sr.gotoFieldData()
-					continue
-				} else {
-					fmt.Printf("Unexpected EOF reading field data\n")
-					panic(err)
-				}
+			// if errors.Is(err, io.EOF) {
+			// It's an EOF error
+			if firstError {
+				firstError = false
+				sr.gotoFieldData()
+				continue
 			} else {
+				// fmt.Printf("Unexpected EOF reading field data\n")
+				fmt.Printf("Unexpected error reading field data\n")
+				CleanupKB()
 				panic(err)
 			}
+			// } else {
+			// 	CleanupKB()
+			// 	panic(err)
+			// }
 		}
 		break
 	}
 	err := sr.decoder.Decode(&fields)
 	if err != nil {
+		CleanupKB()
 		panic(err)
 	}
 	return
 }
 
-func NewSolutionReader(filename string) (sr *SolutionReader) {
+func (sr *SolutionReader) openFile() {
 	var err error
-	sr = &SolutionReader{}
-	sr.file, err = os.OpenFile(filename, os.O_RDONLY, 0600)
+	sr.file, err = os.OpenFile(sr.fileName, os.O_RDONLY, 0600)
 	if err != nil {
 		panic(err)
+	}
+}
+
+func NewSolutionReader(filename string) (sr *SolutionReader) {
+	sr = &SolutionReader{
+		fileName: filename,
 	}
 	sr.gotoFieldData()
 	// We are now positioned at the beginning of the field data
