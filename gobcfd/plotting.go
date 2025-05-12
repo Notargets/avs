@@ -42,7 +42,7 @@ func AdvanceSolution() {
 	if IsMinMaxFixed {
 		fmt.Printf("Fixed Scale: FMin/FMax:%.2f/%.2f Range: %.2f/%.2f\n", FMin,
 			FMax, fMin, fMax)
-		fMin, fMax = FMax, FMin
+		fMin, fMax = FMin, FMax
 	} else {
 		fmt.Printf("Autoscale: fMin/fMax:%.2f/%.2f\n", fMin, fMax)
 	}
